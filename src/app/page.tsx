@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Hero } from "@/components/hero/Hero";
-import { AnnouncementBanner } from "@/components/AnnouncementBanner"; // ✅ NEW
-import { SearchBar } from "@/components/search/SearchBar";
-import { PriceFilter } from "@/components/search/PriceFilter";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { SearchBar } from "@/components/Search/SearchBar";
+import { PriceFilter } from "@/components/Search/PriceFilter";
 import { PropertyGrid } from "@/components/property/PropertyGrid";
 import { Footer } from "@/components/footer/Footer";
 import { getAllProperties } from "@/services/propertyService";
@@ -63,7 +63,7 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
       <Navbar />
-      <AnnouncementBanner /> {/* ✅ NEW */}
+      <AnnouncementBanner />
       <Hero />
       <div className="container-wide space-y-4 pt-6">
         <SearchBar value={keyword} onChange={setKeyword} />

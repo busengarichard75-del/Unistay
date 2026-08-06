@@ -4,43 +4,23 @@ export const properties: Property[] = [
   {
     id: "1",
     ownerId: "sample-owner",
+    universityId: "unza", // Add this
     title: "Cozy Studio Near Mukuba University",
-    price: 1500,
+    price: 1300,
     paymentPeriod: "monthly",
-    location: "Riverside, Kitwe",
-    imageUrl: "https://picsum.photos/seed/unistay1/600/400",
+    genderPreference: "mixed", // Add this
+    distanceBucket: "under5", // Add this
+    amenities: { // Add this
+      electricity: true,
+      water: true,
+      security: true,
+    },
+    location: "Mbachi",
+    imageUrl: "https://picsum.photos/400/300",
     bedSpaces: [
-      { id: "1-a", isAvailable: true },
-      { id: "1-b", isAvailable: false },
-      { id: "1-c", isAvailable: true },
+      { id: "b1", isAvailable: true },
+      { id: "b2", isAvailable: false },
     ],
   },
-  {
-    id: "2",
-    ownerId: "sample-owner",
-    title: "Shared Boarding House, 5 Min Walk to Campus",
-    price: 900,
-    paymentPeriod: "monthly",
-    location: "Parklands, Kitwe",
-    imageUrl: "https://picsum.photos/seed/unistay2/600/400",
-    bedSpaces: [
-      { id: "2-a", isAvailable: true },
-      { id: "2-b", isAvailable: true },
-      { id: "2-c", isAvailable: true },
-      { id: "2-d", isAvailable: false },
-    ],
-  },
-  {
-    id: "3",
-    ownerId: "sample-owner",
-    title: "Modern Apartment with Backup Power",
-    price: 2200,
-    paymentPeriod: "termly",
-    location: "Nkana East, Kitwe",
-    imageUrl: "https://picsum.photos/seed/unistay3/600/400",
-    bedSpaces: [
-      { id: "3-a", isAvailable: false },
-      { id: "3-b", isAvailable: false },
-    ],
-  },
+  // ... add more properties with all required fields
 ];
