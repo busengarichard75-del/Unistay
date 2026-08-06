@@ -11,6 +11,7 @@ type Role = "student" | "landlord";
 
 export function SignupForm() {
   const router = useRouter();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,13 +23,27 @@ export function SignupForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     setError("");
     setIsSubmitting(true);
 
-    try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
+    if (!auth || !db) {
+      setError("Authentication service is unavailable. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
 
-      await setDoc(doc(db, "users", credential.user.uid), {
+    try {
+      const firebaseAuth = auth;
+      const firestore = db;
+
+      const credential = await createUserWithEmailAndPassword(
+        firebaseAuth,
+        email,
+        password
+      );
+
+      await setDoc(doc(firestore, "users", credential.user.uid), {
         name,
         email,
         role,
@@ -55,16 +70,21 @@ export function SignupForm() {
           type="button"
           onClick={() => setRole("student")}
           className={`flex-1 rounded-full py-2 text-sm font-medium transition-colors ${
-            role === "student" ? "bg-blue-600 text-white" : "text-gray-600"
+            role === "student"
+              ? "bg-blue-600 text-white"
+              : "text-gray-600"
           }`}
         >
           Student
         </button>
+
         <button
           type="button"
           onClick={() => setRole("landlord")}
           className={`flex-1 rounded-full py-2 text-sm font-medium transition-colors ${
-            role === "landlord" ? "bg-blue-600 text-white" : "text-gray-600"
+            role === "landlord"
+              ? "bg-blue-600 text-white"
+              : "text-gray-600"
           }`}
         >
           Landlord
@@ -102,7 +122,8 @@ export function SignupForm() {
           >
             {universities.map((u) => (
               <option key={u.id} value={u.id} disabled={!u.isAvailable}>
-                {u.name}{!u.isAvailable ? " (coming soon)" : ""}
+                {u.name}
+                {!u.isAvailable ? " (coming soon)" : ""}
               </option>
             ))}
           </select>
@@ -117,7 +138,11 @@ export function SignupForm() {
         className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
       />
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-500">
+          {error}
+        </p>
+      )}
 
       <button
         type="submit"

@@ -7,6 +7,7 @@ import { auth } from "@/lib/firebase";
 
 export function LoginForm() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,8 +15,15 @@ export function LoginForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     setError("");
     setIsSubmitting(true);
+
+    if (!auth) {
+      setError("Authentication service is unavailable. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -46,10 +54,14 @@ export function LoginForm() {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder="Password"
-        className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
+        className="w-full rounded-lg border border-gray-200 px-4 and py-2 text-sm outline-none"
       />
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-500">
+          {error}
+        </p>
+      )}
 
       <button
         type="submit"

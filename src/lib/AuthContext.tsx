@@ -25,27 +25,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      console.log("Auth state changed. User:", currentUser?.email ?? "none");
-      setUser(currentUser);
-
-      if (currentUser) {
-        const snapshot = await getDoc(doc(db, "users", currentUser.uid));
-        const fetchedRole = snapshot.data()?.role;
-        console.log("Fetched role from Firestore:", fetchedRole);
-        setRole((fetchedRole as Role) ?? null);
-      } else {
-        setRole(null);
-      }
-
+    if (!auth || !db) {
       setIsLoading(false);
-    });
+      return;
+    }
+
+    const firebaseAuth = auth;
+    const firestore = db;
+
+    const unsubscribe = onAuthStateChanged(
+      firebaseAuth,
+      async (currentUser) => {
+        console.log(
+          "Auth state changed. User:",
+          currentUser?.email ?? "none"
+        );
+
+        setUser(currentUser);
+
+        if (currentUser) {
+          const snapshot = await getDoc(
+            doc(firestore, "users", currentUser.uid)
+          );
+
+          const fetchedRole = snapshot.data()?.role;
+
+          console.log(
+            "Fetched role from Firestore:",
+            fetchedRole
+          );
+
+          setRole((fetchedRole as Role) ?? null);
+        } else {
+          setRole(null);
+        }
+
+        setIsLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        role,
+        isLoading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
