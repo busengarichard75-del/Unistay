@@ -2,11 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/AuthContext";
 import { addProperty } from "@/services/propertyService";
 import { BedSpace, PaymentPeriod, GenderPreference, DistanceBucket, Amenities } from "@/types/property";
 import { universities } from "@/data/universities";
 import { DISTANCE_LABELS } from "@/constants/property";
+import { MultiImageUploader } from "@/components/ui/MultiImageUploader";
+
+// ✅ Dynamically import PropertyMap (no SSR – fixes `window is not defined`)
+const PropertyMap = dynamic(
+  () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
+  { ssr: false }
+);
 
 export function AddListingForm() {
   const { user } = useAuth();
@@ -19,9 +27,8 @@ export function AddListingForm() {
   const [distanceBucket, setDistanceBucket] = useState<DistanceBucket>("under5");
   const [universityId, setUniversityId] = useState(universities[0].id);
   const [location, setLocation] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [bedSpaceCount, setBedSpaceCount] = useState("1");
-  // FIXED: explicit type for bed types
   const [bedTypes, setBedTypes] = useState<("Top" | "Bottom")[]>([]);
   const [amenities, setAmenities] = useState<Amenities>({
     electricity: false,
@@ -30,6 +37,10 @@ export function AddListingForm() {
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Map state
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
 
   // Sync bedTypes with bedSpaceCount
   useEffect(() => {
@@ -50,7 +61,6 @@ export function AddListingForm() {
     setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  // FIXED: typed parameter
   function handleBedTypeChange(index: number, value: "Top" | "Bottom") {
     setBedTypes((prev) => {
       const updated = [...prev];
@@ -79,7 +89,7 @@ export function AddListingForm() {
         type: types[i] || "Top",
       }));
 
-      await addProperty({
+      const propertyData: any = {
         ownerId: user.uid,
         universityId,
         title,
@@ -89,9 +99,20 @@ export function AddListingForm() {
         distanceBucket,
         amenities,
         location,
-        imageUrl,
         bedSpaces,
-      });
+      };
+
+      if (imageUrls.length > 0) {
+        propertyData.imageUrl = imageUrls[0];
+        propertyData.imageUrls = imageUrls;
+      }
+
+      if (latitude !== undefined && longitude !== undefined) {
+        propertyData.latitude = latitude;
+        propertyData.longitude = longitude;
+      }
+
+      await addProperty(propertyData);
 
       router.push("/dashboard/landlord");
     } catch (err) {
@@ -146,7 +167,7 @@ export function AddListingForm() {
       <input
         value={location}
         onChange={(e) => setLocation(e.target.value)}
-        placeholder="Location"
+        placeholder="Location (e.g., 'Matero, Lusaka')"
         className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
       />
 
@@ -225,12 +246,42 @@ export function AddListingForm() {
         </div>
       </div>
 
-      <input
-        value={imageUrl}
-        onChange={(e) => setImageUrl(e.target.value)}
-        placeholder="Image URL"
-        className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
-      />
+      {/* Image Upload */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-600">Property Images (max 3)</label>
+        <MultiImageUploader
+          onUpload={(urls) => setImageUrls(urls)}
+          initialImages={imageUrls}
+          maxImages={3}
+        />
+        {imageUrls.length > 0 && (
+          <p className="text-xs text-gray-400">{imageUrls.length} image(s) uploaded</p>
+        )}
+      </div>
+
+      {/* Map Location Picker */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-600">
+          Property Location (click on map to set)
+        </label>
+        <PropertyMap
+          selectable
+          onLocationSelect={(lat, lng) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+          latitude={latitude}
+          longitude={longitude}
+          height="250px"
+        />
+        {latitude !== undefined && longitude !== undefined ? (
+          <p className="text-xs text-green-600">
+            ✓ Location set: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400">Click on the map to select the property location.</p>
+        )}
+      </div>
 
       <div>
         <label className="mb-1 block text-xs font-medium text-gray-600">

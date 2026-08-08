@@ -6,6 +6,8 @@ import { updateProperty } from "@/services/propertyService";
 import { Property, PaymentPeriod, GenderPreference, DistanceBucket, Amenities, BedSpace } from "@/types/property";
 import { universities } from "@/data/universities";
 import { DISTANCE_LABELS } from "@/constants/property";
+import { MultiImageUploader } from "@/components/ui/MultiImageUploader";
+import { PropertyMap } from "@/components/map/PropertyMap";
 
 interface EditListingFormProps {
   property: Property;
@@ -21,12 +23,26 @@ export function EditListingForm({ property }: EditListingFormProps) {
   const [distanceBucket, setDistanceBucket] = useState<DistanceBucket>(property.distanceBucket);
   const [universityId, setUniversityId] = useState(property.universityId);
   const [location, setLocation] = useState(property.location);
-  const [imageUrl, setImageUrl] = useState(property.imageUrl);
   const [amenities, setAmenities] = useState<Amenities>(property.amenities);
-  // NEW: Initialize bedTypes from existing bedSpaces
   const [bedTypes, setBedTypes] = useState<("Top" | "Bottom")[]>(
     property.bedSpaces.map((bed) => (bed.type === "Top" || bed.type === "Bottom") ? bed.type : "Top")
   );
+
+  // ✅ Image state
+  const [imageUrls, setImageUrls] = useState<string[]>(() => {
+    if (property.imageUrls && property.imageUrls.length > 0) {
+      return property.imageUrls;
+    }
+    if (property.imageUrl) {
+      return [property.imageUrl];
+    }
+    return [];
+  });
+
+  // ✅ Map state – pre‑populated from existing property
+  const [latitude, setLatitude] = useState<number | undefined>(property.latitude);
+  const [longitude, setLongitude] = useState<number | undefined>(property.longitude);
+
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -48,14 +64,13 @@ export function EditListingForm({ property }: EditListingFormProps) {
     setIsSubmitting(true);
 
     try {
-      // Prepare updated bed spaces: preserve id, isAvailable, update type
       const updatedBedSpaces: BedSpace[] = property.bedSpaces.map((bed, index) => ({
         id: bed.id,
         isAvailable: bed.isAvailable,
         type: bedTypes[index] || "Top",
       }));
 
-      await updateProperty(property.id, {
+      const updatePayload: any = {
         title,
         price: Number(price),
         paymentPeriod,
@@ -63,10 +78,30 @@ export function EditListingForm({ property }: EditListingFormProps) {
         distanceBucket,
         universityId,
         location,
-        imageUrl,
         amenities,
         bedSpaces: updatedBedSpaces,
-      });
+      };
+
+      // ✅ Add images
+      if (imageUrls.length > 0) {
+        updatePayload.imageUrl = imageUrls[0];
+        updatePayload.imageUrls = imageUrls;
+      } else {
+        updatePayload.imageUrl = null;
+        updatePayload.imageUrls = [];
+      }
+
+      // ✅ Add coordinates if set
+      if (latitude !== undefined && longitude !== undefined) {
+        updatePayload.latitude = latitude;
+        updatePayload.longitude = longitude;
+      } else {
+        // Optionally remove coordinates if unset
+        updatePayload.latitude = null;
+        updatePayload.longitude = null;
+      }
+
+      await updateProperty(property.id, updatePayload);
 
       router.push("/dashboard/landlord");
     } catch (err) {
@@ -121,7 +156,7 @@ export function EditListingForm({ property }: EditListingFormProps) {
       <input
         value={location}
         onChange={(e) => setLocation(e.target.value)}
-        placeholder="Location"
+        placeholder="Location (e.g., 'Matero, Lusaka')"
         className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
       />
 
@@ -200,12 +235,42 @@ export function EditListingForm({ property }: EditListingFormProps) {
         </div>
       </div>
 
-      <input
-        value={imageUrl}
-        onChange={(e) => setImageUrl(e.target.value)}
-        placeholder="Image URL"
-        className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
-      />
+      {/* Image Upload */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-600">Property Images (max 3)</label>
+        <MultiImageUploader
+          onUpload={(urls) => setImageUrls(urls)}
+          initialImages={imageUrls}
+          maxImages={3}
+        />
+        {imageUrls.length > 0 && (
+          <p className="text-xs text-gray-400">{imageUrls.length} image(s) uploaded</p>
+        )}
+      </div>
+
+      {/* ✅ Map Location Picker – pre‑filled with existing coordinates */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-600">
+          Property Location (click on map to update)
+        </label>
+        <PropertyMap
+          selectable
+          onLocationSelect={(lat, lng) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+          latitude={latitude}
+          longitude={longitude}
+          height="250px"
+        />
+        {latitude !== undefined && longitude !== undefined ? (
+          <p className="text-xs text-green-600">
+            ✓ Location set: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400">Click on the map to set the property location.</p>
+        )}
+      </div>
 
       {/* Bed spaces section */}
       {property.bedSpaces.length > 0 && (

@@ -2,155 +2,189 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { universities } from "@/data/universities";
+import { Eye, EyeOff, User, Mail, Lock, Phone, IdCard } from "lucide-react";
+import { toast } from "sonner";
 
-type Role = "student" | "landlord";
-
-export function SignupForm() {
+export default function SignupForm() {
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [studentNumber, setStudentNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("student");
-  const [studentId, setStudentId] = useState("");
-  const [universityId, setUniversityId] = useState(universities[0].id);
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [role, setRole] = useState<"student" | "landlord">("student");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    setError("");
-    setIsSubmitting(true);
-
-    if (!auth || !db) {
-      setError("Authentication service is unavailable. Please try again.");
-      setIsSubmitting(false);
+    // Validation
+    if (!name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
+      toast.error("Please fill in all required fields.");
       return;
     }
 
+    // ✅ Only require Student ID if role is student
+    if (role === "student" && !studentNumber.trim()) {
+      toast.error("Please enter your Student ID.");
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      const firebaseAuth = auth;
-      const firestore = db;
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      const credential = await createUserWithEmailAndPassword(
-        firebaseAuth,
-        email,
-        password
-      );
+      await updateProfile(user, { displayName: name });
 
-      await setDoc(doc(firestore, "users", credential.user.uid), {
+      const userData: any = {
         name,
         email,
+        phone,
         role,
-        studentId: role === "student" ? studentId : null,
-        universityId: role === "student" ? universityId : null,
-      });
+        createdAt: Date.now(),
+      };
 
-      router.push("/");
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
+      // ✅ Only save studentNumber if the user is a student
+      if (role === "student") {
+        userData.studentNumber = studentNumber.trim();
+      }
+
+      await setDoc(doc(db, "users", user.uid), userData);
+
+      toast.success("Account created successfully!");
+      router.push(role === "landlord" ? "/dashboard/landlord" : "/");
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      if (error.code === "auth/email-already-in-use") {
+        toast.error("This email is already registered.");
+      } else if (error.code === "auth/weak-password") {
+        toast.error("Password should be at least 6 characters.");
       } else {
-        setError("Something went wrong. Please try again.");
+        toast.error("Something went wrong. Please try again.");
       }
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-sm space-y-4">
-      <div className="flex rounded-full border border-gray-200 p-1">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="relative">
+        <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Full Name"
+          className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          disabled={isLoading}
+        />
+      </div>
+
+      <div className="relative">
+        <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email Address"
+          className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          disabled={isLoading}
+        />
+      </div>
+
+      <div className="relative">
+        <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="Phone Number (e.g., +260 97 123 4567)"
+          className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          disabled={isLoading}
+        />
+      </div>
+
+      {/* ✅ Student ID – only shown when role is student */}
+      {role === "student" && (
+        <div className="relative">
+          <IdCard size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={studentNumber}
+            onChange={(e) => setStudentNumber(e.target.value)}
+            placeholder="Student ID (e.g., 2023123456)"
+            className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            disabled={isLoading}
+          />
+        </div>
+      )}
+
+      <div className="relative">
+        <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type={showPassword ? "text" : "password"}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password (min. 6 characters)"
+          className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-10 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          disabled={isLoading}
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        >
+          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
+
+      <div className="flex gap-2 rounded-full border border-gray-200 p-1">
         <button
           type="button"
           onClick={() => setRole("student")}
-          className={`flex-1 rounded-full py-2 text-sm font-medium transition-colors ${
-            role === "student"
-              ? "bg-blue-600 text-white"
-              : "text-gray-600"
+          className={`flex-1 rounded-full py-2 text-xs font-medium transition-colors ${
+            role === "student" ? "bg-blue-600 text-white" : "text-gray-600"
           }`}
         >
           Student
         </button>
-
         <button
           type="button"
           onClick={() => setRole("landlord")}
-          className={`flex-1 rounded-full py-2 text-sm font-medium transition-colors ${
-            role === "landlord"
-              ? "bg-blue-600 text-white"
-              : "text-gray-600"
+          className={`flex-1 rounded-full py-2 text-xs font-medium transition-colors ${
+            role === "landlord" ? "bg-blue-600 text-white" : "text-gray-600"
           }`}
         >
           Landlord
         </button>
       </div>
 
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Full name"
-        className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
-      />
-
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
-        className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
-      />
-
-      {role === "student" && (
-        <>
-          <input
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
-            placeholder="Student ID"
-            className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
-          />
-
-          <select
-            value={universityId}
-            onChange={(e) => setUniversityId(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
-          >
-            {universities.map((u) => (
-              <option key={u.id} value={u.id} disabled={!u.isAvailable}>
-                {u.name}
-                {!u.isAvailable ? " (coming soon)" : ""}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
-
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Password"
-        className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
-      />
-
-      {error && (
-        <p className="text-sm text-red-500">
-          {error}
-        </p>
-      )}
-
       <button
         type="submit"
-        disabled={isSubmitting}
-        className="w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300"
+        disabled={isLoading}
+        className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300"
       >
-        {isSubmitting ? "Creating account..." : "Create account"}
+        {isLoading ? "Creating account..." : "Sign Up"}
       </button>
+
+      <p className="text-center text-xs text-gray-500">
+        Already have an account?{" "}
+        <button
+          type="button"
+          onClick={() => router.push("/login")}
+          className="text-blue-600 hover:underline"
+        >
+          Log In
+        </button>
+      </p>
     </form>
   );
 }

@@ -82,11 +82,14 @@ export default function AdminPage() {
     setFilteredBookings(filtered);
   }, [searchTerm, bookings]);
 
-  // Booking actions
+  // ✅ UPDATED: Sets status to "confirmed" AND records confirmedAt
   async function handleMarkPaid(bookingId: string) {
     setIsSubmitting(bookingId);
     try {
-      await updateBookingStatus(bookingId, "confirmed");
+      await updateBookingStatus(bookingId, { 
+        status: "confirmed", 
+        confirmedAt: Date.now() 
+      });
       setBookings((prev) => prev.filter((b) => b.id !== bookingId));
       setFilteredBookings((prev) => prev.filter((b) => b.id !== bookingId));
       toast.success("Payment confirmed successfully!");

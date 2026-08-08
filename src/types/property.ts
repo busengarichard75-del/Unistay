@@ -1,7 +1,7 @@
 export interface BedSpace {
   id: string;
   isAvailable: boolean;
-  type?: "Top" | "Bottom"; // NEW – for bunk bed identification
+  type?: "Top" | "Bottom";
 }
 
 export type PaymentPeriod = "monthly" | "termly";
@@ -25,6 +25,10 @@ export interface Property {
   distanceBucket: DistanceBucket;
   amenities: Amenities;
   location: string;
-  imageUrl: string;
+  imageUrl?: string;
+  imageUrls?: string[];
   bedSpaces: BedSpace[];
+  // ✅ NEW: Map coordinates (optional, for backward compatibility)
+  latitude?: number;
+  longitude?: number;
 }

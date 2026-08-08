@@ -1,12 +1,14 @@
-import { SignupForm } from "@/components/auth/SignupForm";
+import SignupForm from "@/components/auth/SignupForm";
 
 export default function SignupPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-4 py-16">
-      <h1 className="mb-8 text-2xl font-bold text-gray-900">
-        Create your UniStay account
-      </h1>
-      <SignupForm />
+    <main className="flex min-h-screen items-center justify-center bg-[var(--nexora-surface)] px-4">
+      <div className="w-full max-w-md">
+        <h1 className="mb-6 text-2xl font-bold text-[var(--nexora-text-primary)] text-center">
+          Create your UniStay account
+        </h1>
+        <SignupForm />
+      </div>
     </main>
   );
 }

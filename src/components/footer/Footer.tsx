@@ -35,6 +35,18 @@ export function Footer() {
           </div>
         </div>
       </div>
+      <div>
+  <h3 className="mb-2 text-sm font-semibold text-gray-900">Quick Links</h3>
+  <div className="flex flex-col gap-1">
+    <Link href="/" className="text-sm text-gray-500 hover:text-blue-600">
+      Home
+    </Link>
+    {/* ✅ NEW: Help link */}
+    <Link href="/help" className="text-sm text-gray-500 hover:text-blue-600">
+      Help & How It Works
+    </Link>
+  </div>
+</div>
 
       <p className="mt-8 text-center text-xs text-gray-400">
         © {new Date().getFullYear()} UniStayZM. All rights reserved.

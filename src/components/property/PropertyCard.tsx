@@ -26,8 +26,13 @@ function getAvailabilityStatus(availableCount: number) {
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
-  const { id, title, price, paymentPeriod, location, bedSpaces, genderPreference, distanceBucket, amenities } =
+  const { id, title, price, paymentPeriod, location, bedSpaces, genderPreference, distanceBucket, amenities, imageUrl, imageUrls } =
     property;
+
+  // ✅ Get primary image (first from imageUrls, or fallback to imageUrl)
+  const primaryImage = imageUrls?.[0] || imageUrl || null;
+  const hasMultiple = imageUrls && imageUrls.length > 1;
+
   const availableCount = bedSpaces.filter((bed) => bed.isAvailable).length;
   const periodLabel = paymentPeriod === "termly" ? "/term" : "/mo";
   const status = getAvailabilityStatus(availableCount);
@@ -39,6 +44,22 @@ export function PropertyCard({ property }: PropertyCardProps) {
       href={`/property/${id}`}
       className="block rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
     >
+      {/* ✅ Image section – supports primary + multiple indicator */}
+      {primaryImage && (
+        <div className="relative mb-4 overflow-hidden rounded-xl">
+          <img
+            src={primaryImage}
+            alt={title}
+            className="h-48 w-full object-cover"
+          />
+          {hasMultiple && (
+            <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white shadow-sm">
+              +{imageUrls.length - 1} more
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-3">
         <h3 className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900 sm:text-lg">
           {title}
