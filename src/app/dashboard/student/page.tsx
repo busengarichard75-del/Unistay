@@ -27,7 +27,7 @@ function statusMessage(booking: Booking) {
   }
   if (booking.status === "approved") {
     return {
-      text: `Pay K80 agent fee to ${PAYMENT_NUMBER} to confirm your booking`,
+      text: `Pay K100 agent fee to ${PAYMENT_NUMBER} to confirm your booking`,
       color: "var(--nexora-primary)",
     };
   }
@@ -207,8 +207,8 @@ export default function StudentDashboardPage() {
                         </div>
                       )}
 
-                      {/* View Confirmation button */}
-                      {(booking.status === "approved" || booking.status === "confirmed") && (
+                      {/* ✅ FIX: Only show "View Confirmation" for confirmed bookings */}
+                      {booking.status === "confirmed" && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
                           <Link
                             href={`/booking/confirmation/${booking.id}`}

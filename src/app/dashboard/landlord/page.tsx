@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Check, X, Pencil, Eye, Search, LayoutGrid, Calendar, Clock, Home, MapPin } from "lucide-react";
+import { Plus, Trash2, Check, X, Pencil, Eye, Search, LayoutGrid, Calendar, Clock, Home, MapPin, Star, Info, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getPropertiesByOwner, deleteProperty, getPropertyById, updateProperty } from "@/services/propertyService";
@@ -11,6 +11,7 @@ import { generateBookingConfirmationData } from "@/lib/bookingConfirmation";
 import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
 import { BackButton } from "@/components/ui/BackButton";
+import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
 
 const PAGE_SIZE = 6;
 
@@ -28,7 +29,12 @@ export default function LandlordDashboardPage() {
   const [visibleBookings, setVisibleBookings] = useState(PAGE_SIZE);
   const [visibleRequests, setVisibleRequests] = useState(PAGE_SIZE);
 
-  // Reset pagination when tab or search changes
+  // Boost Modal State
+  const [boostModalOpen, setBoostModalOpen] = useState(false);
+  const [boostPropertyId, setBoostPropertyId] = useState<string | null>(null);
+  const [boostPropertyTitle, setBoostPropertyTitle] = useState("");
+  const [isSubmittingBoost, setIsSubmittingBoost] = useState(false);
+
   useEffect(() => {
     setVisibleListings(PAGE_SIZE);
     setVisibleBookings(PAGE_SIZE);
@@ -37,7 +43,6 @@ export default function LandlordDashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-
     const fetchData = async () => {
       try {
         const [propertiesData, bookingsData] = await Promise.all([
@@ -53,11 +58,9 @@ export default function LandlordDashboardPage() {
         setIsFetching(false);
       }
     };
-
     fetchData();
   }, [user]);
 
-  // Handlers
   async function handleDelete(id: string) {
     if (!window.confirm("Delete this listing? This cannot be undone.")) return;
     try {
@@ -73,14 +76,13 @@ export default function LandlordDashboardPage() {
     try {
       const property = await getPropertyById(booking.propertyId);
       if (property) {
-        const updatedBedSpaces = property.bedSpaces.map((bed) =>
+        // ✅ FIX: use optional chaining / fallback for bedSpaces
+        const updatedBedSpaces = (property.bedSpaces ?? []).map((bed) =>
           bed.id === booking.bedSpaceId ? { ...bed, isAvailable: false } : bed
         );
         await updateProperty(property.id, { bedSpaces: updatedBedSpaces });
       }
-
       let updatePayload: any = { status: "approved" };
-
       if (booking.status === "requested") {
         const confirmationData = await generateBookingConfirmationData();
         updatePayload = {
@@ -91,9 +93,7 @@ export default function LandlordDashboardPage() {
           approvedAt: confirmationData.approvedAt,
         };
       }
-
       await updateBookingStatus(booking.id, updatePayload);
-
       setBookings((prev) =>
         prev.map((b) =>
           b.id === booking.id
@@ -110,7 +110,6 @@ export default function LandlordDashboardPage() {
             : b
         )
       );
-
       toast.success("Booking approved successfully!");
     } catch {
       toast.error("Failed to approve booking. Please try again.");
@@ -122,7 +121,7 @@ export default function LandlordDashboardPage() {
     try {
       const property = await getPropertyById(booking.propertyId);
       if (property) {
-        const updatedBedSpaces = property.bedSpaces.map((bed) =>
+        const updatedBedSpaces = (property.bedSpaces ?? []).map((bed) =>
           bed.id === booking.bedSpaceId ? { ...bed, isAvailable: true } : bed
         );
         await updateProperty(property.id, { bedSpaces: updatedBedSpaces });
@@ -137,7 +136,20 @@ export default function LandlordDashboardPage() {
     }
   }
 
-  // Filter helpers
+  // Boost handlers
+  const openBoostModal = (property: Property) => {
+    setBoostPropertyId(property.id);
+    setBoostPropertyTitle(property.title);
+    setBoostModalOpen(true);
+  };
+
+  const closeBoostModal = () => {
+    setBoostModalOpen(false);
+    setBoostPropertyId(null);
+    setBoostPropertyTitle("");
+    setIsSubmittingBoost(false);
+  };
+
   const requestedBookings = bookings.filter((b) => b.status === "requested");
 
   const filterBySearch = <T extends Property | Booking>(items: T[], term: string, searchKeys: (keyof T)[]): T[] => {
@@ -155,7 +167,6 @@ export default function LandlordDashboardPage() {
   const filteredBookings = filterBySearch(bookings, searchTerm, ["propertyTitle", "studentName"]);
   const filteredRequests = filterBySearch(requestedBookings, searchTerm, ["propertyTitle", "studentName"]);
 
-  // Paginated
   const paginatedListings = filteredListings.slice(0, visibleListings);
   const paginatedBookings = filteredBookings.slice(0, visibleBookings);
   const paginatedRequests = filteredRequests.slice(0, visibleRequests);
@@ -164,7 +175,6 @@ export default function LandlordDashboardPage() {
   const hasMoreBookings = filteredBookings.length > visibleBookings;
   const hasMoreRequests = filteredRequests.length > visibleRequests;
 
-  // Stats
   const stats = {
     listings: listings.length,
     bookings: bookings.length,
@@ -207,6 +217,24 @@ export default function LandlordDashboardPage() {
             Add Listing
           </Link>
         </div>
+
+        {/* Reminder Banner */}
+        <div className="mt-6 rounded-2xl bg-amber-50 p-3 text-sm text-amber-700 border border-amber-200 flex items-center gap-2">
+          <span>📱</span>
+          <span>
+            Make sure you have added your <strong>phone number</strong> in your{" "}
+            <Link href="/dashboard/profile" className="font-medium underline hover:text-amber-800">
+              Profile
+            </Link>{" "}
+            so students can contact you after booking.
+          </span>
+        </div>
+
+        {error && (
+          <div className="mt-6 rounded-2xl bg-red-50 p-4 text-center text-sm text-red-600">
+            {error}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-white p-1 shadow-sm">
@@ -288,45 +316,72 @@ export default function LandlordDashboardPage() {
                   ) : (
                     <>
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {paginatedListings.map((listing) => (
-                          <div
-                            key={listing.id}
-                            className="group rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md overflow-hidden"
-                          >
-                            {listing.imageUrl && (
-                              <div className="h-40 overflow-hidden">
-                                <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-cover" />
-                              </div>
-                            )}
-                            <div className="p-4">
-                              <h3 className="font-semibold text-gray-900 truncate">{listing.title}</h3>
-                              <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
-                                <MapPin size={12} />
-                                {listing.location}
-                              </div>
-                              <div className="mt-2 flex items-center justify-between text-sm">
-                                <span className="font-bold text-gray-900">K{listing.price.toLocaleString()}</span>
-                                <span className="text-xs text-gray-500">{listing.bedSpaces.length} beds</span>
-                              </div>
-                              <div className="mt-3 flex items-center justify-end gap-1 border-t border-gray-100 pt-3">
-                                <Link
-                                  href={`/dashboard/landlord/edit-listing/${listing.id}`}
-                                  className="rounded-full p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
-                                  aria-label="Edit listing"
-                                >
-                                  <Pencil size={16} />
-                                </Link>
-                                <button
-                                  onClick={() => handleDelete(listing.id)}
-                                  className="rounded-full p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                                  aria-label="Delete listing"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                        {paginatedListings.map((listing) => {
+                          const boosted = isBoosted(listing);
+                          const daysLeft = boosted ? getBoostDaysRemaining(listing) : 0;
+                          return (
+                            <div
+                              key={listing.id}
+                              className="group rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md overflow-hidden relative"
+                            >
+                              {boosted && (
+                                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-full bg-yellow-400 px-2.5 py-1 text-xs font-bold text-black shadow-sm">
+                                  <Star size={14} fill="currentColor" />
+                                  Boosted
+                                  {daysLeft > 0 && <span className="ml-1 text-[10px]">{daysLeft}d</span>}
+                                </div>
+                              )}
+                              {listing.imageUrl && (
+                                <div className="h-40 overflow-hidden">
+                                  <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-cover" />
+                                </div>
+                              )}
+                              <div className="p-4">
+                                <h3 className="font-semibold text-gray-900 truncate">{listing.title}</h3>
+                                <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                                  <MapPin size={12} />
+                                  {listing.location}
+                                </div>
+                                <div className="mt-2 flex items-center justify-between text-sm">
+                                  <span className="font-bold text-gray-900">K{listing.price.toLocaleString()}</span>
+                                  <span className="text-xs text-gray-500">{(listing.bedSpaces ?? []).length} beds</span>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+                                  <div className="flex items-center gap-1">
+                                    <Link
+                                      href={`/dashboard/landlord/edit-listing/${listing.id}`}
+                                      className="rounded-full p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                                      aria-label="Edit listing"
+                                    >
+                                      <Pencil size={16} />
+                                    </Link>
+                                    <button
+                                      onClick={() => handleDelete(listing.id)}
+                                      className="rounded-full p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                      aria-label="Delete listing"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                  {!boosted ? (
+                                    <button
+                                      onClick={() => openBoostModal(listing)}
+                                      className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
+                                    >
+                                      <Star size={14} className="inline mr-1" />
+                                      Boost (K100)
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs text-green-600 flex items-center gap-1">
+                                      <Star size={14} fill="currentColor" className="text-yellow-400" />
+                                      Boosted
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       {hasMoreListings && (
                         <div className="mt-6 text-center">
@@ -473,6 +528,52 @@ export default function LandlordDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Boost Modal */}
+      {boostModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-[var(--nexora-text-primary)]">Boost Listing</h3>
+              <button
+                onClick={closeBoostModal}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <XCircle size={24} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                You are about to boost <strong>{boostPropertyTitle}</strong>.
+              </p>
+              <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
+                <p className="font-medium">Payment Instructions</p>
+                <p className="mt-1">Pay <strong>K100</strong> via Mobile Money to:</p>
+                <p className="mt-1 font-mono text-base">+260 0771319817</p>
+                <p className="mt-1 text-xs text-blue-600">Reference: Boost {boostPropertyId?.slice(0, 8)}</p>
+              </div>
+              <p className="text-xs text-gray-500">
+                After payment, contact support or wait for admin to activate your boost. It will be active for 30 days.
+              </p>
+              <button
+                onClick={() => {
+                  toast.info("Boost request sent. Admin will review and activate.");
+                  closeBoostModal();
+                }}
+                className="w-full rounded-full bg-[var(--nexora-primary)] py-2.5 text-sm font-semibold text-white hover:bg-[var(--nexora-primary-hover)]"
+              >
+                I Have Paid (Request Activation)
+              </button>
+              <button
+                onClick={closeBoostModal}
+                className="w-full rounded-full bg-gray-100 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

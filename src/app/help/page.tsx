@@ -25,7 +25,7 @@ export default function HelpPage() {
             <li><strong>View details</strong> – See photos, price, amenities, and available bed spaces.</li>
             <li><strong>Request a bed</strong> – Send a booking request to the landlord.</li>
             <li><strong>Wait for approval</strong> – The landlord reviews your request.</li>
-            <li><strong>Pay agent fee</strong> – Once approved, pay the K80 agent fee.</li>
+            <li><strong>Pay agent fee</strong> – Once approved, pay the K100 agent fee.</li>
             <li><strong>Receive confirmation</strong> – Get a booking confirmation with all details.</li>
             <li><strong>View landlord contact</strong> – After confirmation, you'll see the landlord's name and phone number.</li>
             <li><strong>Check in</strong> – Contact the landlord and move in.</li>

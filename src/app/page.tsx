@@ -10,6 +10,7 @@ import { PropertyGrid } from "@/components/property/PropertyGrid";
 import { Footer } from "@/components/footer/Footer";
 import { getAllProperties } from "@/services/propertyService";
 import { Property } from "@/types/property";
+import { isBoosted } from "@/lib/boostService";
 
 export default function Home() {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -34,18 +35,32 @@ export default function Home() {
     fetchProperties();
   }, []);
 
-  const filteredProperties = properties.filter((property) => {
-    const search = keyword.toLowerCase();
-    const matchesKeyword =
-      property.title.toLowerCase().includes(search) ||
-      property.location.toLowerCase().includes(search);
-    const min = minPrice ? Number(minPrice) : 0;
-    const max = maxPrice ? Number(maxPrice) : Infinity;
-    const matchesPrice = property.price >= min && property.price <= max;
-    const availableCount = (property.bedSpaces ?? []).filter((bed) => bed.isAvailable).length;
-    const matchesAvailability = !showAvailableOnly || availableCount > 0;
-    return matchesKeyword && matchesPrice && matchesAvailability;
-  });
+  const filteredProperties = properties
+    .filter((property) => {
+      const search = keyword.toLowerCase();
+      const matchesKeyword =
+        property.title.toLowerCase().includes(search) ||
+        property.location.toLowerCase().includes(search);
+      const min = minPrice ? Number(minPrice) : 0;
+      const max = maxPrice ? Number(maxPrice) : Infinity;
+      const matchesPrice = property.price >= min && property.price <= max;
+      const availableCount = (property.bedSpaces ?? []).filter((bed) => bed.isAvailable).length;
+      const matchesAvailability = !showAvailableOnly || availableCount > 0;
+      return matchesKeyword && matchesPrice && matchesAvailability;
+    })
+    // ✅ NEW: Sort boosted listings first
+    .sort((a, b) => {
+      const aBoosted = isBoosted(a);
+      const bBoosted = isBoosted(b);
+      if (aBoosted && !bBoosted) return -1;
+      if (!aBoosted && bBoosted) return 1;
+      // Both boosted: sort by boostedAt descending (newest first)
+      if (aBoosted && bBoosted) {
+        return (b.boostedAt || 0) - (a.boostedAt || 0);
+      }
+      // Both not boosted: sort alphabetically (fallback)
+      return a.title.localeCompare(b.title);
+    });
 
   if (error) {
     return (

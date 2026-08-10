@@ -2,12 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { updateProperty } from "@/services/propertyService";
-import { Property, PaymentPeriod, GenderPreference, DistanceBucket, Amenities, BedSpace } from "@/types/property";
+import { Property, PaymentPeriod, GenderPreference, DistanceBucket, Amenities, BedSpace, Room } from "@/types/property";
 import { universities } from "@/data/universities";
 import { DISTANCE_LABELS } from "@/constants/property";
 import { MultiImageUploader } from "@/components/ui/MultiImageUploader";
-import { PropertyMap } from "@/components/map/PropertyMap";
+import { RoomBuilder } from "@/components/property/RoomBuilder";
+import { X, Plus } from "lucide-react";
+
+const PropertyMap = dynamic(
+  () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
+  { ssr: false }
+);
 
 interface EditListingFormProps {
   property: Property;
@@ -24,11 +31,8 @@ export function EditListingForm({ property }: EditListingFormProps) {
   const [universityId, setUniversityId] = useState(property.universityId);
   const [location, setLocation] = useState(property.location);
   const [amenities, setAmenities] = useState<Amenities>(property.amenities);
-  const [bedTypes, setBedTypes] = useState<("Top" | "Bottom")[]>(
-    property.bedSpaces.map((bed) => (bed.type === "Top" || bed.type === "Bottom") ? bed.type : "Top")
-  );
 
-  // ✅ Image state
+  // Image state
   const [imageUrls, setImageUrls] = useState<string[]>(() => {
     if (property.imageUrls && property.imageUrls.length > 0) {
       return property.imageUrls;
@@ -39,9 +43,51 @@ export function EditListingForm({ property }: EditListingFormProps) {
     return [];
   });
 
-  // ✅ Map state – pre‑populated from existing property
+  // Map state
   const [latitude, setLatitude] = useState<number | undefined>(property.latitude);
   const [longitude, setLongitude] = useState<number | undefined>(property.longitude);
+
+  // ✅ Custom amenities state
+  const [customAmenities, setCustomAmenities] = useState<string[]>(property.additionalAmenities || []);
+  const [customAmenityInput, setCustomAmenityInput] = useState("");
+
+  // ✅ Rooms state: if property has rooms, use them; otherwise fallback to flat bedSpaces (old listings)
+  const hasRooms = property.rooms && property.rooms.length > 0;
+  const [rooms, setRooms] = useState<Room[]>(() => {
+    if (hasRooms) {
+      return property.rooms!;
+    }
+    // Fallback: convert flat bedSpaces to a single room (for backward compatibility)
+    const bedSpaces = property.bedSpaces || [];
+    if (bedSpaces.length === 0) {
+      return [
+        {
+          id: `room-${Date.now()}-1`,
+          name: "Room 1",
+          bedCount: 0,
+          bedSpaces: [],
+        },
+      ];
+    }
+    return [
+      {
+        id: `room-${Date.now()}-1`,
+        name: "Room 1",
+        bedCount: bedSpaces.length,
+        bedSpaces: bedSpaces.map((bed) => ({
+          ...bed,
+          type: bed.type || "Top",
+        })),
+      },
+    ];
+  });
+
+  // ✅ For old listings: keep flat bed types state
+  const [bedTypes, setBedTypes] = useState<("Top" | "Bottom")[]>(() => {
+    if (hasRooms) return [];
+    const beds = property.bedSpaces || [];
+    return beds.map((bed) => (bed.type === "Top" || bed.type === "Bottom") ? bed.type : "Top");
+  });
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,13 +96,33 @@ export function EditListingForm({ property }: EditListingFormProps) {
     setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function handleBedTypeChange(index: number, value: "Top" | "Bottom") {
-    setBedTypes((prev) => {
-      const updated = [...prev];
-      updated[index] = value;
-      return updated;
-    });
-  }
+  // Custom amenity handlers
+  const handleAddCustomAmenity = () => {
+    const trimmed = customAmenityInput.trim();
+    if (!trimmed) return;
+    if (customAmenities.includes(trimmed)) {
+      setError("This amenity is already added.");
+      return;
+    }
+    if (customAmenities.length >= 10) {
+      setError("Maximum 10 custom amenities allowed.");
+      return;
+    }
+    setCustomAmenities((prev) => [...prev, trimmed]);
+    setCustomAmenityInput("");
+    setError("");
+  };
+
+  const handleRemoveCustomAmenity = (index: number) => {
+    setCustomAmenities((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddCustomAmenity();
+    }
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,11 +130,23 @@ export function EditListingForm({ property }: EditListingFormProps) {
     setIsSubmitting(true);
 
     try {
-      const updatedBedSpaces: BedSpace[] = property.bedSpaces.map((bed, index) => ({
-        id: bed.id,
-        isAvailable: bed.isAvailable,
-        type: bedTypes[index] || "Top",
-      }));
+      let bedSpaces: BedSpace[];
+      let roomsData: Room[] | undefined;
+
+      if (hasRooms) {
+        // New room-based listing
+        bedSpaces = rooms.flatMap((room) => room.bedSpaces);
+        roomsData = rooms;
+      } else {
+        // Old flat listing: use bedTypes
+        const types = bedTypes;
+        bedSpaces = property.bedSpaces?.map((bed, index) => ({
+          id: bed.id,
+          isAvailable: bed.isAvailable,
+          type: types[index] || "Top",
+        })) || [];
+        roomsData = undefined;
+      }
 
       const updatePayload: any = {
         title,
@@ -79,10 +157,15 @@ export function EditListingForm({ property }: EditListingFormProps) {
         universityId,
         location,
         amenities,
-        bedSpaces: updatedBedSpaces,
+        bedSpaces,
+        additionalAmenities: customAmenities,
       };
 
-      // ✅ Add images
+      // Only include rooms for new-style listings
+      if (roomsData) {
+        updatePayload.rooms = roomsData;
+      }
+
       if (imageUrls.length > 0) {
         updatePayload.imageUrl = imageUrls[0];
         updatePayload.imageUrls = imageUrls;
@@ -91,12 +174,10 @@ export function EditListingForm({ property }: EditListingFormProps) {
         updatePayload.imageUrls = [];
       }
 
-      // ✅ Add coordinates if set
       if (latitude !== undefined && longitude !== undefined) {
         updatePayload.latitude = latitude;
         updatePayload.longitude = longitude;
       } else {
-        // Optionally remove coordinates if unset
         updatePayload.latitude = null;
         updatePayload.longitude = null;
       }
@@ -235,6 +316,47 @@ export function EditListingForm({ property }: EditListingFormProps) {
         </div>
       </div>
 
+      {/* ✅ Custom Amenities Input */}
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-gray-600">Custom Amenities</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={customAmenityInput}
+            onChange={(e) => setCustomAmenityInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="e.g., WiFi, Parking, Generator"
+            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[var(--nexora-primary)] focus:ring-1 focus:ring-[var(--nexora-primary)]"
+          />
+          <button
+            type="button"
+            onClick={handleAddCustomAmenity}
+            className="rounded-lg bg-[var(--nexora-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--nexora-primary-hover)] transition-colors"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        {customAmenities.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {customAmenities.map((amenity, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
+              >
+                {amenity}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCustomAmenity(index)}
+                  className="rounded-full p-0.5 hover:bg-blue-200 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Image Upload */}
       <div className="space-y-1">
         <label className="block text-xs font-medium text-gray-600">Property Images (max 3)</label>
@@ -248,7 +370,37 @@ export function EditListingForm({ property }: EditListingFormProps) {
         )}
       </div>
 
-      {/* ✅ Map Location Picker – pre‑filled with existing coordinates */}
+      {/* ✅ Rooms & Beds – conditional rendering */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-600">Rooms & Bed Spaces</label>
+        {hasRooms ? (
+          <RoomBuilder rooms={rooms} onChange={setRooms} />
+        ) : (
+          // Old flat bed space input (backward compatibility)
+          <div className="space-y-2 rounded-lg border border-gray-200 p-3">
+            <p className="text-xs font-medium text-gray-600">Bed space types (Top / Bottom)</p>
+            {property.bedSpaces?.map((bed, index) => (
+              <div key={bed.id} className="flex items-center gap-2">
+                <span className="w-24 text-sm text-gray-700">Bed {index + 1}</span>
+                <select
+                  value={bedTypes[index] || "Top"}
+                  onChange={(e) => {
+                    const updated = [...bedTypes];
+                    updated[index] = e.target.value as "Top" | "Bottom";
+                    setBedTypes(updated);
+                  }}
+                  className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none"
+                >
+                  <option value="Top">Top Bunk</option>
+                  <option value="Bottom">Bottom Bunk</option>
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Map Location Picker */}
       <div className="space-y-1">
         <label className="block text-xs font-medium text-gray-600">
           Property Location (click on map to update)
@@ -271,26 +423,6 @@ export function EditListingForm({ property }: EditListingFormProps) {
           <p className="text-xs text-gray-400">Click on the map to set the property location.</p>
         )}
       </div>
-
-      {/* Bed spaces section */}
-      {property.bedSpaces.length > 0 && (
-        <div className="space-y-2 rounded-lg border border-gray-200 p-3">
-          <p className="text-xs font-medium text-gray-600">Bed space types (Top / Bottom)</p>
-          {property.bedSpaces.map((_, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <span className="w-24 text-sm text-gray-700">Bed {index + 1}</span>
-              <select
-                value={bedTypes[index] || "Top"}
-                onChange={(e) => handleBedTypeChange(index, e.target.value as "Top" | "Bottom")}
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none"
-              >
-                <option value="Top">Top Bunk</option>
-                <option value="Bottom">Bottom Bunk</option>
-              </select>
-            </div>
-          ))}
-        </div>
-      )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 

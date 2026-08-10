@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { MapPin, Footprints, BedDouble, ChevronRight, Zap, Droplet, ShieldCheck } from "lucide-react";
+import { MapPin, Footprints, BedDouble, ChevronRight, Zap, Droplet, ShieldCheck, Star } from "lucide-react";
 import { Property } from "@/types/property";
 import { DISTANCE_LABELS } from "@/constants/property";
+import { isBoosted } from "@/lib/boostService";
 
 interface PropertyCardProps {
   property: Property;
@@ -29,22 +30,27 @@ export function PropertyCard({ property }: PropertyCardProps) {
   const { id, title, price, paymentPeriod, location, bedSpaces, genderPreference, distanceBucket, amenities, imageUrl, imageUrls } =
     property;
 
-  // ✅ Get primary image (first from imageUrls, or fallback to imageUrl)
   const primaryImage = imageUrls?.[0] || imageUrl || null;
   const hasMultiple = imageUrls && imageUrls.length > 1;
-
-  const availableCount = bedSpaces.filter((bed) => bed.isAvailable).length;
+  const availableCount = (bedSpaces ?? []).filter((bed) => bed.isAvailable).length;
   const periodLabel = paymentPeriod === "termly" ? "/term" : "/mo";
   const status = getAvailabilityStatus(availableCount);
-
   const hasAnyAmenity = amenities && (amenities.electricity || amenities.water || amenities.security);
+  const boosted = isBoosted(property);
 
   return (
     <Link
       href={`/property/${id}`}
-      className="block rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+      className="block rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md relative"
     >
-      {/* ✅ Image section – supports primary + multiple indicator */}
+      {/* Boosted Badge */}
+      {boosted && (
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-full bg-yellow-400 px-2.5 py-1 text-xs font-bold text-black shadow-sm">
+          <Star size={14} fill="currentColor" />
+          Boosted
+        </div>
+      )}
+
       {primaryImage && (
         <div className="relative mb-4 overflow-hidden rounded-xl">
           <img

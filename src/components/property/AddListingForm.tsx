@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/AuthContext";
 import { addProperty } from "@/services/propertyService";
-import { BedSpace, PaymentPeriod, GenderPreference, DistanceBucket, Amenities } from "@/types/property";
+import { BedSpace, PaymentPeriod, GenderPreference, DistanceBucket, Amenities, Room } from "@/types/property";
 import { universities } from "@/data/universities";
 import { DISTANCE_LABELS } from "@/constants/property";
 import { MultiImageUploader } from "@/components/ui/MultiImageUploader";
+import { RoomBuilder } from "@/components/property/RoomBuilder";
+import { X, Plus } from "lucide-react";
 
-// ✅ Dynamically import PropertyMap (no SSR – fixes `window is not defined`)
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
   { ssr: false }
@@ -28,8 +29,6 @@ export function AddListingForm() {
   const [universityId, setUniversityId] = useState(universities[0].id);
   const [location, setLocation] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [bedSpaceCount, setBedSpaceCount] = useState("1");
-  const [bedTypes, setBedTypes] = useState<("Top" | "Bottom")[]>([]);
   const [amenities, setAmenities] = useState<Amenities>({
     electricity: false,
     water: false,
@@ -42,32 +41,57 @@ export function AddListingForm() {
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
 
-  // Sync bedTypes with bedSpaceCount
-  useEffect(() => {
-    const count = Math.max(1, Number(bedSpaceCount));
-    setBedTypes((prev) => {
-      const newTypes = [...prev];
-      while (newTypes.length < count) {
-        newTypes.push("Top");
-      }
-      if (newTypes.length > count) {
-        newTypes.length = count;
-      }
-      return newTypes;
-    });
-  }, [bedSpaceCount]);
+  // ✅ Rooms state (initial: 1 room with 1 bed)
+  const [rooms, setRooms] = useState<Room[]>([
+    {
+      id: `room-${Date.now()}-1`,
+      name: "Room 1",
+      bedCount: 1,
+      bedSpaces: [
+        {
+          id: `bed-${Date.now()}-1-1`,
+          isAvailable: true,
+          type: "Top",
+        },
+      ],
+    },
+  ]);
+
+  // ✅ Custom amenities
+  const [customAmenities, setCustomAmenities] = useState<string[]>([]);
+  const [customAmenityInput, setCustomAmenityInput] = useState("");
 
   function toggleAmenity(key: keyof Amenities) {
     setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function handleBedTypeChange(index: number, value: "Top" | "Bottom") {
-    setBedTypes((prev) => {
-      const updated = [...prev];
-      updated[index] = value;
-      return updated;
-    });
-  }
+  // Custom amenity handlers
+  const handleAddCustomAmenity = () => {
+    const trimmed = customAmenityInput.trim();
+    if (!trimmed) return;
+    if (customAmenities.includes(trimmed)) {
+      setError("This amenity is already added.");
+      return;
+    }
+    if (customAmenities.length >= 10) {
+      setError("Maximum 10 custom amenities allowed.");
+      return;
+    }
+    setCustomAmenities((prev) => [...prev, trimmed]);
+    setCustomAmenityInput("");
+    setError("");
+  };
+
+  const handleRemoveCustomAmenity = (index: number) => {
+    setCustomAmenities((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddCustomAmenity();
+    }
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,17 +101,8 @@ export function AddListingForm() {
     setIsSubmitting(true);
 
     try {
-      const count = Math.max(1, Number(bedSpaceCount));
-      const types = bedTypes.slice(0, count);
-      while (types.length < count) {
-        types.push("Top");
-      }
-
-      const bedSpaces: BedSpace[] = Array.from({ length: count }, (_, i) => ({
-        id: `bed-${Date.now()}-${i}`,
-        isAvailable: true,
-        type: types[i] || "Top",
-      }));
+      // Build bedSpaces from rooms (flatten for Firestore)
+      const bedSpaces: BedSpace[] = rooms.flatMap((room) => room.bedSpaces);
 
       const propertyData: any = {
         ownerId: user.uid,
@@ -99,7 +114,9 @@ export function AddListingForm() {
         distanceBucket,
         amenities,
         location,
-        bedSpaces,
+        bedSpaces, // Store flat for backward compatibility (we also store rooms)
+        rooms,     // Store rooms structure for new listings
+        additionalAmenities: customAmenities,
       };
 
       if (imageUrls.length > 0) {
@@ -246,6 +263,47 @@ export function AddListingForm() {
         </div>
       </div>
 
+      {/* ✅ Custom Amenities Input */}
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-gray-600">Custom Amenities</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={customAmenityInput}
+            onChange={(e) => setCustomAmenityInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="e.g., WiFi, Parking, Generator"
+            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[var(--nexora-primary)] focus:ring-1 focus:ring-[var(--nexora-primary)]"
+          />
+          <button
+            type="button"
+            onClick={handleAddCustomAmenity}
+            className="rounded-lg bg-[var(--nexora-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--nexora-primary-hover)] transition-colors"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        {customAmenities.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {customAmenities.map((amenity, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
+              >
+                {amenity}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCustomAmenity(index)}
+                  className="rounded-full p-0.5 hover:bg-blue-200 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Image Upload */}
       <div className="space-y-1">
         <label className="block text-xs font-medium text-gray-600">Property Images (max 3)</label>
@@ -257,6 +315,12 @@ export function AddListingForm() {
         {imageUrls.length > 0 && (
           <p className="text-xs text-gray-400">{imageUrls.length} image(s) uploaded</p>
         )}
+      </div>
+
+      {/* ✅ Rooms & Beds */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-600">Rooms & Bed Spaces</label>
+        <RoomBuilder rooms={rooms} onChange={setRooms} />
       </div>
 
       {/* Map Location Picker */}
@@ -282,38 +346,6 @@ export function AddListingForm() {
           <p className="text-xs text-gray-400">Click on the map to select the property location.</p>
         )}
       </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">
-          Number of bed spaces
-        </label>
-        <input
-          type="number"
-          min={1}
-          value={bedSpaceCount}
-          onChange={(e) => setBedSpaceCount(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none"
-        />
-      </div>
-
-      {Number(bedSpaceCount) > 0 && (
-        <div className="space-y-2 rounded-lg border border-gray-200 p-3">
-          <p className="text-xs font-medium text-gray-600">Bed space types (Top / Bottom)</p>
-          {Array.from({ length: Math.max(1, Number(bedSpaceCount)) }).map((_, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <span className="w-24 text-sm text-gray-700">Bed {index + 1}</span>
-              <select
-                value={bedTypes[index] || "Top"}
-                onChange={(e) => handleBedTypeChange(index, e.target.value as "Top" | "Bottom")}
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none"
-              >
-                <option value="Top">Top Bunk</option>
-                <option value="Bottom">Bottom Bunk</option>
-              </select>
-            </div>
-          ))}
-        </div>
-      )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 

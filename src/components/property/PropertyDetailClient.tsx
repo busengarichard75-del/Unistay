@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { ArrowLeft, Bed, Home, Clock, MapPin } from "lucide-react";
+import { ArrowLeft, Bed, Home, Clock, MapPin, Tag, DoorOpen } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { getPropertyById } from "@/services/propertyService";
 import { getBookingsByStudent } from "@/services/bookingService";
@@ -98,7 +98,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
 
     try {
       let studentName = user.email || "Unknown student";
-      let studentNumber = ""; // ✅ NEW
+      let studentNumber = "";
 
       if (db) {
         try {
@@ -106,7 +106,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           if (userSnapshot.exists()) {
             const data = userSnapshot.data();
             studentName = data?.name || studentName;
-            studentNumber = data?.studentNumber || ""; // ✅ NEW
+            studentNumber = data?.studentNumber || "";
           }
         } catch {}
       }
@@ -114,7 +114,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
       await addBooking({
         studentId: user.uid,
         studentName,
-        studentNumber, // ✅ NEW: save student number
+        studentNumber,
         landlordId: property.ownerId,
         propertyId: property.id,
         bedSpaceId,
@@ -158,7 +158,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
   const hasCoordinates = property.latitude !== undefined && property.longitude !== undefined;
 
   const isLandlord = user && property.ownerId === user.uid;
-  const isAdmin = user?.email && ['admin@unistay.com', 'richard@unistay.com'].includes(user.email);
+  const isAdmin = user?.email && ['admin@unistay.com', 'busengarichard75@gmail.com'].includes(user.email);
   const hasConfirmedBooking = userBookings.some(
     (booking) => booking.propertyId === property.id && booking.status === "confirmed"
   );
@@ -170,6 +170,12 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     : hasCoordinates
     ? [property.latitude!, property.longitude!]
     : [-15.3875, 28.3228];
+
+  // Custom amenities
+  const customAmenities = property.additionalAmenities || [];
+
+  // ✅ Determine if we have rooms (new structure) or flat bedSpaces (old)
+  const hasRooms = property.rooms && property.rooms.length > 0;
 
   return (
     <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
@@ -234,6 +240,26 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           </p>
         </div>
 
+        {/* Custom Amenities Section */}
+        {customAmenities.length > 0 && (
+          <div className="mt-4 card-premium p-4 bg-blue-50/30 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag size={16} className="text-[var(--nexora-primary)]" />
+              <h3 className="text-sm font-semibold text-[var(--nexora-text-primary)]">Additional Amenities</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {customAmenities.map((amenity, index) => (
+                <span
+                  key={index}
+                  className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm border border-gray-200"
+                >
+                  {amenity}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {showMap ? (
           <div className="mt-6 card-premium p-4">
             <div className="flex items-center justify-between mb-3">
@@ -283,51 +309,112 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
             </div>
           )}
 
-          <div className="space-y-3">
-            {property.bedSpaces.map((bed) => {
-              const isAvailable = bed.isAvailable;
-              const isDisabled = !isAvailable || isSubmitting || submittedBedId === bed.id;
-
-              return (
-                <div
-                  key={bed.id}
-                  className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nexora-primary-light)] text-[var(--nexora-navy)]">
-                      <Bed size={18} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {getBedTypeLabel(bed)}
-                      </p>
-                      <span className={`text-xs ${isAvailable ? "text-green-600" : "text-red-500"}`}>
-                        {isAvailable ? "Available" : "Occupied"}
-                      </span>
-                    </div>
+          {hasRooms ? (
+            // ✅ NEW: Display rooms with nested beds
+            <div className="space-y-4">
+              {property.rooms!.map((room) => (
+                <div key={room.id} className="rounded-xl bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DoorOpen size={16} className="text-[var(--nexora-primary)]" />
+                    <h3 className="text-sm font-semibold text-gray-800">{room.name}</h3>
+                    <span className="text-xs text-gray-400 ml-1">({room.bedSpaces.length} beds)</span>
                   </div>
+                  <div className="space-y-2">
+                    {room.bedSpaces.map((bed) => {
+                      const isAvailable = bed.isAvailable;
+                      const isDisabled = !isAvailable || isSubmitting || submittedBedId === bed.id;
 
-                  <button
-                    disabled={isDisabled}
-                    onClick={() => handleBookClick(bed.id)}
-                    className={`rounded-full px-5 py-2 text-sm font-medium text-white transition-all ${
-                      isAvailable && !isDisabled
-                        ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
-                        : "cursor-not-allowed bg-gray-300"
-                    }`}
-                  >
-                    {submittedBedId === bed.id
-                      ? "Sending..."
-                      : isSubmitting
-                      ? "Processing..."
-                      : isAvailable
-                      ? "Request Bed"
-                      : "Unavailable"}
-                  </button>
+                      return (
+                        <div
+                          key={bed.id}
+                          className="flex items-center justify-between rounded-lg border border-gray-100 p-3 hover:bg-gray-50 transition"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--nexora-primary-light)] text-[var(--nexora-navy)]">
+                              <Bed size={14} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {getBedTypeLabel(bed)}
+                              </p>
+                              <span className={`text-xs ${isAvailable ? "text-green-600" : "text-red-500"}`}>
+                                {isAvailable ? "Available" : "Occupied"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            disabled={isDisabled}
+                            onClick={() => handleBookClick(bed.id)}
+                            className={`rounded-full px-4 py-1.5 text-sm font-medium text-white transition-all ${
+                              isAvailable && !isDisabled
+                                ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
+                                : "cursor-not-allowed bg-gray-300"
+                            }`}
+                          >
+                            {submittedBedId === bed.id
+                              ? "Sending..."
+                              : isSubmitting
+                              ? "Processing..."
+                              : isAvailable
+                              ? "Request Bed"
+                              : "Unavailable"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            // ✅ Fallback: flat bed spaces (old listings)
+            <div className="space-y-3">
+              {property.bedSpaces?.map((bed) => {
+                const isAvailable = bed.isAvailable;
+                const isDisabled = !isAvailable || isSubmitting || submittedBedId === bed.id;
+
+                return (
+                  <div
+                    key={bed.id}
+                    className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nexora-primary-light)] text-[var(--nexora-navy)]">
+                        <Bed size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {getBedTypeLabel(bed)}
+                        </p>
+                        <span className={`text-xs ${isAvailable ? "text-green-600" : "text-red-500"}`}>
+                          {isAvailable ? "Available" : "Occupied"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      disabled={isDisabled}
+                      onClick={() => handleBookClick(bed.id)}
+                      className={`rounded-full px-5 py-2 text-sm font-medium text-white transition-all ${
+                        isAvailable && !isDisabled
+                          ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
+                          : "cursor-not-allowed bg-gray-300"
+                      }`}
+                    >
+                      {submittedBedId === bed.id
+                        ? "Sending..."
+                        : isSubmitting
+                        ? "Processing..."
+                        : isAvailable
+                        ? "Request Bed"
+                        : "Unavailable"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="mt-8 text-center">

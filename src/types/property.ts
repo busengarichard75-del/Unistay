@@ -4,6 +4,13 @@ export interface BedSpace {
   type?: "Top" | "Bottom";
 }
 
+export interface Room {
+  id: string;
+  name: string;              // e.g., "Room 1"
+  bedCount: number;          // for UI convenience (not stored explicitly in Firestore – computed from bedSpaces.length)
+  bedSpaces: BedSpace[];
+}
+
 export type PaymentPeriod = "monthly" | "termly";
 export type GenderPreference = "male" | "female" | "mixed";
 export type DistanceBucket = "under5" | "5to15" | "15to30" | "over30";
@@ -27,8 +34,12 @@ export interface Property {
   location: string;
   imageUrl?: string;
   imageUrls?: string[];
-  bedSpaces: BedSpace[];
-  // ✅ NEW: Map coordinates (optional, for backward compatibility)
+  bedSpaces?: BedSpace[];        // ✅ Kept for backward compatibility (old listings)
+  rooms?: Room[];                // ✅ NEW: rooms with nested bed spaces (new listings)
   latitude?: number;
   longitude?: number;
+  isBoosted?: boolean;
+  boostedAt?: number;
+  boostExpiry?: number;
+  additionalAmenities?: string[];
 }
