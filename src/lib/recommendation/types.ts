@@ -1,3 +1,5 @@
+import { Property } from "@/types/property";
+
 /**
  * Student preferences for accommodation recommendation.
  * This is the input to the recommendation engine.
