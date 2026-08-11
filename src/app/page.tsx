@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar/Navbar";
@@ -17,7 +18,7 @@ import { Sparkles } from "lucide-react";
 import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal";
 import { NexoraChat } from "@/components/nexora/NexoraChat";
 
-export default function Home() {
+function HomeContent() {
   const { user, role } = useAuth();
   const searchParams = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
@@ -107,12 +108,8 @@ export default function Home() {
         <div className="container-wide mt-6">
           <div className="card-premium bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-[var(--nexora-navy)]">
-                🧭 Find My Best House
-              </h3>
-              <p className="text-sm text-gray-600">
-                Tell us what matters to you. We'll find your best matches.
-              </p>
+              <h3 className="text-lg font-semibold text-[var(--nexora-navy)]">🧭 Find My Best House</h3>
+              <p className="text-sm text-gray-600">Tell us what matters to you. We'll find your best matches.</p>
             </div>
             <button
               onClick={() => setShowFindModal(true)}
@@ -184,5 +181,13 @@ export default function Home() {
       {/* 🧭 Find My Best House – preference modal */}
       <PreferenceModal isOpen={showFindModal} onClose={() => setShowFindModal(false)} />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--nexora-surface)] flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
