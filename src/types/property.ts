@@ -21,6 +21,8 @@ export interface Amenities {
   security: boolean;
 }
 
+export type VerificationStatus = "pending" | "approved" | "rejected";
+
 export interface Property {
   id: string;
   ownerId: string;
@@ -42,4 +44,5 @@ export interface Property {
   boostedAt?: number;
   boostExpiry?: number;
   additionalAmenities?: string[];
+  verificationStatus?: VerificationStatus; // ✅ NEW: for admin verification
 }

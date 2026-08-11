@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Phone, Mail, MapPin, Home, HelpCircle, Info, Heart } from "lucide-react";
+import { Phone, Mail, MapPin, Home, HelpCircle, Shield, Heart } from "lucide-react";
 
 export function Footer() {
   return (
@@ -41,7 +41,7 @@ export function Footer() {
               </p>
               <p className="flex items-center gap-2">
                 <Mail size={16} className="text-gray-400" />
-                <span>support@unistay.com</span>
+                <span>unistayzm2@gmail.com</span>
               </p>
             </div>
             <p className="mt-3 text-xs text-gray-400">A Nexora Tech product</p>
@@ -73,11 +73,11 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/about"
+                  href="/legal"
                   className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
                 >
-                  <Info size={16} />
-                  About
+                  <Shield size={16} />
+                  Trust & Legal
                 </Link>
               </li>
             </ul>
@@ -91,7 +91,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="/privacy"
+                  href="/legal#privacy"
                   className="text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
                 >
                   Privacy Policy
@@ -99,7 +99,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/terms"
+                  href="/legal#terms"
                   className="text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
                 >
                   Terms of Service

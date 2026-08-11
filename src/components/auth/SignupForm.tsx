@@ -49,6 +49,7 @@ export default function SignupForm() {
         phone,
         role,
         createdAt: Date.now(),
+        hasAcceptedTerms: false, // ✅ NEW: Terms acceptance flag
       };
 
       // ✅ Only save studentNumber if the user is a student

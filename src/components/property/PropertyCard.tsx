@@ -37,6 +37,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
   const status = getAvailabilityStatus(availableCount);
   const hasAnyAmenity = amenities && (amenities.electricity || amenities.water || amenities.security);
   const boosted = isBoosted(property);
+  const isVerified = property.verificationStatus === "approved";
 
   return (
     <Link
@@ -127,6 +128,14 @@ export function PropertyCard({ property }: PropertyCardProps) {
               Security
             </span>
           )}
+        </div>
+      )}
+
+      {/* ✅ UniStay Verified Badge */}
+      {isVerified && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <Star size={14} className="fill-blue-600 text-blue-600" />
+          <span className="text-xs font-medium text-blue-700">UniStay Verified</span>
         </div>
       )}
     </Link>

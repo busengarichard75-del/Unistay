@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { ArrowLeft, Bed, Home, Clock, MapPin, Tag, DoorOpen } from "lucide-react";
+import { ArrowLeft, Bed, Home, Clock, MapPin, Tag, DoorOpen, Star } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { getPropertyById } from "@/services/propertyService";
 import { getBookingsByStudent } from "@/services/bookingService";
@@ -174,8 +174,11 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
   // Custom amenities
   const customAmenities = property.additionalAmenities || [];
 
-  // ✅ Determine if we have rooms (new structure) or flat bedSpaces (old)
+  // Determine if we have rooms (new structure) or flat bedSpaces (old)
   const hasRooms = property.rooms && property.rooms.length > 0;
+
+  // ✅ Check if property is verified
+  const isVerified = property.verificationStatus === "approved";
 
   return (
     <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
@@ -226,18 +229,29 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         )}
 
         <div className="card-premium p-6">
-          <h1 className="text-2xl font-bold text-[var(--nexora-text-primary)]">
-            {property.title}
-          </h1>
-          <p className="mt-1 text-sm text-[var(--nexora-text-secondary)]">
-            {property.location}
-          </p>
-          <p className="mt-2 text-xl font-bold text-[var(--nexora-text-primary)]">
-            K{property.price.toLocaleString()}
-            <span className="text-sm font-normal text-[var(--nexora-text-secondary)]">
-              {property.paymentPeriod === "termly" ? " / term" : " / month"}
-            </span>
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-[var(--nexora-text-primary)]">
+                {property.title}
+              </h1>
+              <p className="mt-1 text-sm text-[var(--nexora-text-secondary)]">
+                {property.location}
+              </p>
+              <p className="mt-2 text-xl font-bold text-[var(--nexora-text-primary)]">
+                K{property.price.toLocaleString()}
+                <span className="text-sm font-normal text-[var(--nexora-text-secondary)]">
+                  {property.paymentPeriod === "termly" ? " / term" : " / month"}
+                </span>
+              </p>
+            </div>
+            {/* ✅ UniStay Verified Badge */}
+            {isVerified && (
+              <div className="shrink-0 ml-4 flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 border border-blue-200">
+                <Star size={16} className="fill-blue-600 text-blue-600" />
+                <span className="text-xs font-medium text-blue-700">UniStay Verified</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Custom Amenities Section */}

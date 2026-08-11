@@ -75,7 +75,7 @@ export default function HelpPage() {
           </ul>
 
           <p className="text-sm text-[var(--nexora-text-secondary)] mt-4">
-            Or email us at <strong>support@unistay.com</strong>
+            Or email us at <strong>unistayzm2@gmail.com</strong>
           </p>
         </div>
 

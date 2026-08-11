@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Search, User, Home, Calendar, DollarSign, Megaphone, Eye, EyeOff, Star, RefreshCw, LayoutGrid, TrendingUp, Clock, CreditCard, Users, Landmark, Briefcase, Shield, AlertTriangle } from "lucide-react";
+import { Check, Search, User, Home, Calendar, DollarSign, Megaphone, Eye, EyeOff, Star, RefreshCw, LayoutGrid, TrendingUp, Clock, CreditCard, Users, Landmark, Briefcase, Shield, AlertTriangle, MessageCircle, Building, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
 import { isAdminEmail } from "@/lib/admin";
 import { getAllApprovedBookings, updateBookingStatus } from "@/services/bookingService";
 import { getAnnouncement, updateAnnouncement, Announcement } from "@/services/announcementService";
 import { getAllProperties, updateProperty } from "@/services/propertyService";
-import { collection, query, where, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Booking } from "@/types/booking";
 import { Property } from "@/types/property";
@@ -18,6 +19,15 @@ import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
 const AGENT_FEE = 100;
 const BOOST_FEE = 100;
 const ADMIN_PIN = "3542";
+
+interface UnansweredQuestion {
+  id: string;
+  message: string;
+  userId: string | null;
+  userEmail: string | null;
+  createdAt: any;
+  resolved: boolean;
+}
 
 export default function AdminPage() {
   const { user, isLoading } = useAuth();
@@ -48,9 +58,20 @@ export default function AdminPage() {
   const [boostSearchTerm, setBoostSearchTerm] = useState("");
   const [isTogglingBoost, setIsTogglingBoost] = useState<string | null>(null);
 
+  // Pending Verifications state
+  const [pendingProperties, setPendingProperties] = useState<Property[]>([]);
+  const [isFetchingPending, setIsFetchingPending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState<string | null>(null);
+
+  // Unanswered Questions state
+  const [unansweredQuestions, setUnansweredQuestions] = useState<UnansweredQuestion[]>([]);
+  const [isFetchingQuestions, setIsFetchingQuestions] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
+  const [isResolving, setIsResolving] = useState<string | null>(null);
+
   // Stats reset flag
   const [statsReset, setStatsReset] = useState(false);
-  const [loadingSettings, setLoadingSettings] = useState(false); // Only used for stats loading
+  const [loadingSettings, setLoadingSettings] = useState(false);
 
   // Stats
   const [stats, setStats] = useState({
@@ -77,9 +98,17 @@ export default function AdminPage() {
       setBookings(bookingsData);
       setFilteredBookings(bookingsData);
 
-      // Properties
-      const props = await getAllProperties();
-      setAllProperties(props);
+      // Properties (all)
+      const allPropsRef = collection(db, "properties");
+      const allPropsSnap = await getDocs(allPropsRef);
+      const allProps = allPropsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Property));
+      setAllProperties(allProps);
+
+      // Pending verifications: fetch properties with status "pending"
+      const pendingQuery = query(allPropsRef, where("verificationStatus", "==", "pending"));
+      const pendingSnap = await getDocs(pendingQuery);
+      const pending = pendingSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Property));
+      setPendingProperties(pending);
 
       // Users (students & landlords)
       const usersRef = collection(db, "users");
@@ -100,13 +129,13 @@ export default function AdminPage() {
       const completedBookings = allBookingsList.filter((b) => b.status === "confirmed").length;
       const pendingPayments = allBookingsList.filter((b) => b.status === "approved").length;
 
-      const boosted = props.filter((p) => isBoosted(p)).length;
+      const boosted = allProps.filter((p) => isBoosted(p)).length;
       const boostRevenue = boosted * BOOST_FEE;
       const agentFeeRevenue = completedBookings * AGENT_FEE;
       const totalRevenue = boostRevenue + agentFeeRevenue;
 
       setStats({
-        totalProperties: props.length,
+        totalProperties: allProps.length,
         totalBookings,
         pendingPayments,
         boostedListings: boosted,
@@ -158,22 +187,41 @@ export default function AdminPage() {
     }
   };
 
+  // Fetch unanswered questions
+  const fetchUnansweredQuestions = async () => {
+    setIsFetchingQuestions(true);
+    try {
+      const q = query(
+        collection(db, "unansweredQuestions"),
+        orderBy("createdAt", "desc")
+      );
+      const snapshot = await getDocs(q);
+      const questions: UnansweredQuestion[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as UnansweredQuestion));
+      setUnansweredQuestions(questions);
+    } catch (err) {
+      console.error("Failed to fetch unanswered questions:", err);
+    } finally {
+      setIsFetchingQuestions(false);
+    }
+  };
+
   // ─── Effects ─────────────────────────────────────────────────
-  // 1. Redirect non‑admin users
   useEffect(() => {
     if (isLoading) return;
     if (!isAdminEmail(user?.email)) {
       router.push("/");
+      return;
     }
-  }, [user, isLoading, router]);
-
-  // 2. Fetch data and settings when PIN is verified
-  useEffect(() => {
-    if (isLoading || !isPinVerified || !user) return;
-    fetchAllData();
-    fetchAnnounce();
-    fetchSettings();
-  }, [isPinVerified, user, isLoading]);
+    if (isPinVerified) {
+      fetchAllData();
+      fetchAnnounce();
+      fetchSettings();
+      fetchUnansweredQuestions();
+    }
+  }, [user, isLoading, router, isPinVerified]);
 
   // Search/filter for bookings
   useEffect(() => {
@@ -278,6 +326,25 @@ export default function AdminPage() {
     }
   };
 
+  // Verification handlers
+  const handleVerifyProperty = async (propertyId: string, status: "approved" | "rejected") => {
+    setIsVerifying(propertyId);
+    try {
+      await updateProperty(propertyId, { verificationStatus: status });
+      setPendingProperties((prev) => prev.filter((p) => p.id !== propertyId));
+      setAllProperties((prev) =>
+        prev.map((p) =>
+          p.id === propertyId ? { ...p, verificationStatus: status } : p
+        )
+      );
+      toast.success(`Property ${status === "approved" ? "approved" : "rejected"} successfully!`);
+    } catch {
+      toast.error("Failed to update verification status.");
+    } finally {
+      setIsVerifying(null);
+    }
+  };
+
   // Stats reset
   const handleResetStats = async () => {
     if (!window.confirm("Are you sure you want to reset all stats to zero? This does not delete any data – it only hides the numbers until you restore them.")) return;
@@ -300,10 +367,27 @@ export default function AdminPage() {
     }
   };
 
+  // Unanswered Questions
+  const handleMarkResolved = async (questionId: string) => {
+    setIsResolving(questionId);
+    try {
+      await updateDoc(doc(db, "unansweredQuestions", questionId), { resolved: true });
+      setUnansweredQuestions((prev) =>
+        prev.map((q) =>
+          q.id === questionId ? { ...q, resolved: true } : q
+        )
+      );
+      toast.success("Question marked as resolved.");
+    } catch {
+      toast.error("Failed to mark as resolved.");
+    } finally {
+      setIsResolving(null);
+    }
+  };
+
   // ─── Render ──────────────────────────────────────────────────
 
-  // Show loader only during auth loading
-  if (isLoading) {
+  if (isLoading || loadingSettings) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="animate-pulse">
@@ -313,7 +397,7 @@ export default function AdminPage() {
     );
   }
 
-  // PIN overlay (shown immediately after auth)
+  // PIN overlay
   if (!isPinVerified) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
@@ -361,6 +445,11 @@ export default function AdminPage() {
     p.title.toLowerCase().includes(boostSearchTerm.toLowerCase()) ||
     p.location.toLowerCase().includes(boostSearchTerm.toLowerCase())
   );
+
+  // Filter unanswered questions (show only unresolved unless toggled)
+  const filteredQuestions = showResolved
+    ? unansweredQuestions
+    : unansweredQuestions.filter((q) => !q.resolved);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-200 p-6">
@@ -581,6 +670,158 @@ export default function AdminPage() {
               Hide
             </button>
           </div>
+        </div>
+
+        {/* 🆕 4. Pending Verifications */}
+        <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Building size={20} className="text-cyan-400" />
+              <h2 className="text-lg font-semibold text-white">Pending Verifications</h2>
+              <span className="text-xs text-gray-400">
+                ({pendingProperties.length} pending)
+              </span>
+            </div>
+            <button
+              onClick={() => { fetchAllData(); }}
+              className="text-xs text-gray-400 hover:text-white transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {isFetchingPending ? (
+            <div className="space-y-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="animate-pulse h-16 bg-gray-800 rounded-lg" />
+              ))}
+            </div>
+          ) : pendingProperties.length === 0 ? (
+            <div className="text-center py-8">
+              <CheckCircle size={40} className="mx-auto text-green-500" />
+              <p className="text-sm text-gray-500">No pending verifications.</p>
+              <p className="text-xs text-gray-600">All new listings appear here for review.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+              {pendingProperties.map((property) => (
+                <div
+                  key={property.id}
+                  className="rounded-lg bg-gray-800/50 border border-yellow-700 p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white">{property.title}</p>
+                      <p className="text-xs text-gray-400">{property.location}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        <span className="text-gray-400">Owner:</span> {property.ownerId}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        <span className="text-gray-400">Price:</span> K{property.price}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      <button
+                        onClick={() => handleVerifyProperty(property.id, "rejected")}
+                        disabled={isVerifying === property.id}
+                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {isVerifying === property.id ? "..." : <XCircle size={14} />} Reject
+                      </button>
+                      <button
+                        onClick={() => handleVerifyProperty(property.id, "approved")}
+                        disabled={isVerifying === property.id}
+                        className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+                      >
+                        {isVerifying === property.id ? "..." : <CheckCircle size={14} />} Approve
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 5. Unanswered Questions */}
+        <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <MessageCircle size={20} className="text-purple-400" />
+              <h2 className="text-lg font-semibold text-white">Unanswered Questions</h2>
+              <span className="text-xs text-gray-400">
+                ({unansweredQuestions.filter((q) => !q.resolved).length} unresolved)
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowResolved(!showResolved)}
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                {showResolved ? "Hide resolved" : "Show resolved"}
+              </button>
+              <button
+                onClick={fetchUnansweredQuestions}
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {isFetchingQuestions ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="animate-pulse h-16 bg-gray-800 rounded-lg" />
+              ))}
+            </div>
+          ) : filteredQuestions.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-500">No unanswered questions.</p>
+              <p className="text-xs text-gray-600">Students' questions that Nexora couldn't answer will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+              {filteredQuestions.map((q) => (
+                <div
+                  key={q.id}
+                  className={`rounded-lg p-4 border ${
+                    q.resolved
+                      ? "bg-gray-800/30 border-gray-700 opacity-60"
+                      : "bg-gray-800/50 border-yellow-700"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white break-words">{q.message}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                        <span>
+                          {q.createdAt?.toDate?.()?.toLocaleString() || "Unknown time"}
+                        </span>
+                        {q.userEmail && (
+                          <span>👤 {q.userEmail}</span>
+                        )}
+                        {q.resolved && (
+                          <span className="inline-block rounded-full bg-green-900/30 px-2 py-0.5 text-xs font-medium text-green-400 border border-green-800">
+                            Resolved
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {!q.resolved && (
+                      <button
+                        onClick={() => handleMarkResolved(q.id)}
+                        disabled={isResolving === q.id}
+                        className="ml-2 shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+                      >
+                        {isResolving === q.id ? "..." : "Mark Resolved"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ========== BOTTOM: Stats & Revenue ========== */}

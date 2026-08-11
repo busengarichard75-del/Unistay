@@ -10,7 +10,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Property } from "@/types/property";
+import { Property, VerificationStatus } from "@/types/property";
 
 function getPropertiesRef() {
   if (!db) {
@@ -20,13 +20,22 @@ function getPropertiesRef() {
   return collection(db, "properties");
 }
 
+/**
+ * Add a new property – sets verificationStatus to "pending" automatically.
+ */
 export async function addProperty(
   data: Omit<Property, "id">
 ): Promise<string> {
   try {
     const propertiesRef = getPropertiesRef();
 
-    const docRef = await addDoc(propertiesRef, data);
+    // ✅ NEW: Set verificationStatus to "pending" for new listings
+    const propertyData = {
+      ...data,
+      verificationStatus: "pending" as VerificationStatus,
+    };
+
+    const docRef = await addDoc(propertiesRef, propertyData);
     return docRef.id;
   } catch (error) {
     console.error("Failed to add property:", error);
@@ -34,11 +43,21 @@ export async function addProperty(
   }
 }
 
+/**
+ * Get all properties – for public use. Only returns approved properties.
+ * ⚠️ Before using this, backfill existing properties to "approved".
+ */
 export async function getAllProperties(): Promise<Property[]> {
   try {
     const propertiesRef = getPropertiesRef();
 
-    const snapshot = await getDocs(propertiesRef);
+    // ✅ NEW: Only fetch properties that are approved
+    const q = query(
+      propertiesRef,
+      where("verificationStatus", "==", "approved")
+    );
+
+    const snapshot = await getDocs(q);
 
     return snapshot.docs.map(
       (doc) => ({ id: doc.id, ...doc.data() } as Property)
@@ -49,6 +68,9 @@ export async function getAllProperties(): Promise<Property[]> {
   }
 }
 
+/**
+ * Get a single property by ID (no filtering – returns any status).
+ */
 export async function getPropertyById(
   id: string
 ): Promise<Property | null> {
@@ -74,6 +96,10 @@ export async function getPropertyById(
   }
 }
 
+/**
+ * Get all properties owned by a specific landlord – returns all statuses.
+ * Used in the landlord dashboard.
+ */
 export async function getPropertiesByOwner(
   ownerId: string
 ): Promise<Property[]> {
@@ -101,6 +127,9 @@ export async function getPropertiesByOwner(
   }
 }
 
+/**
+ * Update a property (admin can update verificationStatus, landlords can update other fields).
+ */
 export async function updateProperty(
   id: string,
   data: Partial<Property>

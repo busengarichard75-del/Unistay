@@ -5,6 +5,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Home, Trash2, Info, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getBookingsByStudent, deleteBooking } from "@/services/bookingService";
 import { getPropertyById } from "@/services/propertyService";
@@ -12,8 +14,8 @@ import { Booking } from "@/types/booking";
 import { Property } from "@/types/property";
 import { BackButton } from "@/components/ui/BackButton";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { TermsModal } from "@/components/auth/TermsModal";
 
-// ✅ Dynamically import PropertyMap with SSR disabled
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
   { ssr: false }
@@ -45,6 +47,24 @@ export default function StudentDashboardPage() {
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [propertyMap, setPropertyMap] = useState<Record<string, Property>>({});
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
+  // ─── Check if user has accepted terms ───
+  useEffect(() => {
+    if (!user) return;
+    const checkTerms = async () => {
+      try {
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data()?.hasAcceptedTerms === false) {
+          setShowTermsModal(true);
+        }
+      } catch {
+        // Silent fail – don't block the dashboard
+      }
+    };
+    checkTerms();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -180,7 +200,6 @@ export default function StudentDashboardPage() {
                         )}
                       </div>
 
-                      {/* Map – only for confirmed bookings with coordinates */}
                       {isConfirmed && hasCoordinates && property && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
                           <div className="flex items-center justify-between mb-2">
@@ -207,7 +226,6 @@ export default function StudentDashboardPage() {
                         </div>
                       )}
 
-                      {/* ✅ FIX: Only show "View Confirmation" for confirmed bookings */}
                       {booking.status === "confirmed" && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
                           <Link
@@ -227,6 +245,14 @@ export default function StudentDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Terms Modal */}
+      {showTermsModal && user && (
+        <TermsModal
+          userId={user.uid}
+          onAccept={() => setShowTermsModal(false)}
+        />
+      )}
     </main>
   );
 }

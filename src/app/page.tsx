@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Hero } from "@/components/hero/Hero";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
@@ -11,8 +12,14 @@ import { Footer } from "@/components/footer/Footer";
 import { getAllProperties } from "@/services/propertyService";
 import { Property } from "@/types/property";
 import { isBoosted } from "@/lib/boostService";
+import { useAuth } from "@/lib/AuthContext";
+import { Sparkles } from "lucide-react";
+import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal";
+import { NexoraChat } from "@/components/nexora/NexoraChat";
 
 export default function Home() {
+  const { user, role } = useAuth();
+  const searchParams = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState(false);
@@ -20,6 +27,21 @@ export default function Home() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
+  const [showFindModal, setShowFindModal] = useState(false);
+
+  // Auto-open modal if ?openModal=true (from "Refine preferences" link)
+  useEffect(() => {
+    if (searchParams.get("openModal") === "true") {
+      setShowFindModal(true);
+    }
+  }, [searchParams]);
+
+  // Listen for custom event from Nexora to open the modal
+  useEffect(() => {
+    const handleOpenModal = () => setShowFindModal(true);
+    window.addEventListener("openFindModal", handleOpenModal);
+    return () => window.removeEventListener("openFindModal", handleOpenModal);
+  }, []);
 
   useEffect(() => {
     const fetchProperties = async () => {
@@ -48,17 +70,14 @@ export default function Home() {
       const matchesAvailability = !showAvailableOnly || availableCount > 0;
       return matchesKeyword && matchesPrice && matchesAvailability;
     })
-    // ✅ NEW: Sort boosted listings first
     .sort((a, b) => {
       const aBoosted = isBoosted(a);
       const bBoosted = isBoosted(b);
       if (aBoosted && !bBoosted) return -1;
       if (!aBoosted && bBoosted) return 1;
-      // Both boosted: sort by boostedAt descending (newest first)
       if (aBoosted && bBoosted) {
         return (b.boostedAt || 0) - (a.boostedAt || 0);
       }
-      // Both not boosted: sort alphabetically (fallback)
       return a.title.localeCompare(b.title);
     });
 
@@ -75,11 +94,37 @@ export default function Home() {
     );
   }
 
+  const isStudent = user && role === "student";
+
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
       <Navbar />
       <AnnouncementBanner />
       <Hero />
+
+      {/* 🧭 Find My Best House – only for logged-in students */}
+      {isStudent && (
+        <div className="container-wide mt-6">
+          <div className="card-premium bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-[var(--nexora-navy)]">
+                🧭 Find My Best House
+              </h3>
+              <p className="text-sm text-gray-600">
+                Tell us what matters to you. We'll find your best matches.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowFindModal(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--nexora-primary-hover)] transition-colors shrink-0"
+            >
+              <Sparkles size={18} />
+              Get Started
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="container-wide space-y-4 pt-6">
         <SearchBar value={keyword} onChange={setKeyword} />
         <PriceFilter
@@ -132,6 +177,12 @@ export default function Home() {
       )}
 
       <Footer />
+
+      {/* 📱 Nexora Assistant – floating chat */}
+      <NexoraChat />
+
+      {/* 🧭 Find My Best House – preference modal */}
+      <PreferenceModal isOpen={showFindModal} onClose={() => setShowFindModal(false)} />
     </main>
   );
 }
