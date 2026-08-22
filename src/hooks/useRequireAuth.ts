@@ -5,8 +5,11 @@ import { useAuth } from "@/lib/AuthContext";
 type AllowedRole = "student" | "landlord" | "admin" | null;
 
 export function useRequireAuth(requiredRole?: AllowedRole) {
-  const { user, role, isLoading } = useAuth();
+  const { user, isLoading } = useAuth(); // ✅ Removed `role` from destructuring
   const router = useRouter();
+
+  // ✅ Use user.role directly
+  const effectiveRole = user?.role || null;
 
   useEffect(() => {
     if (!isLoading) {
@@ -15,20 +18,20 @@ export function useRequireAuth(requiredRole?: AllowedRole) {
         return;
       }
 
-      if (requiredRole && role !== requiredRole) {
+      if (requiredRole && effectiveRole !== requiredRole) {
         // Redirect to appropriate dashboard based on role
-        if (role === "landlord") {
+        if (effectiveRole === "landlord") {
           router.push("/dashboard/landlord");
-        } else if (role === "student") {
+        } else if (effectiveRole === "student") {
           router.push("/dashboard/student");
-        } else if (role === "admin") {
+        } else if (effectiveRole === "admin") {
           router.push("/admin");
         } else {
           router.push("/");
         }
       }
     }
-  }, [user, role, isLoading, router, requiredRole]);
+  }, [user, effectiveRole, isLoading, router, requiredRole]);
 
-  return { user, role, isLoading };
+  return { user, role: effectiveRole, isLoading };
 }

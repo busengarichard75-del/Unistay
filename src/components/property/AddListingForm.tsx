@@ -11,6 +11,7 @@ import { DISTANCE_LABELS } from "@/constants/property";
 import { MultiImageUploader } from "@/components/ui/MultiImageUploader";
 import { RoomBuilder } from "@/components/property/RoomBuilder";
 import { X, Plus } from "lucide-react";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
@@ -20,6 +21,7 @@ const PropertyMap = dynamic(
 export function AddListingForm() {
   const { user } = useAuth();
   const router = useRouter();
+  const userLocation = useGeolocation(); // ✅ Get user's current location
 
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
@@ -41,7 +43,7 @@ export function AddListingForm() {
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
 
-  // ✅ Rooms state (initial: 1 room with 1 bed)
+  // Rooms state (initial: 1 room with 1 bed)
   const [rooms, setRooms] = useState<Room[]>([
     {
       id: `room-${Date.now()}-1`,
@@ -57,7 +59,7 @@ export function AddListingForm() {
     },
   ]);
 
-  // ✅ Custom amenities
+  // Custom amenities
   const [customAmenities, setCustomAmenities] = useState<string[]>([]);
   const [customAmenityInput, setCustomAmenityInput] = useState("");
 
@@ -101,7 +103,6 @@ export function AddListingForm() {
     setIsSubmitting(true);
 
     try {
-      // Build bedSpaces from rooms (flatten for Firestore)
       const bedSpaces: BedSpace[] = rooms.flatMap((room) => room.bedSpaces);
 
       const propertyData: any = {
@@ -114,8 +115,8 @@ export function AddListingForm() {
         distanceBucket,
         amenities,
         location,
-        bedSpaces, // Store flat for backward compatibility (we also store rooms)
-        rooms,     // Store rooms structure for new listings
+        bedSpaces,
+        rooms,
         additionalAmenities: customAmenities,
       };
 
@@ -143,8 +144,15 @@ export function AddListingForm() {
     }
   }
 
+  // Determine default map center: user location → Lusaka fallback
+  const defaultCenter: [number, number] | undefined =
+    userLocation.latitude && userLocation.longitude
+      ? [userLocation.latitude, userLocation.longitude]
+      : undefined;
+
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-sm space-y-4">
+      {/* ... all existing fields remain unchanged ... */}
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -263,7 +271,7 @@ export function AddListingForm() {
         </div>
       </div>
 
-      {/* ✅ Custom Amenities Input */}
+      {/* Custom Amenities Input */}
       <div className="space-y-2">
         <label className="block text-xs font-medium text-gray-600">Custom Amenities</label>
         <div className="flex gap-2">
@@ -317,13 +325,13 @@ export function AddListingForm() {
         )}
       </div>
 
-      {/* ✅ Rooms & Beds */}
+      {/* Rooms & Beds */}
       <div className="space-y-1">
         <label className="block text-xs font-medium text-gray-600">Rooms & Bed Spaces</label>
         <RoomBuilder rooms={rooms} onChange={setRooms} />
       </div>
 
-      {/* Map Location Picker */}
+      {/* Map Location Picker – now with geolocation default */}
       <div className="space-y-1">
         <label className="block text-xs font-medium text-gray-600">
           Property Location (click on map to set)
@@ -337,6 +345,7 @@ export function AddListingForm() {
           latitude={latitude}
           longitude={longitude}
           height="250px"
+          defaultCenter={defaultCenter}
         />
         {latitude !== undefined && longitude !== undefined ? (
           <p className="text-xs text-green-600">

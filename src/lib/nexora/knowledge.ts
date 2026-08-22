@@ -58,8 +58,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "lol", "haha", "nice one", "cool", "okay cool", "alright", "sounds good",
       "got it", "makes sense", "i see", "understood",
     ],
-    response:
-      "Glad that helps! 😊 Anything else you'd like to ask? Don't be shy – I'm here for you.",
+    response: "Glad that helps! 😊 Anything else you'd like to ask? Don't be shy – I'm here for you.",
   },
 
   // ==========================================================
@@ -509,7 +508,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "talk to a human", "speak to support", "need help",
     ],
     response:
-      "You can reach UniStay support directly at +260 0771319817. 📞 They're happy to help with anything I can't answer here. Is there something specific I can try to help with first? 😊",
+      "You can reach UniStay support directly at +260 0771319817, email us at unistayzm2@gmail.com, or connect with us on Facebook (https://www.facebook.com/profile.php?id=61577687234055) and TikTok (https://tiktok.com/@nexoratech_0). We're happy to help with anything I can't answer here. Is there something specific I can try to help with first? 😊",
   },
   {
     patterns: [
@@ -537,7 +536,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "this is off topic", "unrelated question", "something else",
     ],
     response:
-      "I'm not sure about that. 🤔 You can contact support on +260 0771319817 for more specific help. Is there anything about UniStay I can help you with instead? 😊",
+      "I'm not sure about that. 🤔 You can contact support on +260 0771319817, email us at unistayzm2@gmail.com, or reach us on Facebook and TikTok. Is there anything about UniStay I can help you with instead? 😊",
   },
 
   // ==========================================================

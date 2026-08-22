@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { X, ArrowRight, ArrowLeft, Sparkles, Check } from "lucide-react";
+import { toast } from "sonner";
 import { universities } from "@/data/universities";
 import { Preferences, PriorityWeights } from "@/lib/recommendation/types";
+import { useAuth } from "@/lib/AuthContext";
 
 interface PreferenceModalProps {
   isOpen: boolean;
@@ -21,6 +25,7 @@ const steps = [
 
 export function PreferenceModal({ isOpen, onClose }: PreferenceModalProps) {
   const router = useRouter();
+  const { user, refreshUser } = useAuth();
 
   const [step, setStep] = useState(0);
   const [budgetMax, setBudgetMax] = useState(1500);
@@ -34,8 +39,9 @@ export function PreferenceModal({ isOpen, onClose }: PreferenceModalProps) {
     security: 0.1,
   });
   const [requiredAmenities, setRequiredAmenities] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const prefs: Preferences = {
       budgetMax,
       universityId: universityId || undefined,
@@ -44,6 +50,28 @@ export function PreferenceModal({ isOpen, onClose }: PreferenceModalProps) {
       requiredAmenities,
       genderPreference: "mixed",
     };
+
+    // Save preferences to Firestore
+    if (user) {
+      setIsSaving(true);
+      try {
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, {
+          preferences: prefs,
+          university: universityId || user.university, // if they selected a university, use it
+        });
+        // Refresh the user context so the UI updates
+        if (refreshUser) await refreshUser();
+        toast.success("Preferences saved!");
+      } catch (error) {
+        console.error("Failed to save preferences:", error);
+        toast.error("Could not save your preferences, but we'll still find your matches.");
+      } finally {
+        setIsSaving(false);
+      }
+    }
+
+    // Redirect to results page with preferences in URL
     const params = new URLSearchParams({
       prefs: JSON.stringify(prefs),
     });
@@ -232,11 +260,12 @@ export function PreferenceModal({ isOpen, onClose }: PreferenceModalProps) {
           </button>
           <button
             onClick={nextStep}
-            className="flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--nexora-primary-hover)] transition-colors"
+            disabled={isSaving}
+            className="flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--nexora-primary-hover)] transition-colors disabled:opacity-50"
           >
             {step === steps.length - 1 ? (
               <>
-                Find Matches <Sparkles size={16} />
+                {isSaving ? "Saving..." : "Find Matches"} <Sparkles size={16} />
               </>
             ) : (
               <>

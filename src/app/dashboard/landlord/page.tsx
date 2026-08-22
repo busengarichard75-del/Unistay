@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Check, X, Pencil, Eye, Search, LayoutGrid, Calendar, Clock, Home, MapPin, Star, Info, XCircle } from "lucide-react";
+import { Plus, Trash2, Check, X, Pencil, Eye, Search, LayoutGrid, Calendar, Clock, Home, MapPin, Star, Info, XCircle, ChevronDown, ChevronRight, Bed, EyeOff, Eye as EyeIcon, BarChart3, Users, CalendarCheck, BedDouble } from "lucide-react";
 import { toast } from "sonner";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getPropertiesByOwner, deleteProperty, getPropertyById, updateProperty } from "@/services/propertyService";
@@ -14,6 +14,8 @@ import { BackButton } from "@/components/ui/BackButton";
 import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
 
 const PAGE_SIZE = 6;
+
+type BookingStatusFilter = "all" | "requested" | "approved" | "confirmed" | "rejected";
 
 export default function LandlordDashboardPage() {
   const { user, isLoading } = useRequireAuth("landlord");
@@ -28,6 +30,9 @@ export default function LandlordDashboardPage() {
   const [visibleListings, setVisibleListings] = useState(PAGE_SIZE);
   const [visibleBookings, setVisibleBookings] = useState(PAGE_SIZE);
   const [visibleRequests, setVisibleRequests] = useState(PAGE_SIZE);
+  
+  // Booking status filter
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>("all");
 
   // Boost Modal State
   const [boostModalOpen, setBoostModalOpen] = useState(false);
@@ -35,11 +40,24 @@ export default function LandlordDashboardPage() {
   const [boostPropertyTitle, setBoostPropertyTitle] = useState("");
   const [isSubmittingBoost, setIsSubmittingBoost] = useState(false);
 
+  // Manual Occupancy State
+  const [expandedProperties, setExpandedProperties] = useState<Record<string, boolean>>({});
+  const [isTogglingOccupancy, setIsTogglingOccupancy] = useState<string | null>(null);
+
+  // ─── Stats ────────────────────────────────────────────────
+  const totalListings = listings.length;
+  const totalAvailableBeds = listings.reduce((acc, p) => {
+    const beds = p.bedSpaces || [];
+    return acc + beds.filter(b => b.isAvailable).length;
+  }, 0);
+  const pendingRequests = bookings.filter(b => b.status === "requested").length;
+  const totalBookings = bookings.length;
+
   useEffect(() => {
     setVisibleListings(PAGE_SIZE);
     setVisibleBookings(PAGE_SIZE);
     setVisibleRequests(PAGE_SIZE);
-  }, [activeTab, searchTerm]);
+  }, [activeTab, searchTerm, bookingStatusFilter]);
 
   useEffect(() => {
     if (!user) return;
@@ -61,6 +79,8 @@ export default function LandlordDashboardPage() {
     fetchData();
   }, [user]);
 
+  // ─── Handlers ──────────────────────────────────────────────
+
   async function handleDelete(id: string) {
     if (!window.confirm("Delete this listing? This cannot be undone.")) return;
     try {
@@ -72,11 +92,25 @@ export default function LandlordDashboardPage() {
     }
   }
 
+  async function handleToggleActive(property: Property) {
+    try {
+      const newActive = !property.isActive;
+      await updateProperty(property.id, { isActive: newActive });
+      setListings((prev) =>
+        prev.map((p) =>
+          p.id === property.id ? { ...p, isActive: newActive } : p
+        )
+      );
+      toast.success(newActive ? "Listing activated." : "Listing deactivated.");
+    } catch {
+      toast.error("Failed to update listing status.");
+    }
+  }
+
   async function handleApprove(booking: Booking) {
     try {
       const property = await getPropertyById(booking.propertyId);
       if (property) {
-        // ✅ FIX: use optional chaining / fallback for bedSpaces
         const updatedBedSpaces = (property.bedSpaces ?? []).map((bed) =>
           bed.id === booking.bedSpaceId ? { ...bed, isAvailable: false } : bed
         );
@@ -150,6 +184,68 @@ export default function LandlordDashboardPage() {
     setIsSubmittingBoost(false);
   };
 
+  // Manual Occupancy handler
+  const togglePropertyExpand = (propertyId: string) => {
+    setExpandedProperties((prev) => ({
+      ...prev,
+      [propertyId]: !prev[propertyId],
+    }));
+  };
+
+  const handleToggleOccupancy = async (propertyId: string, bedSpaceId: string, roomIndex?: number) => {
+    setIsTogglingOccupancy(bedSpaceId);
+    try {
+      const property = listings.find((p) => p.id === propertyId);
+      if (!property) return;
+
+      let updatedProperty = { ...property };
+
+      if (property.rooms && property.rooms.length > 0) {
+        const updatedRooms = property.rooms.map((room, idx) => {
+          if (roomIndex !== undefined && idx === roomIndex) {
+            const updatedBedSpaces = room.bedSpaces.map((bed) => {
+              if (bed.id === bedSpaceId) {
+                return { ...bed, isAvailable: !bed.isAvailable };
+              }
+              return bed;
+            });
+            return { ...room, bedSpaces: updatedBedSpaces };
+          }
+          return room;
+        });
+        updatedProperty.rooms = updatedRooms;
+        updatedProperty.bedSpaces = updatedRooms.flatMap((r) => r.bedSpaces);
+      } else {
+        const updatedBedSpaces = (property.bedSpaces || []).map((bed) => {
+          if (bed.id === bedSpaceId) {
+            return { ...bed, isAvailable: !bed.isAvailable };
+          }
+          return bed;
+        });
+        updatedProperty.bedSpaces = updatedBedSpaces;
+      }
+
+      await updateProperty(propertyId, {
+        bedSpaces: updatedProperty.bedSpaces,
+        rooms: updatedProperty.rooms,
+      });
+
+      setListings((prev) =>
+        prev.map((p) =>
+          p.id === propertyId ? updatedProperty : p
+        )
+      );
+
+      toast.success("Bed space updated successfully!");
+    } catch {
+      toast.error("Failed to update occupancy.");
+    } finally {
+      setIsTogglingOccupancy(null);
+    }
+  };
+
+  // ─── Filter helpers ────────────────────────────────────────
+
   const requestedBookings = bookings.filter((b) => b.status === "requested");
 
   const filterBySearch = <T extends Property | Booking>(items: T[], term: string, searchKeys: (keyof T)[]): T[] => {
@@ -163,8 +259,17 @@ export default function LandlordDashboardPage() {
     );
   };
 
+  const filterBookingsByStatus = (items: Booking[], filter: BookingStatusFilter) => {
+    if (filter === "all") return items;
+    return items.filter((b) => b.status === filter);
+  };
+
   const filteredListings = filterBySearch(listings, searchTerm, ["title", "location"]);
-  const filteredBookings = filterBySearch(bookings, searchTerm, ["propertyTitle", "studentName"]);
+  const filteredBookings = filterBySearch(
+    filterBookingsByStatus(bookings, bookingStatusFilter),
+    searchTerm,
+    ["propertyTitle", "studentName"]
+  );
   const filteredRequests = filterBySearch(requestedBookings, searchTerm, ["propertyTitle", "studentName"]);
 
   const paginatedListings = filteredListings.slice(0, visibleListings);
@@ -189,6 +294,8 @@ export default function LandlordDashboardPage() {
     );
   }
 
+  // ─── Render ──────────────────────────────────────────────────
+
   return (
     <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
       <div className="container-medium">
@@ -201,12 +308,24 @@ export default function LandlordDashboardPage() {
           <div>
             <p className="text-sm text-gray-300">Welcome back</p>
             <h1 className="text-xl font-bold text-white">{user.email}</h1>
-            <div className="mt-1 flex gap-3 text-xs text-gray-300">
-              <span>{stats.listings} listings</span>
-              <span>•</span>
-              <span>{stats.bookings} bookings</span>
-              <span>•</span>
-              <span>{stats.requests} pending</span>
+            {/* ✅ Quick Stats Bar */}
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-300">
+              <span className="flex items-center gap-1.5">
+                <Home size={14} />
+                {totalListings} listings
+              </span>
+              <span className="flex items-center gap-1.5">
+                <BedDouble size={14} />
+                {totalAvailableBeds} available beds
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock size={14} />
+                {pendingRequests} pending
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CalendarCheck size={14} />
+                {totalBookings} bookings
+              </span>
             </div>
           </div>
           <Link
@@ -218,17 +337,15 @@ export default function LandlordDashboardPage() {
           </Link>
         </div>
 
-        {/* Reminder Banner */}
-        <div className="mt-6 rounded-2xl bg-amber-50 p-3 text-sm text-amber-700 border border-amber-200 flex items-center gap-2">
-          <span>📱</span>
-          <span>
-            Make sure you have added your <strong>phone number</strong> in your{" "}
-            <Link href="/dashboard/profile" className="font-medium underline hover:text-amber-800">
-              Profile
-            </Link>{" "}
-            so students can contact you after booking.
-          </span>
-        </div>
+        {/* Get Verified Banner – only if landlord not verified */}
+        {listings.some((p) => p.verificationStatus !== "approved") && (
+          <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700 flex items-center justify-between">
+            <span>🔍 <strong>Get verified</strong> – Verified properties get 3x more views.</span>
+            <Link href="/dashboard/profile" className="font-semibold text-blue-800 hover:underline">
+              Apply Now →
+            </Link>
+          </div>
+        )}
 
         {error && (
           <div className="mt-6 rounded-2xl bg-red-50 p-4 text-center text-sm text-red-600">
@@ -295,7 +412,7 @@ export default function LandlordDashboardPage() {
             </div>
           ) : (
             <>
-              {/* LISTINGS TAB */}
+              {/* ============ LISTINGS TAB ============ */}
               {activeTab === "listings" && (
                 <>
                   {paginatedListings.length === 0 ? (
@@ -319,11 +436,27 @@ export default function LandlordDashboardPage() {
                         {paginatedListings.map((listing) => {
                           const boosted = isBoosted(listing);
                           const daysLeft = boosted ? getBoostDaysRemaining(listing) : 0;
+                          const isExpanded = expandedProperties[listing.id] || false;
+                          const totalBeds = (listing.bedSpaces || []).length;
+                          const availableBeds = (listing.bedSpaces || []).filter((b) => b.isAvailable).length;
+                          const isActive = listing.isActive !== false;
+                          const isVerified = listing.verificationStatus === "approved";
+                          const isPending = listing.verificationStatus === "pending";
+                          const isRejected = listing.verificationStatus === "rejected";
+
+                          // Compute performance metrics from bookings
+                          const propertyBookings = bookings.filter((b) => b.propertyId === listing.id);
+                          const totalRequests = propertyBookings.length;
+                          const confirmedBookings = propertyBookings.filter((b) => b.status === "confirmed").length;
+
                           return (
                             <div
                               key={listing.id}
-                              className="group rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md overflow-hidden relative"
+                              className={`group rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md overflow-hidden relative ${
+                                !isActive ? "opacity-60" : ""
+                              }`}
                             >
+                              {/* Boosted Badge */}
                               {boosted && (
                                 <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-full bg-yellow-400 px-2.5 py-1 text-xs font-bold text-black shadow-sm">
                                   <Star size={14} fill="currentColor" />
@@ -331,6 +464,18 @@ export default function LandlordDashboardPage() {
                                   {daysLeft > 0 && <span className="ml-1 text-[10px]">{daysLeft}d</span>}
                                 </div>
                               )}
+
+                              {/* Verification Badge */}
+                              <div className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium shadow-sm">
+                                {isVerified ? (
+                                  <span className="bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full">✅ Verified</span>
+                                ) : isPending ? (
+                                  <span className="bg-yellow-100 text-yellow-700 px-2.5 py-0.5 rounded-full">⏳ Pending</span>
+                                ) : isRejected ? (
+                                  <span className="bg-red-100 text-red-700 px-2.5 py-0.5 rounded-full">❌ Rejected</span>
+                                ) : null}
+                              </div>
+
                               {listing.imageUrl && (
                                 <div className="h-40 overflow-hidden">
                                   <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-cover" />
@@ -344,25 +489,63 @@ export default function LandlordDashboardPage() {
                                 </div>
                                 <div className="mt-2 flex items-center justify-between text-sm">
                                   <span className="font-bold text-gray-900">K{listing.price.toLocaleString()}</span>
-                                  <span className="text-xs text-gray-500">{(listing.bedSpaces ?? []).length} beds</span>
+                                  <span className="text-xs text-gray-500">{totalBeds} beds ({availableBeds} available)</span>
                                 </div>
-                                <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-                                  <div className="flex items-center gap-1">
-                                    <Link
-                                      href={`/dashboard/landlord/edit-listing/${listing.id}`}
-                                      className="rounded-full p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
-                                      aria-label="Edit listing"
-                                    >
-                                      <Pencil size={16} />
-                                    </Link>
-                                    <button
-                                      onClick={() => handleDelete(listing.id)}
-                                      className="rounded-full p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                                      aria-label="Delete listing"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  </div>
+
+                                {/* ✅ Performance Metrics */}
+                                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                                  <span className="flex items-center gap-1">
+                                    <EyeIcon size={12} />
+                                    {listing.views || 0}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Users size={12} />
+                                    {totalRequests}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Check size={12} />
+                                    {confirmedBookings}
+                                  </span>
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-gray-100 pt-3">
+                                  <Link
+                                    href={`/dashboard/landlord/edit-listing/${listing.id}`}
+                                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                                    aria-label="Edit listing"
+                                  >
+                                    <Pencil size={16} />
+                                  </Link>
+                                  <button
+                                    onClick={() => handleDelete(listing.id)}
+                                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                    aria-label="Delete listing"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleActive(listing)}
+                                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                                    aria-label={isActive ? "Deactivate" : "Activate"}
+                                  >
+                                    {isActive ? <EyeOff size={16} /> : <EyeIcon size={16} />}
+                                  </button>
+                                  <Link
+                                    href={`/property/${listing.id}`}
+                                    target="_blank"
+                                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                                    aria-label="View public listing"
+                                  >
+                                    <Eye size={16} />
+                                  </Link>
+                                  <button
+                                    onClick={() => togglePropertyExpand(listing.id)}
+                                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                                    aria-label="Manage beds"
+                                  >
+                                    <Bed size={16} />
+                                  </button>
+                                  <div className="flex-1"></div>
                                   {!boosted ? (
                                     <button
                                       onClick={() => openBoostModal(listing)}
@@ -378,6 +561,63 @@ export default function LandlordDashboardPage() {
                                     </span>
                                   )}
                                 </div>
+
+                                {/* Manual Occupancy Expanded View */}
+                                {isExpanded && (
+                                  <div className="mt-3 border-t border-gray-100 pt-3">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">Manage Bed Spaces</p>
+                                    {listing.rooms && listing.rooms.length > 0 ? (
+                                      <div className="space-y-2">
+                                        {listing.rooms.map((room, roomIndex) => (
+                                          <div key={room.id} className="bg-gray-50 rounded-lg p-2">
+                                            <p className="text-xs font-medium text-gray-600 mb-1">{room.name}</p>
+                                            <div className="space-y-1">
+                                              {room.bedSpaces.map((bed) => (
+                                                <div key={bed.id} className="flex items-center justify-between bg-white rounded px-2 py-1 shadow-sm">
+                                                  <span className="text-xs text-gray-700">
+                                                    {bed.type || "Standard"} {bed.isAvailable ? "🟢 Available" : "🔴 Occupied"}
+                                                  </span>
+                                                  <button
+                                                    onClick={() => handleToggleOccupancy(listing.id, bed.id, roomIndex)}
+                                                    disabled={isTogglingOccupancy === bed.id}
+                                                    className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                                                      bed.isAvailable
+                                                        ? "bg-green-600 hover:bg-green-700 text-white"
+                                                        : "bg-red-600 hover:bg-red-700 text-white"
+                                                    } disabled:opacity-50`}
+                                                  >
+                                                    {isTogglingOccupancy === bed.id ? "..." : bed.isAvailable ? "Mark Occupied" : "Mark Available"}
+                                                  </button>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        {(listing.bedSpaces || []).map((bed) => (
+                                          <div key={bed.id} className="flex items-center justify-between bg-gray-50 rounded px-2 py-1">
+                                            <span className="text-xs text-gray-700">
+                                              {bed.type || "Standard"} {bed.isAvailable ? "🟢 Available" : "🔴 Occupied"}
+                                            </span>
+                                            <button
+                                              onClick={() => handleToggleOccupancy(listing.id, bed.id)}
+                                              disabled={isTogglingOccupancy === bed.id}
+                                              className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                                                bed.isAvailable
+                                                  ? "bg-green-600 hover:bg-green-700 text-white"
+                                                  : "bg-red-600 hover:bg-red-700 text-white"
+                                              } disabled:opacity-50`}
+                                            >
+                                              {isTogglingOccupancy === bed.id ? "..." : bed.isAvailable ? "Mark Occupied" : "Mark Available"}
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );
@@ -398,9 +638,26 @@ export default function LandlordDashboardPage() {
                 </>
               )}
 
-              {/* BOOKINGS TAB */}
+              {/* ============ BOOKINGS TAB ============ */}
               {activeTab === "bookings" && (
                 <>
+                  {/* Booking Status Filter */}
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {(["all", "requested", "approved", "confirmed", "rejected"] as BookingStatusFilter[]).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setBookingStatusFilter(status)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                          bookingStatusFilter === status
+                            ? "bg-[var(--nexora-primary)] text-white"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+
                   {paginatedBookings.length === 0 ? (
                     <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
                       <Calendar size={32} className="mx-auto text-gray-300" />
@@ -466,7 +723,7 @@ export default function LandlordDashboardPage() {
                 </>
               )}
 
-              {/* REQUESTS TAB */}
+              {/* ============ REQUESTS TAB ============ */}
               {activeTab === "requests" && (
                 <>
                   {paginatedRequests.length === 0 ? (
@@ -487,7 +744,13 @@ export default function LandlordDashboardPage() {
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium text-gray-900">{booking.propertyTitle}</p>
                               <p className="text-xs text-gray-500">
-                                Requested by {booking.studentName} • K{booking.price.toLocaleString()} /{booking.paymentPeriod === "termly" ? "term" : "month"}
+                                Requested by {booking.studentName}
+                                {booking.studentPhone && (
+                                  <span className="ml-2 text-gray-400">📞 {booking.studentPhone}</span>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                K{booking.price.toLocaleString()} /{booking.paymentPeriod === "termly" ? "term" : "month"}
                               </p>
                             </div>
                             <div className="mt-2 flex shrink-0 items-center gap-2 sm:mt-0">

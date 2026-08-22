@@ -1,15 +1,21 @@
-export interface University {
-  id: string;
-  name: string;
-  isAvailable: boolean;
-}
-
-export const universities: University[] = [
+export const universities = [
+  { id: "unza", name: "University of Zambia (UNZA)", isAvailable: true },
+  { id: "cbu", name: "Copperbelt University (CBU)", isAvailable: true },
+  { id: "mulungushi", name: "Mulungushi University", isAvailable: true },
   { id: "mukuba", name: "Mukuba University", isAvailable: true },
-  { id: "unza", name: "University of Zambia", isAvailable: false },
-  { id: "cbu", name: "Copperbelt University", isAvailable: false },
-  { id: "mulungushi", name: "Mulungushi University", isAvailable: false },
-  { id: "chalimbana", name: "Chalimbana University", isAvailable: false },
-  { id: "kwame-nkrumah", name: "Kwame Nkrumah University", isAvailable: false },
-  { id: "levy-mwanawasa", name: "Levy Mwanawasa Medical University", isAvailable: false },
+  { id: "chalimbana", name: "Chalimbana University", isAvailable: true },
+  { id: "kwame", name: "Kwame Nkrumah University", isAvailable: true },
+  { id: "nipa", name: "National Institute of Public Administration (NIPA)", isAvailable: true },
+  { id: "zcas", name: "ZCAS University", isAvailable: true },
+  { id: "rusangu", name: "Rusangu University", isAvailable: true },
+  { id: "cavendish", name: "Cavendish University Zambia", isAvailable: true },
+  { id: "northrise", name: "Northrise University", isAvailable: true },
+  { id: "eden", name: "Eden University", isAvailable: true },
+  { id: "zaou", name: "Zambia Open University (ZAOU)", isAvailable: true },
+  { id: "saintbonaventure", name: "Saint Bonaventure University", isAvailable: true },
+  { id: "rockview", name: "Rockview University", isAvailable: true },
+  { id: "dmi", name: "DMI-St. John the Baptist University", isAvailable: true },
+  { id: "levy", name: "Levy Mwanawasa Medical University", isAvailable: true },
+  { id: "zica", name: "Zambia Institute of Chartered Accountants (ZICA)", isAvailable: true },
+  { id: "evelynhone", name: "Evelyn Hone College", isAvailable: true },
 ];

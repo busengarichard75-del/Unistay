@@ -6,7 +6,7 @@ export interface Booking {
   id: string;
   studentId: string;
   studentName: string;
-  studentNumber?: string; // ✅ NEW: User-entered institution ID
+  studentPhone?: string;    // ✅ NEW – store student's phone for landlord view
   landlordId: string;
   propertyId: string;
   bedSpaceId: string;
@@ -15,11 +15,10 @@ export interface Booking {
   paymentPeriod: PaymentPeriod;
   status: BookingStatus;
   createdAt: number;
-
-  // Confirmation fields
   confirmationId?: string;
   confirmationCode?: string;
   approvedAt?: number;
   confirmedAt?: number;
   verificationToken?: string;
+  studentNumber?: string;
 }

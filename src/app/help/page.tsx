@@ -69,10 +69,31 @@ export default function HelpPage() {
           </p>
 
           <ul className="list-none space-y-1 text-sm text-[var(--nexora-text-secondary)] mt-2">
-            <li>📞 <strong>General Inquiries:</strong> +260 0771319817</li>
-            <li>📞 <strong>Student Support:</strong> +260 971652675</li>
-            <li>📞 <strong>Landlord Support:</strong> +260 979759372</li>
+            <li> <strong>General Inquiries:</strong> +260 0771319817</li>
+            <li> <strong>Student Support:</strong> +260 971652675</li>
+            <li> <strong>Landlord Support:</strong> +260 979759372</li>
           </ul>
+<div className="mt-6">
+  <h3 className="text-sm font-semibold text-gray-900">Follow UniStayZM</h3>
+  <div className="flex gap-4 mt-2">
+    <a
+      href="https://www.facebook.com/profile.php?id=61577687234055"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:underline"
+    >
+      Facebook
+    </a>
+    <a
+      href="https://tiktok.com/@nexoratech_0"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-gray-700 hover:underline"
+    >
+      TikTok
+    </a>
+  </div>
+</div>
 
           <p className="text-sm text-[var(--nexora-text-secondary)] mt-4">
             Or email us at <strong>unistayzm2@gmail.com</strong>

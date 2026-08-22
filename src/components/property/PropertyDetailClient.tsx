@@ -2,20 +2,26 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic"; // ✅ Add this
 import { notFound } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { ArrowLeft, Bed, Home, Clock, MapPin, Tag, DoorOpen, Star } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { getPropertyById } from "@/services/propertyService";
+import { getPropertyById, updateProperty } from "@/services/propertyService";
 import { getBookingsByStudent } from "@/services/bookingService";
 import { addBooking } from "@/services/bookingService";
 import { BookingAuthPrompt } from "@/components/property/BookingAuthPrompt";
 import { useAuth } from "@/lib/AuthContext";
 import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
-import { PropertyMap } from "@/components/map/PropertyMap";
 import { useGeolocation } from "@/hooks/useGeolocation";
+
+// ✅ Dynamically import PropertyMap with SSR disabled
+const PropertyMap = dynamic(
+  () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
+  { ssr: false }
+);
 
 interface PropertyDetailClientProps {
   id: string;
@@ -47,6 +53,22 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     };
     fetchProperty();
   }, [id]);
+
+  // ✅ Increment view counter when property is viewed
+  useEffect(() => {
+    if (property && !isFetching) {
+      const incrementViews = async () => {
+        try {
+          await updateProperty(property.id, {
+            views: (property.views || 0) + 1,
+          });
+        } catch (error) {
+          // Silent fail – don't break the page
+        }
+      };
+      incrementViews();
+    }
+  }, [property, isFetching]);
 
   useEffect(() => {
     if (!user) return;
@@ -99,14 +121,16 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     try {
       let studentName = user.email || "Unknown student";
       let studentNumber = "";
+      let studentPhone = user.phone || "";
 
       if (db) {
         try {
           const userSnapshot = await getDoc(doc(db, "users", user.uid));
           if (userSnapshot.exists()) {
             const data = userSnapshot.data();
-            studentName = data?.name || studentName;
+            studentName = data?.fullName || data?.name || studentName;
             studentNumber = data?.studentNumber || "";
+            studentPhone = data?.phone || studentPhone;
           }
         } catch {}
       }
@@ -115,6 +139,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         studentId: user.uid,
         studentName,
         studentNumber,
+        studentPhone,
         landlordId: property.ownerId,
         propertyId: property.id,
         bedSpaceId,
@@ -171,19 +196,13 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     ? [property.latitude!, property.longitude!]
     : [-15.3875, 28.3228];
 
-  // Custom amenities
   const customAmenities = property.additionalAmenities || [];
-
-  // Determine if we have rooms (new structure) or flat bedSpaces (old)
   const hasRooms = property.rooms && property.rooms.length > 0;
-
-  // ✅ Check if property is verified
   const isVerified = property.verificationStatus === "approved";
 
   return (
     <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
       <div className="container-medium">
-
         <Link
           href="/"
           className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[var(--nexora-navy)] transition-colors"
@@ -244,7 +263,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
                 </span>
               </p>
             </div>
-            {/* ✅ UniStay Verified Badge */}
             {isVerified && (
               <div className="shrink-0 ml-4 flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 border border-blue-200">
                 <Star size={16} className="fill-blue-600 text-blue-600" />
@@ -254,7 +272,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           </div>
         </div>
 
-        {/* Custom Amenities Section */}
         {customAmenities.length > 0 && (
           <div className="mt-4 card-premium p-4 bg-blue-50/30 border border-blue-100">
             <div className="flex items-center gap-2 mb-2">
@@ -324,7 +341,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           )}
 
           {hasRooms ? (
-            // ✅ NEW: Display rooms with nested beds
             <div className="space-y-4">
               {property.rooms!.map((room) => (
                 <div key={room.id} className="rounded-xl bg-white p-4 shadow-sm">
@@ -382,7 +398,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
               ))}
             </div>
           ) : (
-            // ✅ Fallback: flat bed spaces (old listings)
             <div className="space-y-3">
               {property.bedSpaces?.map((bed) => {
                 const isAvailable = bed.isAvailable;

@@ -12,13 +12,19 @@ import { isAdminEmail } from "@/lib/admin";
 import { useNotifications } from "@/hooks/useNotifications";
 
 export function Navbar() {
-  const { user, role, isLoading } = useAuth();
+  const { user, isLoading } = useAuth(); // ✅ Removed `role`
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { counts } = useNotifications();
+
+  // ✅ Use user.role directly
+  const effectiveRole = user?.role || null;
+
+  // ✅ Debug log
+  console.log("🔍 Navbar debug:", { user, isLoading, effectiveRole });
 
   // Hide navbar on admin pages
   if (pathname?.startsWith("/admin")) {
@@ -51,7 +57,7 @@ export function Navbar() {
     setIsMobileMenuOpen(false);
   };
 
-  const displayName = user?.displayName || user?.email?.split("@")[0] || "User";
+  const displayName = user?.fullName || user?.email?.split("@")[0] || "User";
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -59,18 +65,15 @@ export function Navbar() {
     .toUpperCase()
     .slice(0, 2);
 
-  // Notification count
   const notificationCount = counts.total;
 
   return (
     <header className="sticky top-0 z-50 w-full bg-[var(--nexora-navy)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        {/* Logo */}
         <Link href="/" className="text-lg font-bold text-white">
           UniStayZM
         </Link>
 
-        {/* Navigation */}
         <nav className="flex items-center gap-4">
           {isLoading ? null : user ? (
             <>
@@ -85,7 +88,7 @@ export function Navbar() {
                     Admin
                   </Link>
                 )}
-                {role === "landlord" && (
+                {effectiveRole === "landlord" && (
                   <>
                     <Link
                       href="/dashboard/landlord/add-listing"
@@ -103,7 +106,7 @@ export function Navbar() {
                     </Link>
                   </>
                 )}
-                {role === "student" && (
+                {effectiveRole === "student" && (
                   <Link
                     href="/dashboard/student"
                     className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
@@ -114,13 +117,13 @@ export function Navbar() {
                 )}
               </div>
 
-              {/* 🔔 Notification Bell */}
+              {/* Notification Bell */}
               <div className="relative">
                 <Link
                   href={
-                    role === "landlord"
+                    effectiveRole === "landlord"
                       ? "/dashboard/landlord"
-                      : role === "student"
+                      : effectiveRole === "student"
                       ? "/dashboard/student"
                       : "/"
                   }
@@ -135,7 +138,7 @@ export function Navbar() {
                 </Link>
               </div>
 
-              {/* 🍔 Hamburger (mobile) */}
+              {/* Hamburger (mobile) */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="flex items-center justify-center rounded-full p-2 text-gray-300 hover:bg-white/10 hover:text-white transition-colors md:hidden"
@@ -167,15 +170,15 @@ export function Navbar() {
                   <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5">
                     <div className="border-b border-gray-100 px-4 py-3">
                       <p className="truncate text-sm font-semibold text-gray-900">
-                        {user.displayName || "User"}
+                        {displayName}
                       </p>
                       <p className="truncate text-xs text-gray-500">{user.email}</p>
                       <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs capitalize text-blue-600">
-                        {role || "user"}
+                        {effectiveRole || "user"}
                       </span>
                     </div>
                     <div className="py-1">
-                      {role === "landlord" && (
+                      {effectiveRole === "landlord" && (
                         <Link
                           href="/dashboard/landlord"
                           onClick={() => setIsMenuOpen(false)}
@@ -185,7 +188,7 @@ export function Navbar() {
                           Dashboard
                         </Link>
                       )}
-                      {role === "student" && (
+                      {effectiveRole === "student" && (
                         <Link
                           href="/dashboard/student"
                           onClick={() => setIsMenuOpen(false)}
@@ -228,7 +231,6 @@ export function Navbar() {
               </div>
             </>
           ) : (
-            // Not logged in
             <>
               <Link href="/login" className="text-sm font-medium text-gray-300 hover:text-white">
                 Log In
@@ -252,7 +254,7 @@ export function Navbar() {
               <span className="font-semibold text-white">{displayName}</span>
               <span className="ml-2 text-xs text-gray-400">{user.email}</span>
             </p>
-            {role === "landlord" && (
+            {effectiveRole === "landlord" && (
               <>
                 <Link
                   href="/dashboard/landlord/add-listing"
@@ -272,7 +274,7 @@ export function Navbar() {
                 </Link>
               </>
             )}
-            {role === "student" && (
+            {effectiveRole === "student" && (
               <Link
                 href="/dashboard/student"
                 onClick={() => setIsMobileMenuOpen(false)}

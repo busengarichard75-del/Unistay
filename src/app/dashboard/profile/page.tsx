@@ -11,10 +11,10 @@ import { db, auth } from "@/lib/firebase";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 export default function ProfilePage() {
-  const { user, isLoading } = useRequireAuth(); // ✅ No role argument – works for everyone
+  const { user, isLoading } = useRequireAuth();
   const router = useRouter();
 
-  const [displayName, setDisplayName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [phone, setPhone] = useState("");
@@ -33,13 +33,13 @@ export default function ProfilePage() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setDisplayName(data.name || user.displayName || "");
+          setFullName(data.fullName || user.fullName || "");
           setEmail(user.email || "");
           setRole(data.role || "student");
           setPhone(data.phone || "");
           setStudentNumber(data.studentNumber || "");
         } else {
-          setDisplayName(user.displayName || "");
+          setFullName(user.fullName || "");
           setEmail(user.email || "");
         }
       } catch {
@@ -55,7 +55,7 @@ export default function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!displayName.trim()) {
+    if (!fullName.trim()) {
       toast.error("Name cannot be empty.");
       return;
     }
@@ -64,7 +64,7 @@ export default function ProfilePage() {
     try {
       const userRef = doc(db, "users", user.uid);
       const updateData: any = {
-        name: displayName,
+        fullName: fullName,
         phone,
       };
       if (role === "student") {
@@ -95,8 +95,15 @@ export default function ProfilePage() {
 
     setIsDeleting(true);
     try {
+      // ✅ Use auth.currentUser directly
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser) {
+        toast.error("You are not logged in.");
+        return;
+      }
+
       await deleteDoc(doc(db, "users", user.uid));
-      await deleteUser(user);
+      await deleteUser(firebaseUser);
       toast.success("Account deleted successfully.");
       router.push("/");
     } catch (err: any) {
@@ -113,7 +120,7 @@ export default function ProfilePage() {
     }
   };
 
-  const initials = displayName
+  const initials = fullName
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -161,7 +168,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Error Banner */}
         {error && (
           <div className="mt-6 rounded-2xl bg-red-50 p-4 text-center text-sm text-red-600">
             {error}
@@ -171,10 +177,10 @@ export default function ProfilePage() {
         {/* Profile Form */}
         <div className="mt-6 card-premium bg-white p-6 shadow-sm">
           <form onSubmit={handleSave} className="space-y-5">
-            {/* Display Name */}
+            {/* Full Name */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-[var(--nexora-text-secondary)]">
-                Display Name
+                Full Name (as on NRC)
               </label>
               <div className="relative">
                 <User
@@ -183,8 +189,8 @@ export default function ProfilePage() {
                 />
                 <input
                   type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/20"
                   placeholder="Your full name"
                 />

@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot, QuerySnapshot, DocumentData } from "firebase/firestore";
+import { collection, query, where, onSnapshot, QuerySnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { isAdminEmail } from "@/lib/admin";
 
 interface NotificationCounts {
-  pendingRequests: number; // for landlords – bookings with status "requested"
-  pendingApprovals: number; // for students – bookings with status "approved" (waiting for payment)
-  pendingPayments: number; // for admin – bookings with status "approved" (pending payment)
+  pendingRequests: number;
+  pendingApprovals: number;
+  pendingPayments: number;
   total: number;
 }
 
 export function useNotifications() {
-  const { user, role } = useAuth();
+  const { user } = useAuth(); // ✅ Removed `role` from destructuring
   const [counts, setCounts] = useState<NotificationCounts>({
     pendingRequests: 0,
     pendingApprovals: 0,
@@ -21,6 +21,7 @@ export function useNotifications() {
   });
   const [loading, setLoading] = useState(true);
   const isAdmin = user && isAdminEmail(user.email);
+  const role = user?.role; // ✅ Use user.role directly
 
   useEffect(() => {
     if (!user) {
@@ -28,8 +29,7 @@ export function useNotifications() {
       return;
     }
 
-    // Build queries based on role
-    const queries: { q: any; key: keyof NotificationCounts }[] = [];
+    let queries: any[] = [];
 
     if (role === "landlord") {
       const q = query(
@@ -60,7 +60,7 @@ export function useNotifications() {
 
     // Use onSnapshot for real‑time updates
     const unsubscribes = queries.map(({ q, key }) => {
-      return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+      return onSnapshot(q, (snapshot: QuerySnapshot) => {
         setCounts((prev) => {
           const newCounts = { ...prev, [key]: snapshot.size };
           // Update total: sum all relevant counts
@@ -73,7 +73,6 @@ export function useNotifications() {
         setLoading(false);
       }, (error) => {
         console.error("Notification listener error:", error);
-        setLoading(false);
       });
     });
 

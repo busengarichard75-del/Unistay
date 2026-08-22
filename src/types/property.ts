@@ -36,13 +36,18 @@ export interface Property {
   location: string;
   imageUrl?: string;
   imageUrls?: string[];
-  bedSpaces?: BedSpace[];        // ✅ Kept for backward compatibility (old listings)
-  rooms?: Room[];                // ✅ NEW: rooms with nested bed spaces (new listings)
+  bedSpaces?: BedSpace[];
+  rooms?: Room[];
   latitude?: number;
   longitude?: number;
   isBoosted?: boolean;
   boostedAt?: number;
   boostExpiry?: number;
   additionalAmenities?: string[];
-  verificationStatus?: VerificationStatus; // ✅ NEW: for admin verification
+  verificationStatus?: VerificationStatus;
+  
+  // ✅ NEW – Landlord Experience Upgrade
+  isActive?: boolean;        // default: true – if false, hidden from public
+  views?: number;            // view counter
+  bookings?: number;         // confirmed bookings count
 }

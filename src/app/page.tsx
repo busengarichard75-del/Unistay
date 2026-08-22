@@ -19,7 +19,7 @@ import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal
 import { NexoraChat } from "@/components/nexora/NexoraChat";
 
 function HomeContent() {
-  const { user, role } = useAuth();
+  const { user } = useAuth(); // ✅ Removed `role` from destructuring
   const searchParams = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isFetching, setIsFetching] = useState(true);
@@ -30,14 +30,16 @@ function HomeContent() {
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
   const [showFindModal, setShowFindModal] = useState(false);
 
-  // Auto-open modal if ?openModal=true (from "Refine preferences" link)
+  // ✅ Use user.role directly
+  const effectiveRole = user?.role || null;
+  const isStudent = user && effectiveRole === "student";
+
   useEffect(() => {
     if (searchParams.get("openModal") === "true") {
       setShowFindModal(true);
     }
   }, [searchParams]);
 
-  // Listen for custom event from Nexora to open the modal
   useEffect(() => {
     const handleOpenModal = () => setShowFindModal(true);
     window.addEventListener("openFindModal", handleOpenModal);
@@ -60,6 +62,9 @@ function HomeContent() {
 
   const filteredProperties = properties
     .filter((property) => {
+      // ✅ Skip inactive properties (isActive === false)
+      if (property.isActive === false) return false;
+
       const search = keyword.toLowerCase();
       const matchesKeyword =
         property.title.toLowerCase().includes(search) ||
@@ -95,15 +100,13 @@ function HomeContent() {
     );
   }
 
-  const isStudent = user && role === "student";
-
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
       <Navbar />
       <AnnouncementBanner />
       <Hero />
 
-      {/* 🧭 Find My Best House – only for logged-in students */}
+      {/* 🧭 Find My Best House – only for logged‑in students */}
       {isStudent && (
         <div className="container-wide mt-6">
           <div className="card-premium bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -174,11 +177,7 @@ function HomeContent() {
       )}
 
       <Footer />
-
-      {/* 📱 Nexora Assistant – floating chat */}
       <NexoraChat />
-
-      {/* 🧭 Find My Best House – preference modal */}
       <PreferenceModal isOpen={showFindModal} onClose={() => setShowFindModal(false)} />
     </main>
   );
