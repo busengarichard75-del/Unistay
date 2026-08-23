@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { Home, Trash2, Info, MapPin } from "lucide-react";
+import { Home, Trash2, Info, MapPin, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -23,6 +23,7 @@ const PropertyMap = dynamic(
 
 const PAYMENT_NUMBER = "+260 0771319817";
 
+// --- Helper: status message (text + color) ---
 function statusMessage(booking: Booking) {
   if (booking.status === "requested") {
     return { text: "Waiting for landlord approval", color: "var(--nexora-warning)" };
@@ -39,6 +40,22 @@ function statusMessage(booking: Booking) {
   return { text: "Booking confirmed!", color: "var(--nexora-success)" };
 }
 
+// --- Helper: badge styles for status pills ---
+function getBadgeStyles(status: string) {
+  switch (status) {
+    case "requested":
+      return "bg-yellow-100 text-yellow-800";
+    case "approved":
+      return "bg-blue-100 text-blue-800";
+    case "confirmed":
+      return "bg-green-100 text-green-800";
+    case "rejected":
+      return "bg-red-100 text-red-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+}
+
 export default function StudentDashboardPage() {
   const { user, isLoading } = useRequireAuth();
   const userLocation = useGeolocation();
@@ -48,24 +65,30 @@ export default function StudentDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [propertyMap, setPropertyMap] = useState<Record<string, Property>>({});
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [userFullName, setUserFullName] = useState<string | null>(null);
 
-  // ─── Check if user has accepted terms ───
+  // ─── Check terms + fetch user's full name ───
   useEffect(() => {
     if (!user) return;
-    const checkTerms = async () => {
+    const fetchUserData = async () => {
       try {
         const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data()?.hasAcceptedTerms === false) {
-          setShowTermsModal(true);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data?.fullName) setUserFullName(data.fullName);
+          if (data?.hasAcceptedTerms === false) {
+            setShowTermsModal(true);
+          }
         }
       } catch {
         // Silent fail – don't block the dashboard
       }
     };
-    checkTerms();
+    fetchUserData();
   }, [user]);
 
+  // ─── Fetch bookings ───
   useEffect(() => {
     if (!user) return;
     const fetchBookings = async () => {
@@ -93,7 +116,7 @@ export default function StudentDashboardPage() {
   }, [user]);
 
   async function handleDelete(bookingId: string) {
-    if (!window.confirm("Remove this booking from your history?")) return;
+    if (!window.confirm("Remove this confirmed booking from your history?")) return;
     try {
       await deleteBooking(bookingId);
       setBookings((prev) => prev.filter((b) => b.id !== bookingId));
@@ -118,9 +141,13 @@ export default function StudentDashboardPage() {
           <BackButton />
         </div>
 
+        {/* ─── Header ─── */}
         <div className="card-premium p-6 bg-[var(--nexora-navy)] text-white">
           <p className="text-sm text-gray-300">Welcome back</p>
-          <h1 className="mt-1 text-xl font-bold">{user.email}</h1>
+          <h1 className="mt-1 text-xl font-bold">{userFullName || user.email}</h1>
+          {userFullName && (
+            <p className="mt-0.5 text-xs text-gray-400">{user.email}</p>
+          )}
         </div>
 
         {error && (
@@ -129,8 +156,14 @@ export default function StudentDashboardPage() {
           </div>
         )}
 
+        {/* ─── My Bookings ─── */}
         <div className="mt-8">
-          <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">My Bookings</h2>
+          <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
+            My Bookings
+            <span className="ml-2 text-sm font-normal text-gray-400">
+              ({bookings.length})
+            </span>
+          </h2>
 
           {isFetching ? (
             <div className="space-y-3">
@@ -143,63 +176,123 @@ export default function StudentDashboardPage() {
               ))}
             </div>
           ) : bookings.length === 0 ? (
-            <div className="card-premium p-8 text-center">
-              <p className="text-sm text-[var(--nexora-text-secondary)]">
-                You haven't booked any bed spaces yet.
+            /* ─── Improved Empty State ─── */
+            <div className="card-premium p-10 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[var(--nexora-primary)]">
+                <Home size={28} />
+              </div>
+              <p className="text-sm font-medium text-[var(--nexora-text-primary)]">
+                No bookings yet
+              </p>
+              <p className="mt-1 text-xs text-[var(--nexora-text-secondary)]">
+                Discover verified accommodation near your campus.
               </p>
               <Link
                 href="/"
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
               >
                 <Home size={16} />
-                Browse boarding houses
+                Find Your First Room →
               </Link>
             </div>
           ) : (
             <>
-              <div className="mb-3 flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-xs text-[var(--nexora-text-secondary)]">
-                <Info size={16} className="shrink-0 mt-0.5 text-[var(--nexora-primary)]" />
-                <span>You can only remove <strong>confirmed</strong> bookings from your history.</span>
+              {/* ─── Faded helper note ─── */}
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-400">
+                <Info size={16} className="shrink-0 mt-0.5 text-gray-400" />
+                <span>
+                  You can only remove <strong className="text-gray-500">confirmed</strong> bookings from your history.
+                </span>
               </div>
+
               <div className="space-y-4">
                 {bookings.map((booking) => {
                   const status = statusMessage(booking);
                   const property = propertyMap[booking.propertyId];
-                  const hasCoordinates = property?.latitude !== undefined && property?.longitude !== undefined;
+                  const hasCoordinates =
+                    property?.latitude !== undefined &&
+                    property?.longitude !== undefined;
                   const isConfirmed = booking.status === "confirmed";
+                  const isApproved = booking.status === "approved";
 
-                  const defaultCenter: [number, number] = userLocation.latitude && userLocation.longitude
-                    ? [userLocation.latitude, userLocation.longitude]
-                    : hasCoordinates
-                    ? [property!.latitude!, property!.longitude!]
-                    : [-15.3875, 28.3228];
+                  const defaultCenter: [number, number] =
+                    userLocation.latitude && userLocation.longitude
+                      ? [userLocation.latitude, userLocation.longitude]
+                      : hasCoordinates
+                      ? [property!.latitude!, property!.longitude!]
+                      : [-15.3875, 28.3228];
 
                   return (
                     <div
                       key={booking.id}
                       className="rounded-2xl bg-white p-4 shadow-sm"
                     >
+                      {/* ─── Top row: title, price, status pill, delete ─── */}
                       <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{booking.propertyTitle}</p>
-                          <p className="text-xs text-gray-500">
-                            K{booking.price.toLocaleString()}/{booking.paymentPeriod === "termly" ? "term" : "month"}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {booking.propertyTitle}
                           </p>
-                          <p className="mt-2 text-xs font-semibold" style={{ color: status.color }}>
-                            {status.text}
+                          <p className="text-xs text-gray-500">
+                            K{booking.price.toLocaleString()}/
+                            {booking.paymentPeriod === "termly" ? "term" : "month"}
                           </p>
                         </div>
-                        {booking.status === "confirmed" && (
-                          <button
-                            onClick={() => handleDelete(booking.id)}
-                            className="rounded-full p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                            aria-label="Delete booking"
+                        <div className="flex items-center gap-2">
+                          {/* Status Badge */}
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getBadgeStyles(
+                              booking.status
+                            )}`}
                           >
-                            <Trash2 size={18} />
-                          </button>
-                        )}
+                            {booking.status.charAt(0).toUpperCase() +
+                              booking.status.slice(1)}
+                          </span>
+                          {/* Delete button (only for confirmed) */}
+                          {isConfirmed && (
+                            <button
+                              onClick={() => handleDelete(booking.id)}
+                              className="rounded-full p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                              aria-label="Delete booking"
+                              title="Remove this confirmed booking from your history"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
+                      {/* ─── Status message ─── */}
+                      <p
+                        className="mt-1.5 text-xs font-medium"
+                        style={{ color: status.color }}
+                      >
+                        {status.text}
+                      </p>
+
+                      {/* ─── Action Required box (for approved bookings) ─── */}
+                      {isApproved && (
+                        <div className="mt-2 rounded-md border-l-4 border-[var(--nexora-primary)] bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                          <span className="font-semibold">Action Required:</span>{" "}
+                          {status.text}
+                        </div>
+                      )}
+
+                      {/* ─── "View Confirmation" – MOVED ABOVE MAP ─── */}
+                      {isConfirmed && (
+                        <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+                          <Link
+                            href={`/booking/confirmation/${booking.id}`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-4 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-200"
+                          >
+                            <Ticket size={14} />
+                            View Your Booking Pass →
+                          </Link>
+                        </div>
+                      )}
+
+                      {/* ─── Map (only for confirmed) ─── */}
                       {isConfirmed && hasCoordinates && property && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
                           <div className="flex items-center justify-between mb-2">
@@ -219,22 +312,10 @@ export default function StudentDashboardPage() {
                           <PropertyMap
                             latitude={property.latitude}
                             longitude={property.longitude}
-                            height="150px"
+                            height="clamp(150px, 25vw, 250px)"
                             selectable={false}
                             defaultCenter={defaultCenter}
                           />
-                        </div>
-                      )}
-
-                      {booking.status === "confirmed" && (
-                        <div className="mt-3 border-t border-gray-100 pt-3">
-                          <Link
-                            href={`/booking/confirmation/${booking.id}`}
-                            target="_blank"
-                            className="inline-block rounded-full bg-blue-100 px-4 py-2 text-xs font-medium text-blue-700 hover:bg-blue-200 transition"
-                          >
-                            View Confirmation
-                          </Link>
                         </div>
                       )}
                     </div>

@@ -1,10 +1,14 @@
+"use client";
+
+import { useParams } from "next/navigation";
 import { PropertyDetailClient } from "@/components/property/PropertyDetailClient";
+import { PageTransition } from "@/components/PageTransition";
 
-interface PropertyDetailPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default async function PropertyDetailPage({ params }: PropertyDetailPageProps) {
-  const { id } = await params;
-  return <PropertyDetailClient id={id} />;
+export default function PropertyDetailPage() {
+  const params = useParams<{ id: string }>();
+  return (
+    <PageTransition>
+      <PropertyDetailClient id={params.id} />
+    </PageTransition>
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // ✅ Added useRouter
 import { useState, useRef, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { Plus, ClipboardList, Calendar, ShieldCheck, User, LogOut, Settings, LayoutDashboard, ChevronDown, Menu, X, Bell } from "lucide-react";
@@ -12,19 +12,17 @@ import { isAdminEmail } from "@/lib/admin";
 import { useNotifications } from "@/hooks/useNotifications";
 
 export function Navbar() {
-  const { user, isLoading } = useAuth(); // ✅ Removed `role`
+  const { user, isLoading } = useAuth(); // ✅ Removed role destructuring
+  const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { counts } = useNotifications();
 
-  // ✅ Use user.role directly
   const effectiveRole = user?.role || null;
-
-  // ✅ Debug log
-  console.log("🔍 Navbar debug:", { user, isLoading, effectiveRole });
 
   // Hide navbar on admin pages
   if (pathname?.startsWith("/admin")) {
@@ -47,11 +45,18 @@ export function Navbar() {
 
   const handleLogout = async () => {
     if (!window.confirm("Are you sure you want to log out?")) return;
+
+    setIsLoggingOut(true);
     try {
+      // ✅ Artificial 3-second delay for premium feel
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       await signOut(auth);
       toast.success("Logged out successfully.");
+      router.push("/");
     } catch {
       toast.error("Logout failed. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
     }
     setIsMenuOpen(false);
     setIsMobileMenuOpen(false);
@@ -220,10 +225,11 @@ export function Navbar() {
                     <div className="border-t border-gray-100 py-1">
                       <button
                         onClick={handleLogout}
-                        className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        disabled={isLoggingOut}
+                        className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
                       >
                         <LogOut size={16} />
-                        Log Out
+                        {isLoggingOut ? "Logging out..." : "Log Out"}
                       </button>
                     </div>
                   </div>
@@ -304,10 +310,11 @@ export function Navbar() {
             </Link>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 text-left"
+              disabled={isLoggingOut}
+              className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 text-left disabled:opacity-50"
             >
               <LogOut size={16} />
-              Log Out
+              {isLoggingOut ? "Logging out..." : "Log Out"}
             </button>
           </div>
         </div>

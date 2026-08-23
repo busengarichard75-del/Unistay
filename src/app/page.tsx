@@ -17,9 +17,10 @@ import { useAuth } from "@/lib/AuthContext";
 import { Sparkles } from "lucide-react";
 import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal";
 import { NexoraChat } from "@/components/nexora/NexoraChat";
+import { PageTransition } from "@/components/PageTransition";
 
 function HomeContent() {
-  const { user } = useAuth(); // ✅ Removed `role` from destructuring
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isFetching, setIsFetching] = useState(true);
@@ -30,7 +31,6 @@ function HomeContent() {
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
   const [showFindModal, setShowFindModal] = useState(false);
 
-  // ✅ Use user.role directly
   const effectiveRole = user?.role || null;
   const isStudent = user && effectiveRole === "student";
 
@@ -62,9 +62,7 @@ function HomeContent() {
 
   const filteredProperties = properties
     .filter((property) => {
-      // ✅ Skip inactive properties (isActive === false)
       if (property.isActive === false) return false;
-
       const search = keyword.toLowerCase();
       const matchesKeyword =
         property.title.toLowerCase().includes(search) ||
@@ -101,85 +99,86 @@ function HomeContent() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
-      <Navbar />
-      <AnnouncementBanner />
-      <Hero />
+    <PageTransition>
+      <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
+        <Navbar />
+        <AnnouncementBanner />
+        <Hero />
 
-      {/* 🧭 Find My Best House – only for logged‑in students */}
-      {isStudent && (
-        <div className="container-wide mt-6">
-          <div className="card-premium bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--nexora-navy)]">🧭 Find My Best House</h3>
-              <p className="text-sm text-gray-600">Tell us what matters to you. We'll find your best matches.</p>
-            </div>
-            <button
-              onClick={() => setShowFindModal(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--nexora-primary-hover)] transition-colors shrink-0"
-            >
-              <Sparkles size={18} />
-              Get Started
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="container-wide space-y-4 pt-6">
-        <SearchBar value={keyword} onChange={setKeyword} />
-        <PriceFilter
-          minPrice={minPrice}
-          maxPrice={maxPrice}
-          onMinChange={setMinPrice}
-          onMaxChange={setMaxPrice}
-        />
-        <label className="flex w-fit items-center gap-2 text-sm text-[var(--nexora-text-secondary)]">
-          <input
-            type="checkbox"
-            checked={showAvailableOnly}
-            onChange={(e) => setShowAvailableOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-[var(--nexora-primary)] focus:ring-[var(--nexora-primary)]"
-          />
-          Available beds only
-        </label>
-      </div>
-
-      {isFetching ? (
-        <div className="container-wide pb-8 pt-4">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-2xl bg-white p-5 shadow-sm">
-                <div className="mb-3 h-40 w-full rounded-xl bg-gray-200" />
-                <div className="mb-2 h-5 w-3/4 rounded bg-gray-200" />
-                <div className="mb-3 h-4 w-1/3 rounded bg-gray-200" />
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <div className="h-3 w-16 rounded bg-gray-200" />
-                  <div className="h-3 w-20 rounded bg-gray-200" />
-                  <div className="h-3 w-12 rounded bg-gray-200" />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-                  <div className="h-3 w-14 rounded bg-gray-200" />
-                  <div className="h-3 w-14 rounded bg-gray-200" />
-                  <div className="h-3 w-14 rounded bg-gray-200" />
-                </div>
+        {isStudent && (
+          <div className="container-wide mt-6">
+            <div className="card-premium bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-[var(--nexora-navy)]">🧭 Find My Best House</h3>
+                <p className="text-sm text-gray-600">Tell us what matters to you. We'll find your best matches.</p>
               </div>
-            ))}
+              <button
+                onClick={() => setShowFindModal(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--nexora-primary-hover)] transition-colors shrink-0"
+              >
+                <Sparkles size={18} />
+                Get Started
+              </button>
+            </div>
           </div>
-        </div>
-      ) : filteredProperties.length === 0 ? (
-        <p className="container-wide p-8 text-center text-sm text-[var(--nexora-text-secondary)]">
-          No properties match your filters. Try adjusting your search or price range.
-        </p>
-      ) : (
-        <div className="container-wide pb-8 pt-4">
-          <PropertyGrid properties={filteredProperties} />
-        </div>
-      )}
+        )}
 
-      <Footer />
-      <NexoraChat />
-      <PreferenceModal isOpen={showFindModal} onClose={() => setShowFindModal(false)} />
-    </main>
+        <div className="container-wide space-y-4 pt-6">
+          <SearchBar value={keyword} onChange={setKeyword} />
+          <PriceFilter
+            minPrice={minPrice}
+            maxPrice={maxPrice}
+            onMinChange={setMinPrice}
+            onMaxChange={setMaxPrice}
+          />
+          <label className="flex w-fit items-center gap-2 text-sm text-[var(--nexora-text-secondary)]">
+            <input
+              type="checkbox"
+              checked={showAvailableOnly}
+              onChange={(e) => setShowAvailableOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-[var(--nexora-primary)] focus:ring-[var(--nexora-primary)]"
+            />
+            Available beds only
+          </label>
+        </div>
+
+        {isFetching ? (
+          <div className="container-wide pb-8 pt-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="animate-pulse rounded-2xl bg-white p-5 shadow-sm">
+                  <div className="mb-3 h-40 w-full rounded-xl bg-gray-200" />
+                  <div className="mb-2 h-5 w-3/4 rounded bg-gray-200" />
+                  <div className="mb-3 h-4 w-1/3 rounded bg-gray-200" />
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className="h-3 w-16 rounded bg-gray-200" />
+                    <div className="h-3 w-20 rounded bg-gray-200" />
+                    <div className="h-3 w-12 rounded bg-gray-200" />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
+                    <div className="h-3 w-14 rounded bg-gray-200" />
+                    <div className="h-3 w-14 rounded bg-gray-200" />
+                    <div className="h-3 w-14 rounded bg-gray-200" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : filteredProperties.length === 0 ? (
+          <p className="container-wide p-8 text-center text-sm text-[var(--nexora-text-secondary)]">
+            No properties match your filters. Try adjusting your search or price range.
+          </p>
+        ) : (
+          <div className="container-wide pb-8 pt-4">
+            <PropertyGrid properties={filteredProperties} />
+          </div>
+        )}
+
+        <Footer />
+        <NexoraChat />
+        <PreferenceModal isOpen={showFindModal} onClose={() => setShowFindModal(false)} />
+      </main>
+    </PageTransition>
   );
 }
 

@@ -3,6 +3,9 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/lib/AuthContext";
 import { Toaster } from "sonner";
+import { AnimatePresence } from "framer-motion";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { NetworkStatus } from "@/components/NetworkStatus";
 
 export const metadata: Metadata = {
   title: "UniStayZM – Student Accommodation Platform",
@@ -31,10 +34,15 @@ export default function RootLayout({
       className={cn("h-full", "antialiased", "font-sans")}
     >
       <body className="min-h-full flex flex-col bg-[var(--nexora-surface)]">
-        <AuthProvider>
-          {children}
-          <Toaster position="bottom-right" richColors closeButton />
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <NetworkStatus />
+            <AnimatePresence mode="wait" initial={false}>
+              {children}
+            </AnimatePresence>
+            <Toaster position="bottom-right" richColors closeButton />
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
