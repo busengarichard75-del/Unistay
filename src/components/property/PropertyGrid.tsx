@@ -69,9 +69,12 @@ export function PropertyGrid({ properties }: PropertyGridProps) {
     const visibleProperties = properties.filter(
       (property) => property.isActive !== false
     );
+
     const grouped = new Map<string, Group>();
+
     for (const property of visibleProperties) {
       const key = getGroupKey(property);
+
       if (!grouped.has(key)) {
         grouped.set(key, {
           key,
@@ -79,8 +82,10 @@ export function PropertyGrid({ properties }: PropertyGridProps) {
           items: [],
         });
       }
+
       grouped.get(key)!.items.push(property);
     }
+
     return Array.from(grouped.values());
   }, [properties]);
 
@@ -107,18 +112,25 @@ export function PropertyGrid({ properties }: PropertyGridProps) {
           <ArrowLeft size={16} />
           All universities
         </button>
+
         <div>
           <h2 className="text-xl font-bold tracking-tight text-gray-900">
             {activeGroup.displayName}
           </h2>
+
           <p className="mt-1 text-sm text-gray-500">
             {activeGroup.items.length}{" "}
             {activeGroup.items.length === 1 ? "property" : "properties"}
           </p>
         </div>
+
         <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {activeGroup.items.map((property) => (
-            <PropertyCard key={property.id} property={property} compact />
+            <PropertyCard
+              key={property.id}
+              property={property}
+              compact
+            />
           ))}
         </div>
       </div>
@@ -152,27 +164,41 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
 
   const updateScrollState = useCallback(() => {
     const element = scrollRef.current;
+
     if (!element) return;
+
     const maxScrollLeft = element.scrollWidth - element.clientWidth;
+
     setCanScrollLeft(element.scrollLeft > 4);
     setCanScrollRight(element.scrollLeft < maxScrollLeft - 4);
   }, []);
 
   useEffect(() => {
     const element = scrollRef.current;
+
     if (!element) return;
+
     updateScrollState();
 
-    const handleScroll = () => updateScrollState();
-    const handleResize = () => updateScrollState();
+    const handleScroll = () => {
+      updateScrollState();
+    };
 
-    element.addEventListener("scroll", handleScroll, { passive: true });
+    const handleResize = () => {
+      updateScrollState();
+    };
+
+    element.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+
     window.addEventListener("resize", handleResize);
 
     const resizeObserver =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(updateScrollState)
         : null;
+
     resizeObserver?.observe(element);
 
     return () => {
@@ -184,40 +210,13 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
 
   const scrollRow = (direction: "left" | "right") => {
     const element = scrollRef.current;
+
     if (!element) return;
+
     element.scrollBy({
       left: direction === "right" ? SCROLL_AMOUNT : -SCROLL_AMOUNT,
       behavior: "smooth",
     });
-  };
-
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    const element = scrollRef.current;
-    if (!element) return;
-
-    if (element.scrollWidth <= element.clientWidth) return;
-
-    const delta =
-      Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        ? event.deltaX
-        : event.deltaY;
-
-    if (delta === 0) return;
-
-    const atStart = element.scrollLeft <= 0;
-    const atEnd =
-      element.scrollLeft + element.clientWidth >= element.scrollWidth - 1;
-
-    const movingRight = delta > 0;
-    const movingLeft = delta < 0;
-
-    if ((movingRight && !atEnd) || (movingLeft && !atStart)) {
-      event.preventDefault();
-      element.scrollBy({
-        left: delta,
-        behavior: "auto",
-      });
-    }
   };
 
   const showNavigation =
@@ -233,11 +232,13 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
           <h2 className="truncate text-lg font-bold tracking-tight text-gray-900 sm:text-xl">
             {getHeading(group.displayName)}
           </h2>
+
           <p className="mt-0.5 text-xs text-gray-500 sm:text-sm">
             {group.items.length}{" "}
             {group.items.length === 1 ? "property" : "properties"}
           </p>
         </div>
+
         {group.items.length > CARDS_PER_GROUP && (
           <button
             type="button"
@@ -307,13 +308,11 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
         {/* ─── SCROLL CONTAINER (FIXED FOR TOUCH) ─── */}
         <div
           ref={scrollRef}
-          onWheel={handleWheel}
           className="
             flex
             min-w-0
             gap-4
             overflow-x-auto
-            overscroll-contain
             scroll-smooth
             pb-2
             [scrollbar-width:none]
@@ -322,7 +321,6 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
           style={{
             WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
-            touchAction: "pan-x", // allows horizontal panning, keeps vertical scrolling
           }}
         >
           {group.items.map((property) => (
@@ -340,7 +338,10 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
                 xl:min-w-[215px]
               "
             >
-              <PropertyCard property={property} compact />
+              <PropertyCard
+                property={property}
+                compact
+              />
             </div>
           ))}
         </div>
