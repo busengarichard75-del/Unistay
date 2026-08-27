@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import { isBookingExpired } from "@/lib/bookingExpiration";
 import webpush from "web-push";
+import { QueryDocumentSnapshot } from "firebase-admin/firestore";
 
 // Configure web-push
 webpush.setVapidDetails(
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     const expired: any[] = [];
     const batch = db.batch();
 
-    bookingsSnapshot.forEach((doc) => {
+    bookingsSnapshot.forEach((doc: QueryDocumentSnapshot) => {
       const booking = { id: doc.id, ...doc.data() } as any;
       if (isBookingExpired(booking)) {
         batch.update(doc.ref, {

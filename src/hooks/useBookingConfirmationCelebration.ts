@@ -1,6 +1,7 @@
 // src/hooks/useBookingConfirmationCelebration.ts
 import { useState, useEffect } from "react";
 import { useBookingListener } from "./useBookingListener";
+import { Booking } from "@/types/booking"; // ✅ NEW IMPORT
 
 export function useBookingConfirmationCelebration() {
   const { bookings } = useBookingListener();

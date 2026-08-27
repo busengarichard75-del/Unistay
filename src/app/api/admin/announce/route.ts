@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import webpush from "web-push";
+import { QueryDocumentSnapshot, Query } from "firebase-admin/firestore";
 
 // Configure web-push
 webpush.setVapidDetails(
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get all users with push subscriptions
-    let usersQuery = db.collection("pushSubscriptions");
+    let usersQuery: Query | null = db.collection("pushSubscriptions") as any;
 
     // If targeting a specific role, we need to fetch users first
     if (targetRole) {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
         .where("role", "==", targetRole)
         .get();
       
-      const userIds = usersSnapshot.docs.map(doc => doc.id);
+      const userIds = usersSnapshot.docs.map((doc: QueryDocumentSnapshot) => doc.id);
       
       if (userIds.length === 0) {
         return NextResponse.json({
@@ -44,7 +45,15 @@ export async function POST(req: NextRequest) {
       // Query subscriptions for these users
       usersQuery = db
         .collection("pushSubscriptions")
-        .where("userId", "in", userIds);
+        .where("userId", "in", userIds) as any;
+    }
+
+    if (!usersQuery) {
+      return NextResponse.json({
+        success: true,
+        message: "No query to execute",
+        sent: 0,
+      });
     }
 
     const subscriptionsSnapshot = await usersQuery.get();
