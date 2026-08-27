@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic"; // ✅ Add this
+import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
@@ -16,8 +16,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { sendPushNotification } from "@/lib/sendPushNotification"; // ✅ NEW
 
-// ✅ Dynamically import PropertyMap with SSR disabled
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
   { ssr: false }
@@ -54,7 +54,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     fetchProperty();
   }, [id]);
 
-  // ✅ Increment view counter when property is viewed
   useEffect(() => {
     if (property && !isFetching) {
       const incrementViews = async () => {
@@ -62,8 +61,8 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           await updateProperty(property.id, {
             views: (property.views || 0) + 1,
           });
-        } catch (error) {
-          // Silent fail – don't break the page
+        } catch {
+          // Silent fail
         }
       };
       incrementViews();
@@ -153,6 +152,14 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
       setBookingMessage(
         "Request sent! The landlord will review and approve your booking. The bed remains available until approved."
       );
+
+      // ✅ Send push notification to landlord
+      await sendPushNotification({
+        userId: property.ownerId,
+        title: "New Booking Request! 🏠",
+        body: `${studentName} requested to book "${property.title}"`,
+        url: "/dashboard/landlord",
+      });
 
       toast.success("Booking request sent successfully!");
 

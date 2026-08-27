@@ -15,6 +15,7 @@ import { db } from "@/lib/firebase";
 import { Booking } from "@/types/booking";
 import { Property } from "@/types/property";
 import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
+import { sendPushNotification } from "@/lib/sendPushNotification"; // ✅ NEW
 
 const AGENT_FEE = 100;
 const BOOST_FEE = 100;
@@ -51,6 +52,9 @@ export default function AdminPage() {
   const [isActive, setIsActive] = useState(false);
   const [isUpdatingAnnounce, setIsUpdatingAnnounce] = useState(false);
   const [loadingAnnounce, setLoadingAnnounce] = useState(true);
+  // ✅ NEW: Push notification options for announcements
+  const [sendPush, setSendPush] = useState(false);
+  const [pushTarget, setPushTarget] = useState<"all" | "student" | "landlord">("all");
 
   // Boost Management state
   const [allProperties, setAllProperties] = useState<Property[]>([]);
@@ -270,7 +274,7 @@ export default function AdminPage() {
     }
   }
 
-  // Announcement
+  // ─── Announcement with Push Notifications ───
   const handlePublishAnnounce = async () => {
     if (!announceContent.trim()) {
       toast.error("Please write a message.");
@@ -278,10 +282,31 @@ export default function AdminPage() {
     }
     setIsUpdatingAnnounce(true);
     try {
+      // 1. Save announcement to Firestore
       await updateAnnouncement({ content: announceContent.trim(), isActive: true });
       setIsActive(true);
       toast.success("Announcement published!");
-    } catch {
+
+      // 2. If send push is checked, send push notifications
+      if (sendPush) {
+        const response = await fetch("/api/admin/announce", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "📢 New Announcement",
+            body: announceContent.trim(),
+            targetRole: pushTarget === "all" ? undefined : pushTarget,
+          }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          toast.success(`Push notification sent to ${data.sent} users!`);
+        } else {
+          toast.error("Failed to send push notifications: " + data.error);
+        }
+      }
+    } catch (err) {
+      console.error(err);
       toast.error("Failed to publish announcement.");
     } finally {
       setIsUpdatingAnnounce(false);
@@ -619,7 +644,7 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* 3. Announcements */}
+        {/* 3. Announcements with Push Notifications */}
         <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Megaphone size={20} className="text-blue-400" />
@@ -652,27 +677,51 @@ export default function AdminPage() {
             disabled={loadingAnnounce}
           />
 
-          <div className="mt-3 flex flex-wrap gap-3">
-            <button
-              onClick={handlePublishAnnounce}
-              disabled={isUpdatingAnnounce || loadingAnnounce}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-400"
-            >
-              <Megaphone size={16} />
-              {isUpdatingAnnounce ? "Publishing..." : "Publish"}
-            </button>
-            <button
-              onClick={handleHideAnnounce}
-              disabled={isUpdatingAnnounce || loadingAnnounce || !isActive}
-              className="flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50"
-            >
-              <EyeOff size={16} />
-              Hide
-            </button>
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={sendPush}
+                  onChange={(e) => setSendPush(e.target.checked)}
+                  className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                />
+                Send as Push Notification
+              </label>
+              {sendPush && (
+                <select
+                  value={pushTarget}
+                  onChange={(e) => setPushTarget(e.target.value as "all" | "student" | "landlord")}
+                  className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-1.5 text-sm text-white outline-none focus:border-blue-500"
+                >
+                  <option value="all">All Users</option>
+                  <option value="student">Students Only</option>
+                  <option value="landlord">Landlords Only</option>
+                </select>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handlePublishAnnounce}
+                disabled={isUpdatingAnnounce || loadingAnnounce}
+                className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-400"
+              >
+                <Megaphone size={16} />
+                {isUpdatingAnnounce ? "Publishing..." : "Publish"}
+              </button>
+              <button
+                onClick={handleHideAnnounce}
+                disabled={isUpdatingAnnounce || loadingAnnounce || !isActive}
+                className="flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50"
+              >
+                <EyeOff size={16} />
+                Hide
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* 🆕 4. Pending Verifications */}
+        {/* 4. Pending Verifications */}
         <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">

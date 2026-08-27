@@ -1,12 +1,13 @@
+// src/types/booking.ts
 import { PaymentPeriod } from "./property";
 
-export type BookingStatus = "requested" | "approved" | "confirmed" | "rejected";
+export type BookingStatus = "requested" | "approved" | "confirmed" | "rejected" | "expired";
 
 export interface Booking {
   id: string;
   studentId: string;
   studentName: string;
-  studentPhone?: string;    // ✅ NEW – store student's phone for landlord view
+  studentPhone?: string;
   landlordId: string;
   propertyId: string;
   bedSpaceId: string;
@@ -21,4 +22,6 @@ export interface Booking {
   confirmedAt?: number;
   verificationToken?: string;
   studentNumber?: string;
+  approvalExpiresAt?: number; // ✅ New – timestamp when approval expires
+  expiredAt?: number;          // ✅ New – timestamp when expired
 }

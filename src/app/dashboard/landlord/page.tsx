@@ -12,7 +12,9 @@ import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
 import { BackButton } from "@/components/ui/BackButton";
 import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
-import { PageTransition } from "@/components/PageTransition"; // ✅ NEW
+import { PageTransition } from "@/components/PageTransition";
+import { sendPushNotification } from "@/lib/sendPushNotification"; // ✅ NEW
+import { getExpiryTimestamp } from "@/lib/bookingExpiration"; // ✅ NEW
 
 const PAGE_SIZE = 6;
 
@@ -126,6 +128,7 @@ export default function LandlordDashboardPage() {
           confirmationCode: confirmationData.confirmationCode,
           verificationToken: confirmationData.verificationToken,
           approvedAt: confirmationData.approvedAt,
+          approvalExpiresAt: getExpiryTimestamp(), // ✅ NEW – set expiration 24h from now
         };
       }
       await updateBookingStatus(booking.id, updatePayload);
@@ -140,11 +143,21 @@ export default function LandlordDashboardPage() {
                   confirmationCode: updatePayload.confirmationCode,
                   verificationToken: updatePayload.verificationToken,
                   approvedAt: updatePayload.approvedAt,
+                  approvalExpiresAt: updatePayload.approvalExpiresAt,
                 }),
               }
             : b
         )
       );
+
+      // ✅ Send push notification to student
+      await sendPushNotification({
+        userId: booking.studentId,
+        title: "✅ Booking Approved!",
+        body: `Your booking at "${booking.propertyTitle}" has been approved by the landlord. You have 48 hours to confirm.`,
+        url: "/dashboard/student",
+      });
+
       toast.success("Booking approved successfully!");
     } catch {
       toast.error("Failed to approve booking. Please try again.");
@@ -165,6 +178,15 @@ export default function LandlordDashboardPage() {
       setBookings((prev) =>
         prev.map((b) => (b.id === booking.id ? { ...b, status: "rejected" } : b))
       );
+
+      // ✅ Send push notification to student
+      await sendPushNotification({
+        userId: booking.studentId,
+        title: "❌ Booking Rejected",
+        body: `Your booking request for "${booking.propertyTitle}" was rejected by the landlord.`,
+        url: "/dashboard/student",
+      });
+
       toast.success("Booking rejected successfully.");
     } catch {
       toast.error("Failed to reject booking. Please try again.");

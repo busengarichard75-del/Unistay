@@ -1,3 +1,4 @@
+// src/services/bookingService.ts
 import {
   collection,
   addDoc,
@@ -8,9 +9,11 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  runTransaction,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Booking, BookingStatus } from "@/types/booking";
+import { isBookingExpired } from "@/lib/bookingExpiration";
 
 const bookingsRef = collection(db, "bookings");
 
@@ -69,10 +72,9 @@ export async function getAllApprovedBookings(): Promise<Booking[]> {
   }
 }
 
-// ✅ UPDATED: Accepts an object for status + confirmation fields
 export async function updateBookingStatus(
   id: string,
-  data: Partial<Pick<Booking, "status" | "confirmationId" | "confirmationCode" | "verificationToken" | "approvedAt" | "confirmedAt">>
+  data: Partial<Pick<Booking, "status" | "confirmationId" | "confirmationCode" | "verificationToken" | "approvedAt" | "confirmedAt" | "approvalExpiresAt" | "expiredAt">>
 ): Promise<void> {
   try {
     await updateDoc(doc(db, "bookings", id), data);
@@ -87,6 +89,92 @@ export async function deleteBooking(id: string): Promise<void> {
     await deleteDoc(doc(db, "bookings", id));
   } catch (error) {
     console.error("Failed to delete booking:", error);
+    throw error;
+  }
+}
+
+// ─── CONFIRM BOOKING WITH ATOMIC TRANSACTION ───
+export async function confirmBooking(
+  bookingId: string,
+  propertyId: string,
+  bedSpaceId: string
+): Promise<void> {
+  const bookingRef = doc(db, "bookings", bookingId);
+  const propertyRef = doc(db, "properties", propertyId);
+
+  await runTransaction(db, async (transaction) => {
+    const bookingSnap = await transaction.get(bookingRef);
+    const propertySnap = await transaction.get(propertyRef);
+
+    if (!bookingSnap.exists()) {
+      throw new Error("Booking not found");
+    }
+    if (!propertySnap.exists()) {
+      throw new Error("Property not found");
+    }
+
+    const booking = bookingSnap.data() as Booking;
+    const property = propertySnap.data() as any;
+
+    // Validate booking status
+    if (booking.status !== "approved") {
+      throw new Error("Booking must be approved to confirm");
+    }
+
+    // Check expiration
+    if (booking.approvalExpiresAt && Date.now() > booking.approvalExpiresAt) {
+      throw new Error("Booking has expired");
+    }
+
+    // Find the bed space
+    const bedSpaces = property.bedSpaces || [];
+    const bedIndex = bedSpaces.findIndex((b: any) => b.id === bedSpaceId);
+    if (bedIndex === -1) {
+      throw new Error("Bed space not found");
+    }
+    if (!bedSpaces[bedIndex].isAvailable) {
+      throw new Error("Bed is no longer available");
+    }
+
+    // Mark bed as unavailable
+    bedSpaces[bedIndex].isAvailable = false;
+
+    // Update property
+    transaction.update(propertyRef, { bedSpaces });
+
+    // Update booking
+    transaction.update(bookingRef, {
+      status: "confirmed",
+      confirmedAt: Date.now(),
+    });
+  });
+}
+
+// ─── EXPIRE EXPIRED BOOKINGS ───
+export async function expireExpiredBookings(userId: string): Promise<number> {
+  try {
+    const q = query(
+      bookingsRef,
+      where("studentId", "==", userId),
+      where("status", "==", "approved")
+    );
+    const snapshot = await getDocs(q);
+    let expiredCount = 0;
+
+    for (const docRef of snapshot.docs) {
+      const booking = { id: docRef.id, ...docRef.data() } as Booking;
+      if (isBookingExpired(booking)) {
+        // Also need to free the bed space (optional – can be done in separate transaction)
+        await updateDoc(docRef.ref, {
+          status: "expired",
+          expiredAt: Date.now(),
+        });
+        expiredCount++;
+      }
+    }
+    return expiredCount;
+  } catch (error) {
+    console.error("Failed to expire bookings:", error);
     throw error;
   }
 }
