@@ -1,19 +1,27 @@
 // src/app/api/booking/expire/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase-admin";
+import { getFirestoreDb } from "@/lib/firebase-admin";
 import { isBookingExpired } from "@/lib/bookingExpiration";
 import webpush from "web-push";
 import { QueryDocumentSnapshot } from "firebase-admin/firestore";
 
-// Configure web-push
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 export async function POST(req: NextRequest) {
   try {
+    const db = getFirestoreDb();
+
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    const email = process.env.VAPID_EMAIL;
+
+    if (!publicKey || !privateKey || !email) {
+      return NextResponse.json(
+        { error: "VAPID keys are not configured." },
+        { status: 500 }
+      );
+    }
+
+    webpush.setVapidDetails(`mailto:${email}`, publicKey, privateKey);
+
     const { userId } = await req.json();
 
     if (!userId) {
@@ -44,16 +52,16 @@ export async function POST(req: NextRequest) {
     if (expired.length > 0) {
       await batch.commit();
 
-      // ─── Send push notifications for each expired booking ───
+      // Send push notifications for each expired booking
       for (const booking of expired) {
-        const payload = JSON.stringify({
+        // Notify student
+        const studentPayload = JSON.stringify({
           title: "⏰ Booking Expired",
           body: `Your booking at "${booking.propertyTitle}" has expired. The bed is now available again.`,
           icon: "/favicon.ico",
           url: "/dashboard/student",
         });
 
-        // Notify student
         const studentSubs = await db
           .collection("pushSubscriptions")
           .where("userId", "==", booking.studentId)
@@ -66,7 +74,7 @@ export async function POST(req: NextRequest) {
             keys: { p256dh: subData.keys.p256dh, auth: subData.keys.auth },
           };
           try {
-            await webpush.sendNotification(subscription, payload);
+            await webpush.sendNotification(subscription, studentPayload);
           } catch {
             // Silently fail
           }

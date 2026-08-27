@@ -1,17 +1,25 @@
 // src/app/api/notifications/send/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { getFirestoreDb } from "@/lib/firebase-admin";
 import webpush from "web-push";
-import { db } from "@/lib/firebase-admin";
-
-// Configure web-push
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   try {
+    const db = getFirestoreDb();
+
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    const email = process.env.VAPID_EMAIL;
+
+    if (!publicKey || !privateKey || !email) {
+      return NextResponse.json(
+        { error: "VAPID keys are not configured." },
+        { status: 500 }
+      );
+    }
+
+    webpush.setVapidDetails(`mailto:${email}`, publicKey, privateKey);
+
     const { userId, title, body, url, icon } = await req.json();
 
     if (!userId || !title || !body) {
@@ -59,7 +67,6 @@ export async function POST(req: NextRequest) {
         sentCount++;
         results.push({ endpoint: subData.endpoint, status: "success" });
       } catch (error: any) {
-        // If subscription is invalid (expired), delete it
         if (error.statusCode === 410 || error.statusCode === 404) {
           await doc.ref.delete();
           results.push({ endpoint: subData.endpoint, status: "removed" });
