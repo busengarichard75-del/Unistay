@@ -253,7 +253,7 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
 
       {/* Horizontal row container */}
       <div
-        className="relative min-w-0"
+        className="relative min-w-0 horizontal-scroll-wrapper"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -305,23 +305,10 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
           </button>
         )}
 
-        {/* ─── SCROLL CONTAINER (FIXED FOR TOUCH) ─── */}
+        {/* ─── SCROLL CONTAINER (MOBILE FIX) ─── */}
         <div
           ref={scrollRef}
-          className="
-            flex
-            min-w-0
-            gap-4
-            overflow-x-auto
-            scroll-smooth
-            pb-2
-            [scrollbar-width:none]
-            [-ms-overflow-style:none]
-          "
-          style={{
-            WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain",
-          }}
+          className="flex gap-4 horizontal-scroll"
         >
           {group.items.map((property) => (
             <div
