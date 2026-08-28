@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronRight } from "lucide-react";
-import useEmblaCarousel from "embla-carousel-react";
 import { PropertyCard } from "./PropertyCard";
 import { Property } from "@/types/property";
 import { universities } from "@/data/universities";
@@ -148,43 +147,30 @@ interface PropertyRowProps {
 }
 
 function PropertyRow({ group, onShowAll }: PropertyRowProps) {
-  const emblaOptions = useMemo(
-    () => ({
-      containScroll: "trimSnaps" as const,
-      dragFree: true,
-      align: "start" as const,
-      slidesToScroll: 1,
-      breakpoints: {
-        "(min-width: 640px)": { slidesToScroll: 2 },
-        "(min-width: 1024px)": { slidesToScroll: 3 },
-      },
-    }),
-    []
-  );
-
-  const [emblaRef, emblaApi] = useEmblaCarousel(emblaOptions);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
   const updateScrollState = useCallback(() => {
-    if (!emblaApi) return;
-    setCanScrollLeft(emblaApi.canScrollPrev());
-    setCanScrollRight(emblaApi.canScrollNext());
-  }, [emblaApi]);
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const maxScrollLeft = el.scrollWidth - el.clientWidth;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft < maxScrollLeft - 4);
+  }, []);
 
   useEffect(() => {
-    if (!emblaApi) return;
-    updateScrollState();
-    emblaApi.on("select", updateScrollState);
-    emblaApi.on("reInit", updateScrollState);
+    const el = scrollRef.current;
+    if (!el) return;
 
-    return () => {
-      emblaApi.off("select", updateScrollState);
-      emblaApi.off("reInit", updateScrollState);
-    };
-  }, [emblaApi, updateScrollState]);
+    updateScrollState();
+
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    return () => el.removeEventListener("scroll", updateScrollState);
+  }, [updateScrollState]);
 
   useEffect(() => {
     const handleResize = () => updateScrollState();
@@ -193,12 +179,14 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
   }, [updateScrollState]);
 
   const scrollRow = (direction: "left" | "right") => {
-    if (!emblaApi) return;
-    if (direction === "left") {
-      emblaApi.scrollPrev();
-    } else {
-      emblaApi.scrollNext();
-    }
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const amount = el.clientWidth * 0.9;
+    el.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
   };
 
   const showNavigation = group.items.length > 3 || canScrollLeft || canScrollRight;
@@ -278,9 +266,23 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
           </button>
         )}
 
-        {/* ─── CARDS CONTAINER ─── */}
-        <div ref={emblaRef} className="overflow-x-hidden touch-pan-y">
-          <div className="flex select-none gap-2 sm:gap-3">
+        {/* ─── CARDS CONTAINER (native scroll) ─── */}
+        <div
+          ref={scrollRef}
+          className="
+            w-full
+            min-w-0
+            overflow-x-auto
+            overflow-y-hidden
+            touch-pan-x
+            overscroll-x-contain
+            select-none
+            [scrollbar-width:none]
+            [-ms-overflow-style:none]
+            [&::-webkit-scrollbar]:hidden
+          "
+        >
+          <div className="flex w-max gap-2 sm:gap-3">
             {group.items.map((property) => (
               <div
                 key={property.id}

@@ -8,6 +8,7 @@ import { isBoosted } from "@/lib/boostService";
 interface PropertyCardProps {
   property: Property;
   compact?: boolean;
+  disableLink?: boolean;
 }
 
 function getAvailabilityStatus(availableCount: number) {
@@ -34,12 +35,28 @@ function getAvailabilityStatus(availableCount: number) {
   };
 }
 
-export function PropertyCard({ property, compact = false }: PropertyCardProps) {
-  const { id, title, price, paymentPeriod, location, bedSpaces, imageUrl, imageUrls } =
-    property;
+export function PropertyCard({
+  property,
+  compact = false,
+  disableLink = false,
+}: PropertyCardProps) {
+  const {
+    id,
+    title,
+    price,
+    paymentPeriod,
+    location,
+    bedSpaces,
+    imageUrl,
+    imageUrls,
+  } = property;
 
   const primaryImage = imageUrls?.[0] || imageUrl || null;
-  const availableCount = (bedSpaces ?? []).filter((bed) => bed.isAvailable).length;
+
+  const availableCount = (bedSpaces ?? []).filter(
+    (bed) => bed.isAvailable
+  ).length;
+
   const periodLabel = paymentPeriod === "termly" ? "/term" : "/mo";
   const status = getAvailabilityStatus(availableCount);
   const boosted = isBoosted(property);
@@ -47,12 +64,8 @@ export function PropertyCard({ property, compact = false }: PropertyCardProps) {
 
   // ─── COMPACT CARD ──────────────────────────────────────────────
   if (compact) {
-    return (
-      <Link
-        href={`/property/${id}`}
-        className="group block min-w-0 select-none"
-        aria-label={`View ${title}`}
-      >
+    const cardContent = (
+      <>
         {/* Image */}
         <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
           {primaryImage ? (
@@ -78,7 +91,11 @@ export function PropertyCard({ property, compact = false }: PropertyCardProps) {
           {/* Boosted badge */}
           {boosted && (
             <span className="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-1 text-[9px] font-bold text-gray-800 shadow-sm backdrop-blur-sm">
-              <Star size={9} fill="currentColor" aria-hidden="true" />
+              <Star
+                size={9}
+                fill="currentColor"
+                aria-hidden="true"
+              />
               Boost
             </span>
           )}
@@ -86,7 +103,13 @@ export function PropertyCard({ property, compact = false }: PropertyCardProps) {
           {/* Verified badge */}
           {isVerified && (
             <span className="pointer-events-none absolute bottom-1.5 left-1.5 inline-flex items-center gap-0.5 rounded-full bg-blue-600/90 px-1.5 py-1 text-[9px] font-semibold text-white shadow-sm backdrop-blur-sm">
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
                 <path
                   d="M20 6L9 17l-5-5"
                   stroke="currentColor"
@@ -103,7 +126,10 @@ export function PropertyCard({ property, compact = false }: PropertyCardProps) {
         {/* Card information */}
         <div className="mt-2 min-w-0">
           {/* Title */}
-          <h3 title={title} className="truncate text-[13px] font-semibold leading-tight text-gray-900">
+          <h3
+            title={title}
+            className="truncate text-[13px] font-semibold leading-tight text-gray-900"
+          >
             {title}
           </h3>
 
@@ -112,26 +138,65 @@ export function PropertyCard({ property, compact = false }: PropertyCardProps) {
             title={location}
             className="mt-1 flex min-w-0 items-center gap-0.5 truncate text-[11px] leading-tight text-gray-500"
           >
-            <MapPin size={10} className="shrink-0" aria-hidden="true" />
-            <span className="truncate">{location.split(",")[0]?.trim() || location}</span>
+            <MapPin
+              size={10}
+              className="shrink-0"
+              aria-hidden="true"
+            />
+
+            <span className="truncate">
+              {location.split(",")[0]?.trim() || location}
+            </span>
           </p>
 
           {/* Price + availability */}
           <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1">
             <span className="min-w-0 truncate text-[13px] font-bold leading-tight text-gray-900">
               K{price.toLocaleString()}
-              <span className="ml-0.5 text-[10px] font-normal text-gray-400">{periodLabel}</span>
+
+              <span className="ml-0.5 text-[10px] font-normal text-gray-400">
+                {periodLabel}
+              </span>
             </span>
 
             <span
               className="inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium"
-              style={{ color: status.color, backgroundColor: status.bg }}
+              style={{
+                color: status.color,
+                backgroundColor: status.bg,
+              }}
             >
               <BedDouble size={9} aria-hidden="true" />
               {status.label}
             </span>
           </div>
         </div>
+      </>
+    );
+
+    /*
+     * When this card is inside an Embla carousel, the carousel
+     * slide handles navigation. This removes the <Link> from
+     * the touch-drag event chain.
+     */
+    if (disableLink) {
+      return (
+        <div
+          className="group block min-w-0 select-none"
+          aria-label={`View ${title}`}
+        >
+          {cardContent}
+        </div>
+      );
+    }
+
+    return (
+      <Link
+        href={`/property/${id}`}
+        className="group block min-w-0 select-none"
+        aria-label={`View ${title}`}
+      >
+        {cardContent}
       </Link>
     );
   }
@@ -155,7 +220,11 @@ export function PropertyCard({ property, compact = false }: PropertyCardProps) {
           {/* Boosted badge */}
           {boosted && (
             <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs font-semibold text-gray-800 shadow-sm">
-              <Star size={11} fill="currentColor" aria-hidden="true" />
+              <Star
+                size={11}
+                fill="currentColor"
+                aria-hidden="true"
+              />
               Boost
             </span>
           )}
@@ -174,7 +243,9 @@ export function PropertyCard({ property, compact = false }: PropertyCardProps) {
       )}
 
       {/* Title */}
-      <h3 className="truncate text-base font-semibold text-gray-900">{title}</h3>
+      <h3 className="truncate text-base font-semibold text-gray-900">
+        {title}
+      </h3>
 
       {/* Location */}
       <p className="mt-1 flex items-center gap-1 truncate text-sm text-gray-500">
@@ -186,12 +257,18 @@ export function PropertyCard({ property, compact = false }: PropertyCardProps) {
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-base font-bold text-gray-900">
           K{price.toLocaleString()}
-          <span className="ml-0.5 text-xs font-normal text-gray-500">{periodLabel}</span>
+
+          <span className="ml-0.5 text-xs font-normal text-gray-500">
+            {periodLabel}
+          </span>
         </span>
 
         <span
           className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-          style={{ color: status.color, backgroundColor: status.bg }}
+          style={{
+            color: status.color,
+            backgroundColor: status.bg,
+          }}
         >
           <BedDouble size={12} />
           {status.label}
