@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { PropertyCard } from "./PropertyCard";
@@ -62,7 +62,7 @@ function getGroupName(property: Property): string {
   return property.location.split(",")[0]?.trim() || "Other locations";
 }
 
-export function PropertyGrid({ properties }: PropertyGridProps) {
+export default function PropertyGrid({ properties }: PropertyGridProps) {
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
 
   const groups = useMemo<Group[]>(() => {
@@ -273,21 +273,20 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
           </button>
         )}
 
-        {/* Embla Carousel container */}
+        {/* ─── CARDS CONTAINER ─── */}
         <div ref={emblaRef} className="overflow-x-hidden">
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:gap-3">
             {group.items.map((property) => (
               <div
                 key={property.id}
                 className="
-                  min-w-[110px]
-                  flex-shrink-0
-                  sm:min-w-[140px]
-                  md:min-w-[150px]
-                  lg:min-w-[160px]
-                  xl:min-w-[170px]
+                  w-[180px]
+                  sm:w-[220px]
+                  md:w-[240px]
+                  lg:w-[260px]
+                  xl:w-[280px]
+                  shrink-0
                 "
-                style={{ flex: "0 0 auto" }}
               >
                 <PropertyCard property={property} compact />
               </div>

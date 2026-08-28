@@ -8,7 +8,7 @@ import { Hero } from "@/components/hero/Hero";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { SearchBar } from "@/components/Search/SearchBar";
 import { PriceFilter } from "@/components/Search/PriceFilter";
-import { PropertyGrid } from "@/components/property/PropertyGrid";
+import PropertyGrid from "@/components/property/PropertyGrid"; // ✅ Fixed import
 import { Footer } from "@/components/footer/Footer";
 import { getAllProperties } from "@/services/propertyService";
 import { Property } from "@/types/property";
