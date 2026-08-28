@@ -148,16 +148,21 @@ interface PropertyRowProps {
 }
 
 function PropertyRow({ group, onShowAll }: PropertyRowProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    containScroll: "trimSnaps",
-    dragFree: true,
-    align: "start",
-    slidesToScroll: 1,
-    breakpoints: {
-      "(min-width: 640px)": { slidesToScroll: 2 },
-      "(min-width: 1024px)": { slidesToScroll: 3 },
-    },
-  });
+  const emblaOptions = useMemo(
+    () => ({
+      containScroll: "trimSnaps" as const,
+      dragFree: true,
+      align: "start" as const,
+      slidesToScroll: 1,
+      breakpoints: {
+        "(min-width: 640px)": { slidesToScroll: 2 },
+        "(min-width: 1024px)": { slidesToScroll: 3 },
+      },
+    }),
+    []
+  );
+
+  const [emblaRef, emblaApi] = useEmblaCarousel(emblaOptions);
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -183,7 +188,7 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
 
   useEffect(() => {
     const handleResize = () => updateScrollState();
-    window.addEventListener("resize", handleResize);
+    window.addEventListener("resize", handleResize, { passive: true });
     return () => window.removeEventListener("resize", handleResize);
   }, [updateScrollState]);
 
@@ -274,8 +279,8 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
         )}
 
         {/* ─── CARDS CONTAINER ─── */}
-        <div ref={emblaRef} className="overflow-x-hidden">
-          <div className="flex gap-2 sm:gap-3">
+        <div ref={emblaRef} className="overflow-x-hidden touch-pan-y">
+          <div className="flex select-none gap-2 sm:gap-3">
             {group.items.map((property) => (
               <div
                 key={property.id}
