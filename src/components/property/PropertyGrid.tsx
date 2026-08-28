@@ -183,7 +183,6 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
   }, [emblaApi, updateScrollState]);
 
   useEffect(() => {
-    // Re-check scroll state when window resizes
     const handleResize = () => updateScrollState();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -277,16 +276,17 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
 
         {/* Embla Carousel container */}
         <div ref={emblaRef} className="overflow-x-hidden">
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             {group.items.map((property) => (
               <div
                 key={property.id}
                 className="
-                  min-w-[150px]
+                  min-w-[130px]
                   flex-shrink-0
-                  sm:min-w-[170px]
-                  lg:min-w-[200px]
-                  xl:min-w-[215px]
+                  sm:min-w-[150px]
+                  md:min-w-[170px]
+                  lg:min-w-[190px]
+                  xl:min-w-[200px]
                 "
                 style={{ flex: "0 0 auto" }}
               >
