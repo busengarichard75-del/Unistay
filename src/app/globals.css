@@ -196,13 +196,13 @@
 
   html {
     @apply font-sans;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
     @apply bg-background text-foreground;
 
-    overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100vw;
 
     font-family:
