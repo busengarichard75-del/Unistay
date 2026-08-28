@@ -220,7 +220,7 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
           <button
             type="button"
             onClick={onShowAll}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-100 hover:text-[var(--nexora-primary)]"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-100 hover:text-[var(--nexora-primary)] touch-manipulation"
           >
             Show all
             <ChevronRight size={16} />
@@ -256,7 +256,7 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
             type="button"
             aria-label={`Scroll ${group.displayName} properties left`}
             onClick={() => scrollRow("left")}
-            className={`absolute left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-800 shadow-md transition-all duration-200 hover:scale-105 hover:bg-gray-50 ${
+            className={`absolute left-2 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-800 shadow-md transition-all duration-200 hover:scale-105 hover:bg-gray-50 touch-manipulation ${
               isHovered ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
@@ -270,7 +270,7 @@ function PropertyRow({ group, onShowAll }: PropertyRowProps) {
             type="button"
             aria-label={`Scroll ${group.displayName} properties right`}
             onClick={() => scrollRow("right")}
-            className={`absolute right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-800 shadow-md transition-all duration-200 hover:scale-105 hover:bg-gray-50 ${
+            className={`absolute right-2 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-800 shadow-md transition-all duration-200 hover:scale-105 hover:bg-gray-50 touch-manipulation ${
               isHovered ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
