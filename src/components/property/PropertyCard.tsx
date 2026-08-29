@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BedDouble, MapPin, Star } from "lucide-react";
 import { Property } from "@/types/property";
 import { isBoosted } from "@/lib/boostService";
+import { timeAgo } from "@/lib/timeUtils";
 
 interface PropertyCardProps {
   property: Property;
@@ -49,6 +50,7 @@ export function PropertyCard({
     bedSpaces,
     imageUrl,
     imageUrls,
+    createdAt,
   } = property;
 
   const primaryImage = imageUrls?.[0] || imageUrl || null;
@@ -170,6 +172,13 @@ export function PropertyCard({
               {status.label}
             </span>
           </div>
+
+          {/* ✅ Date Display - Compact Card */}
+          {createdAt && (
+            <div className="mt-1 text-[9px] text-gray-400">
+              Listed {timeAgo(createdAt)}
+            </div>
+          )}
         </div>
       </>
     );
@@ -274,6 +283,19 @@ export function PropertyCard({
           {status.label}
         </span>
       </div>
+
+      {/* ✅ Date Display - Full Card */}
+      {createdAt && (
+        <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
+          <span>📅 Listed {new Date(createdAt).toLocaleDateString()}</span>
+          {property.updatedAt && property.updatedAt !== createdAt && (
+            <>
+              <span>•</span>
+              <span>Updated {timeAgo(property.updatedAt)}</span>
+            </>
+          )}
+        </div>
+      )}
     </Link>
   );
 }

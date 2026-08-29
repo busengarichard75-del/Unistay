@@ -21,7 +21,8 @@ function getPropertiesRef() {
 }
 
 /**
- * Add a new property – sets verificationStatus to "pending" automatically.
+ * Add a new property – sets verificationStatus to "pending" automatically,
+ * and adds createdAt/updatedAt timestamps.
  */
 export async function addProperty(data: Omit<Property, "id">): Promise<string> {
   try {
@@ -29,6 +30,8 @@ export async function addProperty(data: Omit<Property, "id">): Promise<string> {
     const propertyData = {
       ...data,
       verificationStatus: "pending" as VerificationStatus,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
     const docRef = await addDoc(propertiesRef, propertyData);
     return docRef.id;
@@ -84,12 +87,15 @@ export async function getPropertiesByOwner(ownerId: string): Promise<Property[]>
 }
 
 /**
- * Update a property (admin can update verificationStatus, landlords can update other fields).
+ * Update a property – automatically updates `updatedAt` timestamp.
  */
 export async function updateProperty(id: string, data: Partial<Property>): Promise<void> {
   if (!db) throw new Error("Firebase is not initialized");
   try {
-    await updateDoc(doc(db, "properties", id), data);
+    await updateDoc(doc(db, "properties", id), {
+      ...data,
+      updatedAt: Date.now(),
+    });
   } catch (error) {
     console.error(`Failed to update property ${id}:`, error);
     throw error;
@@ -106,7 +112,7 @@ export async function deleteProperty(id: string): Promise<void> {
   }
 }
 
-// ─── NEW: Update bed availability with transaction ───
+// ─── Update bed availability with transaction ───
 export async function updateBedAvailability(
   propertyId: string,
   bedSpaceId: string,

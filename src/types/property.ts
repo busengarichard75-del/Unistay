@@ -40,14 +40,20 @@ export interface Property {
   rooms?: Room[];
   latitude?: number;
   longitude?: number;
+  
+  // Boost & Verification
   isBoosted?: boolean;
   boostedAt?: number;
   boostExpiry?: number;
-  additionalAmenities?: string[];
   verificationStatus?: VerificationStatus;
+  additionalAmenities?: string[];
   
-  // ✅ NEW – Landlord Experience Upgrade
+  // Landlord Experience
   isActive?: boolean;        // default: true – if false, hidden from public
   views?: number;            // view counter
   bookings?: number;         // confirmed bookings count
+  
+  // Timestamps
+  createdAt?: number;        // When property was first added
+  updatedAt?: number;        // When property was last updated
 }
