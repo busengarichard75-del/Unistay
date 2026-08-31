@@ -4,6 +4,7 @@ import { getFirestoreDb } from "@/lib/firebase-admin";
 import { isBookingExpired } from "@/lib/bookingExpiration";
 import webpush from "web-push";
 import { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import { createNotification } from "@/services/notificationService"; // ✅ NEW
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,12 +53,16 @@ export async function POST(req: NextRequest) {
     if (expired.length > 0) {
       await batch.commit();
 
-      // Send push notifications for each expired booking
+      // Send push notifications and create in-app notifications for each expired booking
       for (const booking of expired) {
-        // Notify student
+        // ─── STUDENT ───
+        const studentTitle = "⏰ Booking Expired";
+        const studentBody = `Your booking at "${booking.propertyTitle}" has expired. The bed is now available again.`;
+
+        // Push notification
         const studentPayload = JSON.stringify({
-          title: "⏰ Booking Expired",
-          body: `Your booking at "${booking.propertyTitle}" has expired. The bed is now available again.`,
+          title: studentTitle,
+          body: studentBody,
           icon: "/favicon.ico",
           url: "/dashboard/student",
         });
@@ -80,10 +85,26 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Notify landlord
+        // ✅ In-app notification for student
+        try {
+          await createNotification(booking.studentId, {
+            title: studentTitle,
+            body: studentBody,
+            type: "booking_expired",
+            link: "/dashboard/student",
+          });
+        } catch {
+          // Silently fail
+        }
+
+        // ─── LANDLORD ───
+        const landlordTitle = "⏰ Booking Expired";
+        const landlordBody = `A booking at "${booking.propertyTitle}" has expired. The bed is now available.`;
+
+        // Push notification
         const landlordPayload = JSON.stringify({
-          title: "⏰ Booking Expired",
-          body: `A booking at "${booking.propertyTitle}" has expired. The bed is now available.`,
+          title: landlordTitle,
+          body: landlordBody,
           icon: "/favicon.ico",
           url: "/dashboard/landlord",
         });
@@ -104,6 +125,18 @@ export async function POST(req: NextRequest) {
           } catch {
             // Silently fail
           }
+        }
+
+        // ✅ In-app notification for landlord
+        try {
+          await createNotification(booking.landlordId, {
+            title: landlordTitle,
+            body: landlordBody,
+            type: "booking_expired",
+            link: "/dashboard/landlord",
+          });
+        } catch {
+          // Silently fail
         }
       }
     }

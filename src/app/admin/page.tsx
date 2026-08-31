@@ -15,7 +15,8 @@ import { db } from "@/lib/firebase";
 import { Booking } from "@/types/booking";
 import { Property } from "@/types/property";
 import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
-import { sendPushNotification } from "@/lib/sendPushNotification"; // ✅ NEW
+import { sendPushNotification } from "@/lib/sendPushNotification";
+import { createNotification } from "@/services/notificationService"; // ✅ NEW
 
 const AGENT_FEE = 100;
 const BOOST_FEE = 100;
@@ -52,7 +53,6 @@ export default function AdminPage() {
   const [isActive, setIsActive] = useState(false);
   const [isUpdatingAnnounce, setIsUpdatingAnnounce] = useState(false);
   const [loadingAnnounce, setLoadingAnnounce] = useState(true);
-  // ✅ NEW: Push notification options for announcements
   const [sendPush, setSendPush] = useState(false);
   const [pushTarget, setPushTarget] = useState<"all" | "student" | "landlord">("all");
 
@@ -256,17 +256,43 @@ export default function AdminPage() {
     }
   };
 
-  // Booking: mark as paid
+  // Booking: mark as paid → CONFIRM
   async function handleMarkPaid(bookingId: string) {
     setIsSubmitting(bookingId);
     try {
+      // 1. Update booking status to "confirmed"
       await updateBookingStatus(bookingId, {
         status: "confirmed",
         confirmedAt: Date.now(),
       });
-      setBookings((prev) => prev.filter((b) => b.id !== bookingId));
-      setFilteredBookings((prev) => prev.filter((b) => b.id !== bookingId));
-      toast.success("Payment confirmed successfully!");
+
+      // 2. Remove from pending list
+      const updatedBookings = bookings.filter((b) => b.id !== bookingId);
+      setBookings(updatedBookings);
+      setFilteredBookings(updatedBookings);
+
+      // 3. Get the booking details to send notifications
+      const booking = bookings.find((b) => b.id === bookingId);
+      if (booking) {
+        // 3a. Send push notifications (if any)
+        // (optional push could be sent here, but we'll rely on in-app)
+        // 3b. Create in-app notifications for student and landlord
+        await createNotification(booking.studentId, {
+          title: "Booking Confirmed 🎉",
+          body: `Your booking at "${booking.propertyTitle}" has been confirmed by the admin.`,
+          type: "booking_confirmed",
+          link: "/dashboard/student",
+        });
+
+        await createNotification(booking.landlordId, {
+          title: "Booking Confirmed 🎉",
+          body: `${booking.studentName}'s booking at "${booking.propertyTitle}" has been confirmed by the admin.`,
+          type: "booking_confirmed",
+          link: "/dashboard/landlord",
+        });
+      }
+
+      toast.success("Payment confirmed and booking marked as confirmed!");
     } catch {
       toast.error("Failed to mark as paid. Please try again.");
     } finally {
@@ -282,12 +308,10 @@ export default function AdminPage() {
     }
     setIsUpdatingAnnounce(true);
     try {
-      // 1. Save announcement to Firestore
       await updateAnnouncement({ content: announceContent.trim(), isActive: true });
       setIsActive(true);
       toast.success("Announcement published!");
 
-      // 2. If send push is checked, send push notifications
       if (sendPush) {
         const response = await fetch("/api/admin/announce", {
           method: "POST",
@@ -484,7 +508,7 @@ export default function AdminPage() {
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
               <span className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg">🚀</span>
-              UniStay Admin Studio
+              Peza Admin Studio
             </h1>
             <p className="text-sm text-gray-400 mt-1">Welcome back, {user?.email}</p>
           </div>
@@ -827,7 +851,7 @@ export default function AdminPage() {
           ) : filteredQuestions.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-gray-500">No unanswered questions.</p>
-              <p className="text-xs text-gray-600">Students' questions that Nexora couldn't answer will appear here.</p>
+              <p className="text-xs text-gray-600">Students' questions that Peza Assistant couldn't answer will appear here.</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto pr-2">

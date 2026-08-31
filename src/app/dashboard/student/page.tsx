@@ -9,7 +9,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getPropertyById, updateBedAvailability } from "@/services/propertyService";
-import { deleteBooking, confirmBooking, expireExpiredBookings } from "@/services/bookingService";
+import { deleteBooking, expireExpiredBookings } from "@/services/bookingService";
 import { useBookingListener } from "@/hooks/useBookingListener";
 import { useBookingConfirmationCelebration } from "@/hooks/useBookingConfirmationCelebration";
 import { Booking } from "@/types/booking";
@@ -20,7 +20,6 @@ import { TermsModal } from "@/components/auth/TermsModal";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { BookingCountdown } from "@/components/BookingCountdown";
 import { ConfirmationCelebration } from "@/components/ConfirmationCelebration";
-import { sendPushNotification } from "@/lib/sendPushNotification";
 
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
@@ -31,7 +30,6 @@ const PAYMENT_NUMBER = "+260 0771319817";
 
 // ─── Helper functions with safe defaults ───
 function statusMessage(booking: Booking) {
-  // ✅ Safety: if booking or status is missing, return a default
   if (!booking || !booking.status) {
     return { text: "Status unknown", color: "var(--nexora-text-secondary)" };
   }
@@ -55,7 +53,6 @@ function statusMessage(booking: Booking) {
 }
 
 function getBadgeStyles(status: string | undefined) {
-  // ✅ Safety: return a default if status is missing
   if (!status) {
     return "bg-gray-100 text-gray-500";
   }
@@ -149,26 +146,6 @@ export default function StudentDashboardPage() {
     fetchProperties();
   }, [bookings]);
 
-  // ─── Handle booking confirmation ───
-  const handleConfirmBooking = async (booking: Booking) => {
-    if (!window.confirm("Confirm this booking? The bed will be reserved for you.")) return;
-    try {
-      await confirmBooking(booking.id, booking.propertyId, booking.bedSpaceId);
-      
-      // ✅ Send push notification to landlord
-      await sendPushNotification({
-        userId: booking.landlordId,
-        title: "✅ Booking Confirmed!",
-        body: `${userFullName || "A student"} confirmed their booking at "${booking.propertyTitle}"`,
-        url: "/dashboard/landlord",
-      });
-      
-      toast.success("Booking confirmed! 🎉");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to confirm booking. Please try again.");
-    }
-  };
-
   // ─── Handle delete ───
   async function handleDelete(bookingId: string) {
     if (!window.confirm("Remove this confirmed booking from your history?")) return;
@@ -190,7 +167,7 @@ export default function StudentDashboardPage() {
 
   const isFetching = bookingsLoading || isFetchingProperties;
 
-  // ✅ Filter out any bookings without a status (to prevent errors)
+  // ✅ Filter out any bookings without a status
   const validBookings = bookings.filter((b) => b && b.status);
 
   return (
@@ -331,16 +308,11 @@ export default function StudentDashboardPage() {
                         {status.text}
                       </p>
 
-                      {/* ─── Action Required (approved bookings) ─── */}
+                      {/* ─── Action Required (approved bookings) – no button ─── */}
                       {isApproved && (
                         <div className="mt-2 rounded-md border-l-4 border-[var(--nexora-primary)] bg-blue-50 px-3 py-2 text-xs text-blue-800">
                           <span className="font-semibold">Action Required:</span> {status.text}
-                          <button
-                            onClick={() => handleConfirmBooking(booking)}
-                            className="ml-3 rounded-full bg-[var(--nexora-primary)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--nexora-primary-hover)] transition-colors"
-                          >
-                            Confirm Booking
-                          </button>
+                          {/* ❌ Removed Confirm Booking button */}
                         </div>
                       )}
 

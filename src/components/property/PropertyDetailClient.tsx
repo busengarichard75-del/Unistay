@@ -16,7 +16,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { sendPushNotification } from "@/lib/sendPushNotification"; // ✅ NEW
+import { sendPushNotification } from "@/lib/sendPushNotification";
+import { createNotification } from "@/services/notificationService"; // ✅ NEW
 
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
@@ -159,6 +160,14 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         title: "New Booking Request! 🏠",
         body: `${studentName} requested to book "${property.title}"`,
         url: "/dashboard/landlord",
+      });
+
+      // ✅ Create in-app notification for landlord
+      await createNotification(property.ownerId, {
+        title: "New Booking Request",
+        body: `${studentName} requested to book "${property.title}"`,
+        type: "booking_requested",
+        link: "/dashboard/landlord",
       });
 
       toast.success("Booking request sent successfully!");

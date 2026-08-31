@@ -13,8 +13,9 @@ import { Booking } from "@/types/booking";
 import { BackButton } from "@/components/ui/BackButton";
 import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
 import { PageTransition } from "@/components/PageTransition";
-import { sendPushNotification } from "@/lib/sendPushNotification"; // ✅ NEW
-import { getExpiryTimestamp } from "@/lib/bookingExpiration"; // ✅ NEW
+import { sendPushNotification } from "@/lib/sendPushNotification";
+import { getExpiryTimestamp } from "@/lib/bookingExpiration";
+import { createNotification } from "@/services/notificationService"; // ✅ NEW
 
 const PAGE_SIZE = 6;
 
@@ -128,7 +129,7 @@ export default function LandlordDashboardPage() {
           confirmationCode: confirmationData.confirmationCode,
           verificationToken: confirmationData.verificationToken,
           approvedAt: confirmationData.approvedAt,
-          approvalExpiresAt: getExpiryTimestamp(), // ✅ NEW – set expiration 24h from now
+          approvalExpiresAt: getExpiryTimestamp(),
         };
       }
       await updateBookingStatus(booking.id, updatePayload);
@@ -158,6 +159,14 @@ export default function LandlordDashboardPage() {
         url: "/dashboard/student",
       });
 
+      // ✅ Create in-app notification for student
+      await createNotification(booking.studentId, {
+        title: "Booking Approved ✅",
+        body: `Your booking at "${booking.propertyTitle}" has been approved. You have 48 hours to confirm.`,
+        type: "booking_approved",
+        link: "/dashboard/student",
+      });
+
       toast.success("Booking approved successfully!");
     } catch {
       toast.error("Failed to approve booking. Please try again.");
@@ -185,6 +194,14 @@ export default function LandlordDashboardPage() {
         title: "❌ Booking Rejected",
         body: `Your booking request for "${booking.propertyTitle}" was rejected by the landlord.`,
         url: "/dashboard/student",
+      });
+
+      // ✅ Create in-app notification for student
+      await createNotification(booking.studentId, {
+        title: "Booking Rejected ❌",
+        body: `Your booking request for "${booking.propertyTitle}" was rejected by the landlord.`,
+        type: "booking_rejected",
+        link: "/dashboard/student",
       });
 
       toast.success("Booking rejected successfully.");
@@ -332,7 +349,6 @@ export default function LandlordDashboardPage() {
             <div>
               <p className="text-sm text-gray-300">Welcome back</p>
               <h1 className="text-xl font-bold text-white">{user.email}</h1>
-              {/* ✅ Quick Stats Bar */}
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-300">
                 <span className="flex items-center gap-1.5">
                   <Home size={14} />
@@ -361,7 +377,6 @@ export default function LandlordDashboardPage() {
             </Link>
           </div>
 
-          {/* Get Verified Banner – only if landlord not verified */}
           {listings.some((p) => p.verificationStatus !== "approved") && (
             <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700 flex items-center justify-between">
               <span>🔍 <strong>Get verified</strong> – Verified properties get 3x more views.</span>
@@ -468,7 +483,6 @@ export default function LandlordDashboardPage() {
                             const isPending = listing.verificationStatus === "pending";
                             const isRejected = listing.verificationStatus === "rejected";
 
-                            // Compute performance metrics from bookings
                             const propertyBookings = bookings.filter((b) => b.propertyId === listing.id);
                             const totalRequests = propertyBookings.length;
                             const confirmedBookings = propertyBookings.filter((b) => b.status === "confirmed").length;
@@ -480,7 +494,6 @@ export default function LandlordDashboardPage() {
                                   !isActive ? "opacity-60" : ""
                                 }`}
                               >
-                                {/* Boosted Badge */}
                                 {boosted && (
                                   <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-full bg-yellow-400 px-2.5 py-1 text-xs font-bold text-black shadow-sm">
                                     <Star size={14} fill="currentColor" />
@@ -489,7 +502,6 @@ export default function LandlordDashboardPage() {
                                   </div>
                                 )}
 
-                                {/* Verification Badge */}
                                 <div className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium shadow-sm">
                                   {isVerified ? (
                                     <span className="bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full">✅ Verified</span>
@@ -516,7 +528,6 @@ export default function LandlordDashboardPage() {
                                     <span className="text-xs text-gray-500">{totalBeds} beds ({availableBeds} available)</span>
                                   </div>
 
-                                  {/* ✅ Performance Metrics */}
                                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-400">
                                     <span className="flex items-center gap-1">
                                       <EyeIcon size={12} />
@@ -586,7 +597,6 @@ export default function LandlordDashboardPage() {
                                     )}
                                   </div>
 
-                                  {/* Manual Occupancy Expanded View */}
                                   {isExpanded && (
                                     <div className="mt-3 border-t border-gray-100 pt-3">
                                       <p className="text-xs font-medium text-gray-700 mb-2">Manage Bed Spaces</p>
@@ -665,7 +675,6 @@ export default function LandlordDashboardPage() {
                 {/* ============ BOOKINGS TAB ============ */}
                 {activeTab === "bookings" && (
                   <>
-                    {/* Booking Status Filter */}
                     <div className="mb-4 flex flex-wrap gap-2">
                       {(["all", "requested", "approved", "confirmed", "rejected"] as BookingStatusFilter[]).map((status) => (
                         <button
