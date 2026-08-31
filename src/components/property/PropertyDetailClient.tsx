@@ -17,7 +17,7 @@ import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { sendPushNotification } from "@/lib/sendPushNotification";
-import { createNotification } from "@/services/notificationService"; // ✅ NEW
+import { createNotification } from "@/services/notificationService";
 
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
@@ -132,7 +132,9 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
             studentNumber = data?.studentNumber || "";
             studentPhone = data?.phone || studentPhone;
           }
-        } catch {}
+        } catch (err) {
+          console.warn("Could not fetch user profile:", err);
+        }
       }
 
       await addBooking({
@@ -154,30 +156,37 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         "Request sent! The landlord will review and approve your booking. The bed remains available until approved."
       );
 
-      // ✅ Send push notification to landlord
-      await sendPushNotification({
-        userId: property.ownerId,
-        title: "New Booking Request! 🏠",
-        body: `${studentName} requested to book "${property.title}"`,
-        url: "/dashboard/landlord",
-      });
+      // ─── Push notification (non‑critical, try/catch) ───
+      try {
+        await sendPushNotification({
+          userId: property.ownerId,
+          title: "New Booking Request! 🏠",
+          body: `${studentName} requested to book "${property.title}"`,
+          url: "/dashboard/landlord",
+        });
+      } catch (pushErr) {
+        console.warn("Push notification failed (non‑critical):", pushErr);
+      }
 
-      // ✅ Create in-app notification for landlord
-      await createNotification(property.ownerId, {
-        title: "New Booking Request",
-        body: `${studentName} requested to book "${property.title}"`,
-        type: "booking_requested",
-        link: "/dashboard/landlord",
-      });
+      // ─── In‑app notification (non‑critical, try/catch) ───
+      try {
+        await createNotification(property.ownerId, {
+          title: "New Booking Request",
+          body: `${studentName} requested to book "${property.title}"`,
+          type: "booking_requested",
+          link: "/dashboard/landlord",
+        });
+      } catch (notifErr) {
+        console.warn("In‑app notification failed (non‑critical):", notifErr);
+      }
 
       toast.success("Booking request sent successfully!");
 
-    } catch {
-      toast.error("Failed to send booking request. Please try again.");
-
+    } catch (err) {
+      console.error("Booking error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to send booking request. Please try again.");
     } finally {
       setIsSubmitting(false);
-
       setTimeout(() => {
         setSubmittedBedId(null);
       }, 3000);
@@ -282,7 +291,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
             {isVerified && (
               <div className="shrink-0 ml-4 flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 border border-blue-200">
                 <Star size={16} className="fill-blue-600 text-blue-600" />
-                <span className="text-xs font-medium text-blue-700">UniStay Verified</span>
+                <span className="text-xs font-medium text-blue-700">Peza Verified</span>
               </div>
             )}
           </div>
