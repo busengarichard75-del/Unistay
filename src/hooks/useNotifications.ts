@@ -1,8 +1,13 @@
+// src/hooks/useNotifications.ts
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot, QuerySnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
-import { isAdminEmail } from "@/lib/admin";
+import { 
+  Notification, 
+  listenToNotifications, 
+  markNotificationAsRead, 
+  markAllNotificationsAsRead, 
+  clearAllNotifications 
+} from "@/services/notificationService";
 
 interface NotificationCounts {
   pendingRequests: number;
@@ -12,74 +17,92 @@ interface NotificationCounts {
 }
 
 export function useNotifications() {
-  const { user } = useAuth(); // ✅ Removed `role` from destructuring
-  const [counts, setCounts] = useState<NotificationCounts>({
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // ─── Real-time notifications listener ───
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = listenToNotifications(user.uid, (fetchedNotifications) => {
+      setNotifications(fetchedNotifications);
+      const unread = fetchedNotifications.filter((n) => !n.read).length;
+      setUnreadCount(unread);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // ─── Mark a single notification as read ───
+  const markAsRead = async (notificationId: string) => {
+    try {
+      await markNotificationAsRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
+  };
+
+  // ─── Mark all notifications as read ───
+  const markAllAsRead = async () => {
+    if (!user) return;
+    try {
+      await markAllNotificationsAsRead(user.uid);
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
+
+  // ─── Clear all notifications ───
+  const clearAll = async () => {
+    if (!user) return;
+    try {
+      await clearAllNotifications(user.uid);
+      setNotifications([]);
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+    }
+  };
+
+  // ─── Legacy count logic (for existing notification bell) ───
+  const [legacyCounts, setLegacyCounts] = useState<NotificationCounts>({
     pendingRequests: 0,
     pendingApprovals: 0,
     pendingPayments: 0,
     total: 0,
   });
-  const [loading, setLoading] = useState(true);
-  const isAdmin = user && isAdminEmail(user.email);
-  const role = user?.role; // ✅ Use user.role directly
 
+  // Keep the existing counting logic for the bell badge
+  // This will be replaced by unreadCount from the new system
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    // We'll use unreadCount as the primary source
+    setLegacyCounts((prev) => ({
+      ...prev,
+      total: unreadCount,
+    }));
+  }, [unreadCount]);
 
-    let queries: any[] = [];
-
-    if (role === "landlord") {
-      const q = query(
-        collection(db, "bookings"),
-        where("landlordId", "==", user.uid),
-        where("status", "==", "requested")
-      );
-      queries.push({ q, key: "pendingRequests" });
-    } else if (role === "student") {
-      const q = query(
-        collection(db, "bookings"),
-        where("studentId", "==", user.uid),
-        where("status", "==", "approved")
-      );
-      queries.push({ q, key: "pendingApprovals" });
-    } else if (isAdmin) {
-      const q = query(
-        collection(db, "bookings"),
-        where("status", "==", "approved")
-      );
-      queries.push({ q, key: "pendingPayments" });
-    }
-
-    if (queries.length === 0) {
-      setLoading(false);
-      return;
-    }
-
-    // Use onSnapshot for real‑time updates
-    const unsubscribes = queries.map(({ q, key }) => {
-      return onSnapshot(q, (snapshot: QuerySnapshot) => {
-        setCounts((prev) => {
-          const newCounts = { ...prev, [key]: snapshot.size };
-          // Update total: sum all relevant counts
-          newCounts.total = 0;
-          if (role === "landlord") newCounts.total += newCounts.pendingRequests;
-          if (role === "student") newCounts.total += newCounts.pendingApprovals;
-          if (isAdmin) newCounts.total += newCounts.pendingPayments;
-          return newCounts;
-        });
-        setLoading(false);
-      }, (error) => {
-        console.error("Notification listener error:", error);
-      });
-    });
-
-    return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
-    };
-  }, [user, role, isAdmin]);
-
-  return { counts, loading };
+  return {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    clearAll,
+    // For backward compatibility
+    counts: legacyCounts,
+  };
 }

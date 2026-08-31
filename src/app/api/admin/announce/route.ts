@@ -1,18 +1,27 @@
 // src/app/api/admin/announce/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase-admin";
+import { getFirestoreDb } from "@/lib/firebase-admin";
 import webpush from "web-push";
 import { QueryDocumentSnapshot, Query } from "firebase-admin/firestore";
 
-// Configure web-push
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 export async function POST(req: NextRequest) {
   try {
+    const db = getFirestoreDb();
+
+    // Configure web-push inside the handler
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    const email = process.env.VAPID_EMAIL;
+
+    if (!publicKey || !privateKey || !email) {
+      return NextResponse.json(
+        { error: "VAPID keys are not configured. Please set VAPID environment variables." },
+        { status: 500 }
+      );
+    }
+
+    webpush.setVapidDetails(`mailto:${email}`, publicKey, privateKey);
+
     const { title, body, url, targetRole } = await req.json();
 
     if (!title || !body) {
@@ -22,18 +31,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get all users with push subscriptions
-    let usersQuery: Query | null = db.collection("pushSubscriptions") as any;
+    // Build the query for push subscriptions
+    let subscriptionsQuery: Query = db.collection("pushSubscriptions");
 
-    // If targeting a specific role, we need to fetch users first
     if (targetRole) {
+      // Fetch users with the given role
       const usersSnapshot = await db
         .collection("users")
         .where("role", "==", targetRole)
         .get();
-      
+
       const userIds = usersSnapshot.docs.map((doc: QueryDocumentSnapshot) => doc.id);
-      
+
       if (userIds.length === 0) {
         return NextResponse.json({
           success: true,
@@ -42,21 +51,13 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Query subscriptions for these users
-      usersQuery = db
+      // Now query subscriptions for those user IDs
+      subscriptionsQuery = db
         .collection("pushSubscriptions")
-        .where("userId", "in", userIds) as any;
+        .where("userId", "in", userIds);
     }
 
-    if (!usersQuery) {
-      return NextResponse.json({
-        success: true,
-        message: "No query to execute",
-        sent: 0,
-      });
-    }
-
-    const subscriptionsSnapshot = await usersQuery.get();
+    const subscriptionsSnapshot = await subscriptionsQuery.get();
 
     if (subscriptionsSnapshot.empty) {
       return NextResponse.json({

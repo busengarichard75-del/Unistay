@@ -17,7 +17,7 @@ export default function AddListingPage() {
   return (
     <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
       <div className="container-narrow">
-        <h1 className="mb-6 text-2xl font-bold text-[var(--nexora-text-primary)]">Add a new listing</h1>
+        <h1 className="mb-6 text-2xl font-bold text-[var(--nexora-text-primary)]">Add a new listing to Peza</h1>
         <AddListingForm />
       </div>
     </main>

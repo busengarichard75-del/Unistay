@@ -8,7 +8,7 @@ const messages = [
   "The right place. The right price.",
   "Stop searching. Start settling in.",
   "Your next Boarding house is closer than you think.",
-  "Let UniStay find your best match.",
+  "Let Peza find your best match.",
   "Accommodation that understands students."
 ];
 

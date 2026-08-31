@@ -9,7 +9,7 @@ export function Footer() {
           {/* About */}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-900">
-              About UniStayZM
+              About Peza Accommodation
             </h3>
             <p className="text-sm leading-relaxed text-gray-600">
               Helping students find verified accommodation close to their campus.
@@ -41,7 +41,7 @@ export function Footer() {
               </p>
               <p className="flex items-center gap-2">
                 <Mail size={16} className="text-gray-400" />
-                <span>unistayzm2@gmail.com</span>
+                <span>pezaaccommodation@gmail.com</span>
               </p>
             </div>
             <p className="mt-3 text-xs text-gray-400">A Nexora Tech product</p>
@@ -118,7 +118,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
           <p>
-            &copy; {new Date().getFullYear()} UniStayZM. All rights reserved.
+            &copy; {new Date().getFullYear()} Peza Accommodation. All rights reserved.
           </p>
         </div>
       </div>

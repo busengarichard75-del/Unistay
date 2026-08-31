@@ -11,7 +11,7 @@ export interface Room {
   bedSpaces: BedSpace[];
 }
 
-export type PaymentPeriod = "monthly" | "termly";
+export type PaymentPeriod = "monthly" | "termly" | "semester";
 export type GenderPreference = "male" | "female" | "mixed";
 export type DistanceBucket = "under5" | "5to15" | "15to30" | "over30";
 

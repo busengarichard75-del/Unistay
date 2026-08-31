@@ -1,5 +1,5 @@
 {
-  "name": "unistay",
+  "name": "peza-accommodation",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -13,6 +13,7 @@
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "firebase": "^12.17.0",
     "firebase-admin": "^14.3.0",
     "framer-motion": "^12.43.0",

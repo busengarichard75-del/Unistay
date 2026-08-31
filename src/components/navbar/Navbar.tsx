@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation"; // ✅ Added useRouter
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { Plus, ClipboardList, Calendar, ShieldCheck, User, LogOut, Settings, LayoutDashboard, ChevronDown, Menu, X, Bell } from "lucide-react";
@@ -10,17 +10,19 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { isAdminEmail } from "@/lib/admin";
 import { useNotifications } from "@/hooks/useNotifications";
+import { NotificationDropdown } from "@/components/navbar/NotificationDropdown";
 
 export function Navbar() {
-  const { user, isLoading } = useAuth(); // ✅ Removed role destructuring
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const { counts } = useNotifications();
+  const { counts, unreadCount } = useNotifications();
 
   const effectiveRole = user?.role || null;
 
@@ -48,7 +50,6 @@ export function Navbar() {
 
     setIsLoggingOut(true);
     try {
-      // ✅ Artificial 3-second delay for premium feel
       await new Promise((resolve) => setTimeout(resolve, 3000));
       await signOut(auth);
       toast.success("Logged out successfully.");
@@ -70,13 +71,22 @@ export function Navbar() {
     .toUpperCase()
     .slice(0, 2);
 
-  const notificationCount = counts.total;
+  // Use unreadCount from the new notification system, fallback to counts.total
+  const notificationCount = unreadCount ?? counts.total;
+
+  const toggleNotification = () => {
+    setIsNotificationOpen(!isNotificationOpen);
+  };
+
+  const closeNotification = () => {
+    setIsNotificationOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-[var(--nexora-navy)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <Link href="/" className="text-lg font-bold text-white">
-          UniStayZM
+          Peza ZM
         </Link>
 
         <nav className="flex items-center gap-4">
@@ -122,17 +132,12 @@ export function Navbar() {
                 )}
               </div>
 
-              {/* Notification Bell */}
+              {/* Notification Bell with Dropdown */}
               <div className="relative">
-                <Link
-                  href={
-                    effectiveRole === "landlord"
-                      ? "/dashboard/landlord"
-                      : effectiveRole === "student"
-                      ? "/dashboard/student"
-                      : "/"
-                  }
+                <button
+                  onClick={toggleNotification}
                   className="relative flex items-center justify-center rounded-full p-2 text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+                  aria-label="Notifications"
                 >
                   <Bell size={20} />
                   {notificationCount > 0 && (
@@ -140,7 +145,13 @@ export function Navbar() {
                       {notificationCount > 9 ? "9+" : notificationCount}
                     </span>
                   )}
-                </Link>
+                </button>
+
+                <NotificationDropdown
+                  isOpen={isNotificationOpen}
+                  onClose={closeNotification}
+                  onToggle={toggleNotification}
+                />
               </div>
 
               {/* Hamburger (mobile) */}

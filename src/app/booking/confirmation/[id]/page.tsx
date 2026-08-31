@@ -4,6 +4,7 @@ import { Booking } from "@/types/booking";
 import { notFound } from "next/navigation";
 import { QRCodeDisplay } from "@/components/booking/QRCodeDisplay";
 import { ConfirmationActions } from "@/components/booking/ConfirmationActions";
+import { CheckCircle, Clock, XCircle, Home, User, Phone, MapPin, Calendar, DollarSign, Tag, ShieldCheck } from "lucide-react";
 
 // Generate all booking IDs at build time
 export async function generateStaticParams() {
@@ -42,127 +43,227 @@ export default async function BookingConfirmationPage({ params }: ConfirmationPa
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
       const userData = userSnap.data();
-      landlordName = userData?.name || userData?.displayName || "Landlord";
+      landlordName = userData?.fullName || userData?.name || userData?.displayName || "Landlord";
       landlordPhone = userData?.phone || "Not provided";
     }
   }
 
   const hasConfirmation = booking.confirmationId && booking.confirmationCode;
 
-  const statusMap: Record<string, { label: string; color: string }> = {
-    approved: { label: "✅ Approved", color: "text-blue-600" },
-    confirmed: { label: "✅ Confirmed", color: "text-green-600" },
-    rejected: { label: "❌ Rejected", color: "text-red-600" },
-    requested: { label: "⏳ Pending", color: "text-amber-600" },
+  const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+    confirmed: {
+      label: "Confirmed",
+      color: "text-green-700",
+      bg: "bg-green-50 border-green-200",
+      icon: <CheckCircle size={18} className="text-green-600" />,
+    },
+    approved: {
+      label: "Approved",
+      color: "text-blue-700",
+      bg: "bg-blue-50 border-blue-200",
+      icon: <Clock size={18} className="text-blue-600" />,
+    },
+    requested: {
+      label: "Pending",
+      color: "text-amber-700",
+      bg: "bg-amber-50 border-amber-200",
+      icon: <Clock size={18} className="text-amber-600" />,
+    },
+    rejected: {
+      label: "Rejected",
+      color: "text-red-700",
+      bg: "bg-red-50 border-red-200",
+      icon: <XCircle size={18} className="text-red-600" />,
+    },
+    expired: {
+      label: "Expired",
+      color: "text-gray-700",
+      bg: "bg-gray-50 border-gray-200",
+      icon: <XCircle size={18} className="text-gray-600" />,
+    },
   };
-  const statusInfo = statusMap[booking.status] || { label: booking.status, color: "text-gray-600" };
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://unistay-6634c.web.app";
+  const statusInfo = statusConfig[booking.status] || {
+    label: booking.status || "Unknown",
+    color: "text-gray-700",
+    bg: "bg-gray-50 border-gray-200",
+    icon: <Clock size={18} className="text-gray-600" />,
+  };
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
   const verifyUrl = `${baseUrl}/verify/${booking.id}?token=${booking.verificationToken || ""}`;
 
   const isConfirmed = booking.status === "confirmed";
+  const isApproved = booking.status === "approved";
 
   return (
-    <main className="min-h-screen bg-gray-50 py-10">
+    <main className="min-h-screen bg-[var(--nexora-surface)] py-8">
       <div className="max-w-2xl mx-auto px-4">
-        <div id="confirmation-card" className="bg-white rounded-2xl shadow-lg p-8 print:shadow-none print:p-4">
-          <div className="text-center border-b pb-4 mb-4">
-            <h1 className="text-2xl font-bold text-[var(--nexora-navy)]">UniStay Booking Confirmation</h1>
-            <p className="text-sm text-gray-500">Official booking pass</p>
+        {/* Confirmation Card */}
+        <div
+          id="confirmation-card"
+          className="bg-white rounded-2xl shadow-xl overflow-hidden print:shadow-none print:rounded-none"
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[var(--nexora-navy)] to-[var(--nexora-primary)] px-6 py-5 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold tracking-tight">Peza Booking Pass</h1>
+                <p className="text-sm text-white/70">Official accommodation confirmation</p>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
+                <ShieldCheck size={14} className="text-white/70" />
+                <span className="text-xs font-medium text-white/80">Verified</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-between items-center bg-gray-50 rounded-lg p-3 mb-4">
-            <span className="text-sm font-medium text-gray-600">Booking ID</span>
-            <span className="text-sm font-mono font-semibold">
-              {booking.confirmationId || booking.id}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center border-b pb-2 mb-4">
-            <span className="text-sm font-medium text-gray-600">Status</span>
+          {/* Status Badge */}
+          <div className={`mx-6 mt-4 flex items-center gap-2 rounded-xl border px-4 py-2.5 ${statusInfo.bg}`}>
+            {statusInfo.icon}
             <span className={`text-sm font-semibold ${statusInfo.color}`}>
               {statusInfo.label}
             </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-gray-500">Student</p>
-              <p className="font-medium">{booking.studentName}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Student ID</p>
-              <p className="font-medium">{booking.studentNumber || "N/A"}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Property</p>
-              <p className="font-medium">{booking.propertyTitle}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Bed Space</p>
-              <p className="font-medium">{booking.bedSpaceId}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Price</p>
-              <p className="font-medium">
-                K{booking.price} / {booking.paymentPeriod === "termly" ? "term" : "month"}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-500">Requested</p>
-              <p className="font-medium">{new Date(booking.createdAt).toLocaleDateString()}</p>
-            </div>
-            {booking.approvedAt && (
-              <div>
-                <p className="text-gray-500">Approved</p>
-                <p className="font-medium">{new Date(booking.approvedAt).toLocaleDateString()}</p>
-              </div>
-            )}
-            {booking.confirmedAt && (
-              <div>
-                <p className="text-gray-500">Confirmed</p>
-                <p className="font-medium">{new Date(booking.confirmedAt).toLocaleDateString()}</p>
-              </div>
+            {booking.confirmationId && (
+              <span className="ml-auto text-xs text-gray-400 font-mono">
+                #{booking.confirmationId}
+              </span>
             )}
           </div>
 
-          {isConfirmed && landlordName && (
-            <div className="mt-4 border-t pt-4 border-green-100">
-              <p className="text-xs font-medium text-green-700 mb-1">🏠 Landlord Details</p>
-              <p className="text-sm">
-                <span className="font-medium">Name:</span> {landlordName}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium">Phone:</span> {landlordPhone}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">Contact your landlord directly for check-in arrangements.</p>
+          {/* Main Content */}
+          <div className="p-6 space-y-5">
+            {/* Property & Student */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="rounded-lg bg-gray-50 p-3.5 border border-gray-100">
+                <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                  <Home size={14} />
+                  <span>Property</span>
+                </div>
+                <p className="text-sm font-semibold text-gray-900">{booking.propertyTitle}</p>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-3.5 border border-gray-100">
+                <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                  <User size={14} />
+                  <span>Student</span>
+                </div>
+                <p className="text-sm font-semibold text-gray-900">{booking.studentName}</p>
+                <p className="text-xs text-gray-400">ID: {booking.studentNumber || "N/A"}</p>
+              </div>
             </div>
-          )}
 
-          {!isConfirmed && booking.status === "approved" && (
-            <div className="mt-4 border-t pt-4 border-blue-100">
-              <p className="text-xs text-blue-600">
-                📌 Landlord contact details will appear here after your booking is confirmed.
+            {/* Booking Details Grid */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                  <DollarSign size={12} />
+                  <span>Price</span>
+                </div>
+                <p className="text-sm font-semibold text-gray-900">
+                  K{booking.price.toLocaleString()}
+                  <span className="text-xs font-normal text-gray-400">
+                    /{booking.paymentPeriod === "termly" ? "term" : "month"}
+                  </span>
+                </p>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                  <MapPin size={12} />
+                  <span>Bed Space</span>
+                </div>
+                <p className="text-sm font-semibold text-gray-900">{booking.bedSpaceId}</p>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                  <Calendar size={12} />
+                  <span>Requested</span>
+                </div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {new Date(booking.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              {booking.approvedAt && (
+                <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
+                  <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                    <CheckCircle size={12} />
+                    <span>Approved</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {new Date(booking.approvedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+              {booking.confirmedAt && (
+                <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
+                  <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                    <ShieldCheck size={12} />
+                    <span>Confirmed</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {new Date(booking.confirmedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Landlord Details (if confirmed) */}
+            {isConfirmed && landlordName && (
+              <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium text-green-700 mb-1.5">
+                  <Phone size={14} />
+                  <span>Landlord Contact Details</span>
+                </div>
+                <div className="flex flex-col gap-0.5 text-sm">
+                  <p>
+                    <span className="font-medium text-gray-700">Name:</span> {landlordName}
+                  </p>
+                  <p>
+                    <span className="font-medium text-gray-700">Phone:</span> {landlordPhone}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-green-600">
+                  📌 Contact your landlord directly for check-in arrangements.
+                </p>
+              </div>
+            )}
+
+            {isApproved && !isConfirmed && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-center">
+                <p className="text-sm text-blue-700">
+                  📌 Landlord contact details will appear here after your booking is confirmed.
+                </p>
+              </div>
+            )}
+
+            {/* QR Code Section */}
+            {hasConfirmation && booking.status !== "rejected" && booking.status !== "expired" && (
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex flex-col items-center">
+                  <p className="text-xs text-gray-400 mb-2">Scan to verify this booking</p>
+                  <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200">
+                    <QRCodeDisplay value={verifyUrl} size={160} />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2 font-mono">
+                    Code: {booking.confirmationCode}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="border-t border-gray-100 pt-4 text-center text-[10px] text-gray-400">
+              <p>This confirmation is valid for the stated booking.</p>
+              <p className="mt-0.5">
+                For questions, contact Peza support at +260 0771319817 or pezaaccommodation@gmail.com
               </p>
             </div>
-          )}
-
-          {hasConfirmation && booking.status !== "rejected" && (
-            <div className="mt-6 flex flex-col items-center border-t pt-4">
-              <p className="text-xs text-gray-500 mb-2">Scan to verify this booking</p>
-              <QRCodeDisplay value={verifyUrl} size={140} />
-              <p className="text-xs text-gray-400 mt-2">Code: {booking.confirmationCode}</p>
-            </div>
-          )}
-
-          <div className="mt-6 text-center text-xs text-gray-400 border-t pt-4">
-            <p>This confirmation is valid for the stated booking.</p>
-            <p>For questions, contact UniStay support.</p>
           </div>
         </div>
 
-        {/* Interactive buttons – Client Component */}
-        <ConfirmationActions />
+        {/* Interactive Buttons */}
+        <div className="mt-4">
+          <ConfirmationActions />
+        </div>
       </div>
     </main>
   );

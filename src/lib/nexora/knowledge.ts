@@ -1,5 +1,5 @@
 /**
- * Nexora Knowledge Base – UniStayZM Assistant
+ * Peza Knowledge Base – Assistant
  * Humanized, warm, and Zambian-friendly responses.
  */
 export interface KnowledgeEntry {
@@ -18,7 +18,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "hiya", "hello there", "morning", "evening",
     ],
     response:
-      "Muli bwanji! 👋 I'm Nexora, your UniStay assistant. I'm here to help you find a room, book a bed space, or answer any questions about the platform. What can I do for you today? 😊",
+      "Muli bwanji! 👋 I'm Peza Assistant, your accommodation helper. I'm here to help you find a room, book a bed space, or answer any questions about the platform. What can I do for you today? 😊",
   },
   {
     patterns: [
@@ -51,7 +51,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "are you a bot", "are you human", "are you real", "are you ai",
     ],
     response:
-      "I'm Nexora, the friendly AI assistant built for UniStayZM! 🤖 I'm here to answer your questions about finding and booking student accommodation. Think of me as your campus housing buddy. 😄",
+      "I'm Peza Assistant, the friendly AI assistant built for Peza Accommodation! 🤖 I'm here to answer your questions about finding and booking student accommodation. Think of me as your campus housing buddy. 😄",
   },
   {
     patterns: [
@@ -62,46 +62,46 @@ export const knowledgeBase: KnowledgeEntry[] = [
   },
 
   // ==========================================================
-  // 2. ABOUT UNISTAY
+  // 2. ABOUT PEZA
   // ==========================================================
   {
     patterns: [
-      "what is unistay", "what does unistay do", "tell me about unistay",
-      "explain unistay", "what is this platform", "what is unistayzm",
+      "what is peza", "what does peza do", "tell me about peza",
+      "explain peza", "what is this platform", "what is peza accommodation",
       "what is this app", "what is this website",
     ],
     response:
-      "UniStayZM is a student accommodation platform built to help university students in Zambia find, compare, and book boarding houses near their campus. 🏠 You can browse verified listings, filter by budget and distance, request a bed space, and pay a small agent fee to confirm your booking. Want to know how to get started? I can guide you. 😊",
+      "Peza Accommodation is a student housing platform built to help university students in Zambia find, compare, and book boarding houses near their campus. 🏠 You can browse verified listings, filter by budget and distance, request a bed space, and pay a small agent fee to confirm your booking. Want to know how to get started? I can guide you. 😊",
   },
   {
     patterns: [
-      "is it free", "is unistay free", "does it cost money to use",
+      "is it free", "is peza free", "does it cost money to use",
       "do i pay to browse", "is browsing free", "free to use",
     ],
     response:
-      "Browsing and searching for accommodation on UniStay is completely free! 🎉 You only pay a small agent fee once you actually book a bed space. Want to see how booking works? Let me walk you through it.",
+      "Browsing and searching for accommodation on Peza is completely free! 🎉 You only pay a small agent fee once you actually book a bed space. Want to see how booking works? Let me walk you through it.",
   },
   {
     patterns: [
-      "who owns unistay", "who created unistay", "who made this",
-      "who runs unistay", "who is behind unistay", "who founded unistay",
+      "who owns peza", "who created peza", "who made this",
+      "who runs peza", "who is behind peza", "who founded peza",
       "nexora backstory", "who is nexora", "about nexora tech",
     ],
     response:
-      "UniStayZM is built by Nexora Tech, co-founded by Busenga Richard 🇿🇲, with a mission to make university life easier, smarter, and more connected for students in Zambia. UniStay is just the beginning – Nexora is building tools to make campus life better. 😊",
+      "Peza Accommodation is built by Nexora Tech, co-founded by Busenga Richard 🇿🇲, with a mission to make university life easier, smarter, and more connected for students in Zambia. Peza is just the beginning – Nexora is building tools to make campus life better. 😊",
   },
   {
     patterns: [
-      "where is unistay based", "which university", "what universities",
-      "does unistay cover my university", "is unistay in my school",
+      "where is peza based", "which university", "what universities",
+      "does peza cover my university", "is peza in my school",
       "which campus", "supported universities",
     ],
     response:
-      "UniStay currently focuses on Mukuba University 🏛️, with plans to expand to more campuses across Zambia soon. If you're at Mukuba, you're all set to browse and book! 🚀",
+      "Peza currently focuses on Mukuba University 🏛️, with plans to expand to more campuses across Zambia soon. If you're at Mukuba, you're all set to browse and book! 🚀",
   },
   {
     patterns: [
-      "how does unistay work", "how does this work", "how do i use unistay",
+      "how does peza work", "how does this work", "how do i use peza",
       "explain how it works", "getting started",
     ],
     response:
@@ -255,7 +255,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "other payment methods", "i don't have a mobile money account",
     ],
     response:
-      "Currently, Mobile Money is the main way to pay the agent fee on UniStay. 📱 If you don't have an account, you can ask a friend or family member to send the payment on your behalf, or contact support at +260 0771319817 for help. 😊",
+      "Currently, Mobile Money is the main way to pay the agent fee on Peza. 📱 If you don't have an account, you can ask a friend or family member to send the payment on your behalf, or contact support at +260 0771319817 for help. 😊",
   },
   {
     patterns: [
@@ -271,7 +271,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "does the landlord get the fee",
     ],
     response:
-      "No – the K100 agent fee is paid to UniStay's Mobile Money number, not directly to the landlord. 💰 Rent itself (the monthly/termly amount) is arranged separately between you and the landlord once you move in. 😊",
+      "No – the K100 agent fee is paid to Peza's Mobile Money number, not directly to the landlord. 💰 Rent itself (the monthly/termly amount) is arranged separately between you and the landlord once you move in. 😊",
   },
   {
     patterns: [
@@ -307,7 +307,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "become a landlord", "register as landlord", "i want to list my house",
     ],
     response:
-      "To list your property, sign up on UniStay and select the landlord role. 🏠 Once your account is set up, you can add your property details, bed spaces, and photos from your landlord dashboard. Want help with the next step? 😊",
+      "To list your property, sign up on Peza and select the landlord role. 🏠 Once your account is set up, you can add your property details, bed spaces, and photos from your landlord dashboard. Want help with the next step? 😊",
   },
   {
     patterns: [
@@ -371,7 +371,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
   // ==========================================================
   {
     patterns: [
-      "are listings verified", "is unistay safe", "how do you verify properties",
+      "are listings verified", "is peza safe", "how do you verify properties",
       "are the houses real", "is this legit", "trustworthy platform",
     ],
     response:
@@ -508,7 +508,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "talk to a human", "speak to support", "need help",
     ],
     response:
-      "You can reach UniStay support directly at +260 0771319817, email us at unistayzm2@gmail.com, or connect with us on Facebook (https://www.facebook.com/profile.php?id=61577687234055) and TikTok (https://tiktok.com/@nexoratech_0). We're happy to help with anything I can't answer here. Is there something specific I can try to help with first? 😊",
+      "You can reach Peza support directly at +260 0771319817, email us at pezaaccommodation@gmail.com, or connect with us on Facebook (https://www.facebook.com/profile.php?id=61577687234055) and TikTok (https://tiktok.com/@nexoratech_0). We're happy to help with anything I can't answer here. Is there something specific I can try to help with first? 😊",
   },
   {
     patterns: [
@@ -521,10 +521,10 @@ export const knowledgeBase: KnowledgeEntry[] = [
   {
     patterns: [
       "is there a mobile app", "do you have an app", "app download",
-      "unistay app",
+      "peza app",
     ],
     response:
-      "Right now, UniStay works directly through your web browser – no app download needed. 🌐 You can access it from your phone or computer anytime. 😊",
+      "Right now, Peza works directly through your web browser – no app download needed. 🌐 You can access it from your phone or computer anytime. 😊",
   },
 
   // ==========================================================
@@ -532,11 +532,11 @@ export const knowledgeBase: KnowledgeEntry[] = [
   // ==========================================================
   {
     patterns: [
-      "i don't know", "i'm not sure", "random question", "not about unistay",
+      "i don't know", "i'm not sure", "random question", "not about peza",
       "this is off topic", "unrelated question", "something else",
     ],
     response:
-      "I'm not sure about that. 🤔 You can contact support on +260 0771319817, email us at unistayzm2@gmail.com, or reach us on Facebook and TikTok. Is there anything about UniStay I can help you with instead? 😊",
+      "I'm not sure about that. 🤔 You can contact support on +260 0771319817, email us at pezaaccommodation@gmail.com, or reach us on Facebook and TikTok. Is there anything about Peza I can help you with instead? 😊",
   },
 
   // ==========================================================

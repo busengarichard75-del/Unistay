@@ -31,7 +31,7 @@ function generateVerificationToken(): string {
 export async function generateBookingConfirmationData() {
   const sequence = await getNextSequence();
   const year = new Date().getFullYear();
-  const confirmationId = `UNI-${year}-${String(sequence).padStart(5, '0')}`;
+  const confirmationId = `PEZA-${year}-${String(sequence).padStart(5, '0')}`;
   const confirmationCode = generateConfirmationCode();
   const verificationToken = generateVerificationToken();
 

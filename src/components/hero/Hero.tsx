@@ -12,7 +12,7 @@ export function Hero() {
           <HeroHeadline />
         </h1>
         <p className="mt-4 text-base text-gray-600 sm:text-lg">
-          UniStay helps university students discover verified accommodation
+          Peza helps university students discover verified accommodation
           close to where they study.
         </p>
       </div>

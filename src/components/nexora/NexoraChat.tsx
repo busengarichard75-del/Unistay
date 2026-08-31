@@ -20,7 +20,7 @@ export function NexoraChat() {
     {
       id: "welcome",
       sender: "nexora",
-      text: "👋 Muli bwanji! I'm Nexora, your UniStay assistant. How can I help you find a place today?",
+      text: "👋 Muli bwanji! I'm Peza Assistant, your accommodation helper. How can I help you find a place today?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -83,7 +83,7 @@ export function NexoraChat() {
       {isOpen && (
         <div className="mb-4 w-80 max-w-[90vw] rounded-2xl bg-white shadow-xl flex flex-col h-96 overflow-hidden border border-gray-200">
           <div className="flex items-center justify-between bg-[var(--nexora-navy)] px-4 py-3 text-white">
-            <span className="font-semibold">💬 Nexora</span>
+            <span className="font-semibold">💬 Peza Assistant</span>
             <button onClick={() => setIsOpen(false)} className="text-gray-300 hover:text-white">
               <X size={20} />
             </button>

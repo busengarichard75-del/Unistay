@@ -5,12 +5,12 @@ export default function HelpPage() {
     <main className="min-h-screen bg-[var(--nexora-surface)] py-10">
       <div className="container-medium">
         <h1 className="text-2xl font-bold text-[var(--nexora-text-primary)] mb-6">
-          How UniStay Works
+          How Peza Works
         </h1>
 
         <div className="prose prose-blue max-w-none">
           <p className="text-sm text-[var(--nexora-text-secondary)] mb-6">
-            UniStay is a student accommodation platform that connects students with verified landlords.
+            Peza is a student accommodation platform that connects students with verified landlords.
             Here's how it works for each role.
           </p>
 
@@ -69,34 +69,35 @@ export default function HelpPage() {
           </p>
 
           <ul className="list-none space-y-1 text-sm text-[var(--nexora-text-secondary)] mt-2">
-            <li> <strong>General Inquiries:</strong> +260 0771319817</li>
-            <li> <strong>Student Support:</strong> +260 971652675</li>
-            <li> <strong>Landlord Support:</strong> +260 979759372</li>
+            <li>📞 <strong>General Inquiries:</strong> +260 0771319817</li>
+            <li>📞 <strong>Student Support:</strong> +260 971652675</li>
+            <li>📞 <strong>Landlord Support:</strong> +260 979759372</li>
           </ul>
-<div className="mt-6">
-  <h3 className="text-sm font-semibold text-gray-900">Follow UniStayZM</h3>
-  <div className="flex gap-4 mt-2">
-    <a
-      href="https://www.facebook.com/profile.php?id=61577687234055"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 hover:underline"
-    >
-      Facebook
-    </a>
-    <a
-      href="https://tiktok.com/@nexoratech_0"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-gray-700 hover:underline"
-    >
-      TikTok
-    </a>
-  </div>
-</div>
+
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-gray-900">Follow Peza</h3>
+            <div className="flex gap-4 mt-2">
+              <a
+                href="https://www.facebook.com/profile.php?id=61577687234055"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Facebook
+              </a>
+              <a
+                href="https://tiktok.com/@nexoratech_0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-700 hover:underline"
+              >
+                TikTok
+              </a>
+            </div>
+          </div>
 
           <p className="text-sm text-[var(--nexora-text-secondary)] mt-4">
-            Or email us at <strong>unistayzm2@gmail.com</strong>
+            Or email us at <strong>pezaaccommodation@gmail.com</strong>
           </p>
         </div>
 
