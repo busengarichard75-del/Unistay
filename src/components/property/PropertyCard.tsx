@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { BedDouble, MapPin, Star } from "lucide-react";
 import { Property } from "@/types/property";
-import { isBoosted } from "@/lib/boostService";
+import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
 import { timeAgo } from "@/lib/timeUtils";
 
 interface PropertyCardProps {
@@ -62,6 +62,7 @@ export function PropertyCard({
   const periodLabel = paymentPeriod === "termly" ? "/term" : "/mo";
   const status = getAvailabilityStatus(availableCount);
   const boosted = isBoosted(property);
+  const daysRemaining = boosted ? getBoostDaysRemaining(property) : 0;
   const isVerified = property.verificationStatus === "approved";
 
   // ─── COMPACT CARD ──────────────────────────────────────────────
@@ -90,15 +91,14 @@ export function PropertyCard({
             className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent opacity-70"
           />
 
-          {/* Boosted badge */}
+          {/* ─── BOOSTED BADGE (with glow + days) ─── */}
           {boosted && (
-            <span className="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-1 text-[9px] font-bold text-gray-800 shadow-sm backdrop-blur-sm">
-              <Star
-                size={9}
-                fill="currentColor"
-                aria-hidden="true"
-              />
-              Boost
+            <span className="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-yellow-400/95 px-1.5 py-1 text-[9px] font-bold text-black shadow-lg shadow-yellow-400/40 backdrop-blur-sm">
+              <Star size={9} fill="currentColor" aria-hidden="true" />
+              Boosted
+              {daysRemaining > 0 && (
+                <span className="ml-0.5 text-[8px] text-black/70">{daysRemaining}d</span>
+              )}
             </span>
           )}
 
@@ -140,12 +140,7 @@ export function PropertyCard({
             title={location}
             className="mt-1 flex min-w-0 items-center gap-0.5 truncate text-[11px] leading-tight text-gray-500"
           >
-            <MapPin
-              size={10}
-              className="shrink-0"
-              aria-hidden="true"
-            />
-
+            <MapPin size={10} className="shrink-0" aria-hidden="true" />
             <span className="truncate">
               {location.split(",")[0]?.trim() || location}
             </span>
@@ -155,7 +150,6 @@ export function PropertyCard({
           <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1">
             <span className="min-w-0 truncate text-[13px] font-bold leading-tight text-gray-900">
               K{price.toLocaleString()}
-
               <span className="ml-0.5 text-[10px] font-normal text-gray-400">
                 {periodLabel}
               </span>
@@ -173,7 +167,7 @@ export function PropertyCard({
             </span>
           </div>
 
-          {/* ✅ Date Display - Compact Card */}
+          {/* Date Display */}
           {createdAt && (
             <div className="mt-1 text-[9px] text-gray-400">
               Listed {timeAgo(createdAt)}
@@ -183,11 +177,6 @@ export function PropertyCard({
       </>
     );
 
-    /*
-     * When this card is inside an Embla carousel, the carousel
-     * slide handles navigation. This removes the <Link> from
-     * the touch-drag event chain.
-     */
     if (disableLink) {
       return (
         <div
@@ -226,15 +215,14 @@ export function PropertyCard({
             className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
 
-          {/* Boosted badge */}
+          {/* ─── BOOSTED BADGE (full card) ─── */}
           {boosted && (
-            <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs font-semibold text-gray-800 shadow-sm">
-              <Star
-                size={11}
-                fill="currentColor"
-                aria-hidden="true"
-              />
-              Boost
+            <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-yellow-400/95 px-2 py-1 text-xs font-semibold text-black shadow-lg shadow-yellow-400/40 backdrop-blur-sm">
+              <Star size={11} fill="currentColor" aria-hidden="true" />
+              Boosted
+              {daysRemaining > 0 && (
+                <span className="ml-0.5 text-[10px] text-black/70">{daysRemaining}d</span>
+              )}
             </span>
           )}
 
@@ -252,9 +240,7 @@ export function PropertyCard({
       )}
 
       {/* Title */}
-      <h3 className="truncate text-base font-semibold text-gray-900">
-        {title}
-      </h3>
+      <h3 className="truncate text-base font-semibold text-gray-900">{title}</h3>
 
       {/* Location */}
       <p className="mt-1 flex items-center gap-1 truncate text-sm text-gray-500">
@@ -266,10 +252,7 @@ export function PropertyCard({
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-base font-bold text-gray-900">
           K{price.toLocaleString()}
-
-          <span className="ml-0.5 text-xs font-normal text-gray-500">
-            {periodLabel}
-          </span>
+          <span className="ml-0.5 text-xs font-normal text-gray-500">{periodLabel}</span>
         </span>
 
         <span
@@ -284,7 +267,7 @@ export function PropertyCard({
         </span>
       </div>
 
-      {/* ✅ Date Display - Full Card */}
+      {/* Date Display */}
       {createdAt && (
         <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
           <span>📅 Listed {new Date(createdAt).toLocaleDateString()}</span>

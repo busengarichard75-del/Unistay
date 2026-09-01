@@ -2,24 +2,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFirestoreDb } from "@/lib/firebase-admin";
 import webpush from "web-push";
-import { QueryDocumentSnapshot, Query } from "firebase-admin/firestore";
+import { QueryDocumentSnapshot } from "firebase-admin/firestore";
 
 export async function POST(req: NextRequest) {
   try {
     const db = getFirestoreDb();
 
-    // Configure web-push inside the handler
+    // ─── VAPID setup ───────────────────────────────────────────
     const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     const privateKey = process.env.VAPID_PRIVATE_KEY;
     const email = process.env.VAPID_EMAIL;
 
     if (!publicKey || !privateKey || !email) {
       return NextResponse.json(
-        { error: "VAPID keys are not configured. Please set VAPID environment variables." },
+        { error: "VAPID keys are not configured." },
         { status: 500 }
       );
     }
-
     webpush.setVapidDetails(`mailto:${email}`, publicKey, privateKey);
 
     const { title, body, url, targetRole } = await req.json();
@@ -31,95 +30,118 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Build the query for push subscriptions
-    let subscriptionsQuery: Query = db.collection("pushSubscriptions");
+    // ─── Get target users ──────────────────────────────────────
+    let targetUserIds: string[] = [];
 
     if (targetRole) {
-      // Fetch users with the given role
       const usersSnapshot = await db
         .collection("users")
         .where("role", "==", targetRole)
         .get();
-
-      const userIds = usersSnapshot.docs.map((doc: QueryDocumentSnapshot) => doc.id);
-
-      if (userIds.length === 0) {
-        return NextResponse.json({
-          success: true,
-          message: "No users found with this role",
-          sent: 0,
-        });
-      }
-
-      // Now query subscriptions for those user IDs
-      subscriptionsQuery = db
-        .collection("pushSubscriptions")
-        .where("userId", "in", userIds);
+      targetUserIds = usersSnapshot.docs.map((doc: QueryDocumentSnapshot) => doc.id);
+    } else {
+      // All users: fetch all user IDs
+      const allUsers = await db.collection("users").get();
+      targetUserIds = allUsers.docs.map((doc: QueryDocumentSnapshot) => doc.id);
     }
 
-    const subscriptionsSnapshot = await subscriptionsQuery.get();
-
-    if (subscriptionsSnapshot.empty) {
+    if (targetUserIds.length === 0) {
       return NextResponse.json({
         success: true,
-        message: "No push subscriptions found",
+        message: "No users found for the selected target.",
         sent: 0,
       });
     }
 
-    const payload = JSON.stringify({
-      title: `📢 ${title}`,
+    // ─── Create in‑app notifications for each user ────────────
+    const notificationData = {
+      title,
       body,
-      icon: "/favicon.ico",
-      url: url || "/",
-    });
+      type: "announcement" as const,
+      link: url || "/",
+      read: false,
+      createdAt: Date.now(),
+    };
 
-    const results = [];
-    let sentCount = 0;
+    // Batch writes to Firestore (up to 500 per batch)
+    const batch = db.batch();
+    const notificationRefs: any[] = [];
 
-    for (const doc of subscriptionsSnapshot.docs) {
-      const subData = doc.data();
-      const subscription = {
-        endpoint: subData.endpoint,
-        keys: {
-          p256dh: subData.keys.p256dh,
-          auth: subData.keys.auth,
-        },
-      };
+    for (const userId of targetUserIds) {
+      const docRef = db.collection("notifications").doc();
+      batch.set(docRef, {
+        userId,
+        ...notificationData,
+      });
+      notificationRefs.push(docRef);
+    }
 
-      try {
-        await webpush.sendNotification(subscription, payload);
-        sentCount++;
-        results.push({ endpoint: subData.endpoint, status: "success" });
-      } catch (error: any) {
-        if (error.statusCode === 410 || error.statusCode === 404) {
-          await doc.ref.delete();
-          results.push({ endpoint: subData.endpoint, status: "removed" });
-        } else {
-          results.push({ endpoint: subData.endpoint, status: "failed" });
+    await batch.commit();
+
+    // ─── Send push notifications to subscribed users ──────────
+    let pushSent = 0;
+    // We need to get subscriptions for all target users
+    // Since `where("userId", "in", ...)` has a limit of 10 items, we process in chunks
+    const chunkSize = 10;
+    const subscriptionResults = [];
+
+    for (let i = 0; i < targetUserIds.length; i += chunkSize) {
+      const chunk = targetUserIds.slice(i, i + chunkSize);
+      const subsSnapshot = await db
+        .collection("pushSubscriptions")
+        .where("userId", "in", chunk)
+        .get();
+
+      if (subsSnapshot.empty) continue;
+
+      const payload = JSON.stringify({
+        title: `📢 ${title}`,
+        body,
+        icon: "/favicon.ico",
+        url: url || "/",
+      });
+
+      for (const doc of subsSnapshot.docs) {
+        const subData = doc.data();
+        const subscription = {
+          endpoint: subData.endpoint,
+          keys: {
+            p256dh: subData.keys.p256dh,
+            auth: subData.keys.auth,
+          },
+        };
+
+        try {
+          await webpush.sendNotification(subscription, payload);
+          pushSent++;
+        } catch (error: any) {
+          if (error.statusCode === 410 || error.statusCode === 404) {
+            await doc.ref.delete(); // remove invalid subscription
+          }
         }
       }
     }
 
-    // Log the announcement
+    // ─── Log the announcement ──────────────────────────────────
     await db.collection("announcements").add({
       title,
       body,
       targetRole: targetRole || "all",
-      sentCount,
+      userCount: targetUserIds.length,
+      pushSent,
       createdAt: Date.now(),
     });
 
     return NextResponse.json({
       success: true,
-      sent: sentCount,
-      total: subscriptionsSnapshot.size,
-      results,
+      message: `Announcement sent to ${targetUserIds.length} users. Push notifications sent to ${pushSent} subscribers.`,
+      total: targetUserIds.length,
+      pushSent,
     });
   } catch (error) {
     console.error("Admin announcement error:", error);
     return NextResponse.json(
-      { error: "Failed to send announcements" },
+      { error: "Failed to send announcement" },
       { status: 500 }
     );
   }

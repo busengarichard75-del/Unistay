@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus } from "lucide-react";
 import { PropertyCard } from "./PropertyCard";
 import { Property } from "@/types/property";
 import { universities } from "@/data/universities";
@@ -100,7 +100,7 @@ export default function PropertyGrid({ properties }: PropertyGridProps) {
     ? groups.find((group) => group.key === activeGroupKey)
     : null;
 
-  // ─── GROUP DETAIL VIEW (after tapping "View more") ───────────────
+  // ─── GROUP DETAIL VIEW ──────────────────────────────────────────
   if (activeGroup) {
     return (
       <div className="space-y-5">
@@ -133,7 +133,7 @@ export default function PropertyGrid({ properties }: PropertyGridProps) {
     );
   }
 
-  // ─── HOMEPAGE VIEW (grouped previews, no horizontal scroll) ──────
+  // ─── HOMEPAGE VIEW ──────────────────────────────────────────────
   return (
     <div className="space-y-10">
       {groups.map((group) => (
@@ -169,8 +169,8 @@ function GroupPreview({ group, onShowAll }: GroupPreviewProps) {
         </p>
       </div>
 
-      {/* Preview grid: up to 3 cards + a "View more" card in the 4th slot */}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-7">
+      {/* Preview grid */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {previewItems.map((property) => (
           <PropertyCard key={property.id} property={property} compact />
         ))}
@@ -195,12 +195,11 @@ function ViewMoreCard({ remainingCount, onClick }: ViewMoreCardProps) {
       onClick={onClick}
       className="group block min-w-0 touch-manipulation text-left"
     >
-      <div className="relative flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-xl bg-[var(--nexora-surface)] text-center transition-colors group-hover:bg-blue-50">
-        <ArrowRight
-          size={20}
-          className="text-[var(--nexora-primary)] transition-transform duration-200 group-hover:translate-x-1"
-        />
-        <span className="text-[13px] font-semibold text-gray-900">View more</span>
+      <div className="relative flex aspect-square w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-[var(--nexora-surface)] text-center transition-colors hover:border-[var(--nexora-primary)] hover:bg-blue-50/50">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-[var(--nexora-primary)] transition-all group-hover:scale-110 group-hover:bg-blue-200">
+          <Plus size={20} strokeWidth={2.5} />
+        </div>
+        <span className="mt-2 text-[13px] font-semibold text-gray-700">View more</span>
         <span className="text-[11px] text-gray-500">
           {remainingCount} more {remainingCount === 1 ? "property" : "properties"}
         </span>

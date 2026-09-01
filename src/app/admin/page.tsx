@@ -16,7 +16,7 @@ import { Booking } from "@/types/booking";
 import { Property } from "@/types/property";
 import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
 import { sendPushNotification } from "@/lib/sendPushNotification";
-import { createNotification } from "@/services/notificationService"; // ✅ NEW
+import { createNotification } from "@/services/notificationService";
 
 const AGENT_FEE = 100;
 const BOOST_FEE = 100;
@@ -260,23 +260,17 @@ export default function AdminPage() {
   async function handleMarkPaid(bookingId: string) {
     setIsSubmitting(bookingId);
     try {
-      // 1. Update booking status to "confirmed"
       await updateBookingStatus(bookingId, {
         status: "confirmed",
         confirmedAt: Date.now(),
       });
 
-      // 2. Remove from pending list
       const updatedBookings = bookings.filter((b) => b.id !== bookingId);
       setBookings(updatedBookings);
       setFilteredBookings(updatedBookings);
 
-      // 3. Get the booking details to send notifications
       const booking = bookings.find((b) => b.id === bookingId);
       if (booking) {
-        // 3a. Send push notifications (if any)
-        // (optional push could be sent here, but we'll rely on in-app)
-        // 3b. Create in-app notifications for student and landlord
         await createNotification(booking.studentId, {
           title: "Booking Confirmed 🎉",
           body: `Your booking at "${booking.propertyTitle}" has been confirmed by the admin.`,
@@ -503,7 +497,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-200 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* ─── Header ─── */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -513,6 +507,13 @@ export default function AdminPage() {
             <p className="text-sm text-gray-400 mt-1">Welcome back, {user?.email}</p>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href="/admin/users"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Users size={16} />
+              Manage Users
+            </Link>
             <span className="text-xs text-gray-500 bg-gray-800 px-3 py-1 rounded-full">
               v1.0.0
             </span>
