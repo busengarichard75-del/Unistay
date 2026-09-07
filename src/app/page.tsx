@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Sparkles } from "lucide-react";
 import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal";
 import { NexoraChat } from "@/components/nexora/NexoraChat";
+import { LandlordOnboardingModal } from "@/components/landlord/LandlordOnboardingModal";
 
 function HomeContent() {
   const { user } = useAuth();
@@ -227,6 +228,11 @@ function HomeContent() {
         isOpen={showFindModal}
         onClose={() => setShowFindModal(false)}
       />
+
+      {/* ─── LANDLORD ONBOARDING MODAL ─── */}
+      {user && user.role === "landlord" && (
+        <LandlordOnboardingModal landlordName={user.fullName || user.email?.split("@")[0] || "Landlord"} />
+      )}
     </main>
   );
 }
