@@ -15,7 +15,9 @@ import { isBoosted, getBoostDaysRemaining } from "@/lib/boostService";
 import { PageTransition } from "@/components/PageTransition";
 import { sendPushNotification } from "@/lib/sendPushNotification";
 import { getExpiryTimestamp } from "@/lib/bookingExpiration";
-import { createNotification } from "@/services/notificationService"; // ✅ NEW
+import { createNotification } from "@/services/notificationService";
+import { LandlordHero } from "@/components/landlord/LandlordHero";
+import { LandlordOnboardingModal } from "@/components/landlord/LandlordOnboardingModal";
 
 const PAGE_SIZE = 6;
 
@@ -35,20 +37,16 @@ export default function LandlordDashboardPage() {
   const [visibleBookings, setVisibleBookings] = useState(PAGE_SIZE);
   const [visibleRequests, setVisibleRequests] = useState(PAGE_SIZE);
   
-  // Booking status filter
   const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>("all");
 
-  // Boost Modal State
   const [boostModalOpen, setBoostModalOpen] = useState(false);
   const [boostPropertyId, setBoostPropertyId] = useState<string | null>(null);
   const [boostPropertyTitle, setBoostPropertyTitle] = useState("");
   const [isSubmittingBoost, setIsSubmittingBoost] = useState(false);
 
-  // Manual Occupancy State
   const [expandedProperties, setExpandedProperties] = useState<Record<string, boolean>>({});
   const [isTogglingOccupancy, setIsTogglingOccupancy] = useState<string | null>(null);
 
-  // ─── Stats ────────────────────────────────────────────────
   const totalListings = listings.length;
   const totalAvailableBeds = listings.reduce((acc, p) => {
     const beds = p.bedSpaces || [];
@@ -82,8 +80,6 @@ export default function LandlordDashboardPage() {
     };
     fetchData();
   }, [user]);
-
-  // ─── Handlers ──────────────────────────────────────────────
 
   async function handleDelete(id: string) {
     if (!window.confirm("Delete this listing? This cannot be undone.")) return;
@@ -151,7 +147,6 @@ export default function LandlordDashboardPage() {
         )
       );
 
-      // ✅ Send push notification to student
       await sendPushNotification({
         userId: booking.studentId,
         title: "✅ Booking Approved!",
@@ -159,7 +154,6 @@ export default function LandlordDashboardPage() {
         url: "/dashboard/student",
       });
 
-      // ✅ Create in-app notification for student
       await createNotification(booking.studentId, {
         title: "Booking Approved ✅",
         body: `Your booking at "${booking.propertyTitle}" has been approved. You have 48 hours to confirm.`,
@@ -188,7 +182,6 @@ export default function LandlordDashboardPage() {
         prev.map((b) => (b.id === booking.id ? { ...b, status: "rejected" } : b))
       );
 
-      // ✅ Send push notification to student
       await sendPushNotification({
         userId: booking.studentId,
         title: "❌ Booking Rejected",
@@ -196,7 +189,6 @@ export default function LandlordDashboardPage() {
         url: "/dashboard/student",
       });
 
-      // ✅ Create in-app notification for student
       await createNotification(booking.studentId, {
         title: "Booking Rejected ❌",
         body: `Your booking request for "${booking.propertyTitle}" was rejected by the landlord.`,
@@ -210,7 +202,6 @@ export default function LandlordDashboardPage() {
     }
   }
 
-  // Boost handlers
   const openBoostModal = (property: Property) => {
     setBoostPropertyId(property.id);
     setBoostPropertyTitle(property.title);
@@ -224,7 +215,6 @@ export default function LandlordDashboardPage() {
     setIsSubmittingBoost(false);
   };
 
-  // Manual Occupancy handler
   const togglePropertyExpand = (propertyId: string) => {
     setExpandedProperties((prev) => ({
       ...prev,
@@ -284,8 +274,6 @@ export default function LandlordDashboardPage() {
     }
   };
 
-  // ─── Filter helpers ────────────────────────────────────────
-
   const requestedBookings = bookings.filter((b) => b.status === "requested");
 
   const filterBySearch = <T extends Property | Booking>(items: T[], term: string, searchKeys: (keyof T)[]): T[] => {
@@ -334,8 +322,6 @@ export default function LandlordDashboardPage() {
     );
   }
 
-  // ─── Render ──────────────────────────────────────────────────
-
   return (
     <PageTransition>
       <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
@@ -344,38 +330,14 @@ export default function LandlordDashboardPage() {
             <BackButton />
           </div>
 
-          {/* Header + Add Listing */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--nexora-navy)] p-5">
-            <div>
-              <p className="text-sm text-gray-300">Welcome back</p>
-              <h1 className="text-xl font-bold text-white">{user.email}</h1>
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-300">
-                <span className="flex items-center gap-1.5">
-                  <Home size={14} />
-                  {totalListings} listings
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <BedDouble size={14} />
-                  {totalAvailableBeds} available beds
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock size={14} />
-                  {pendingRequests} pending
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CalendarCheck size={14} />
-                  {totalBookings} bookings
-                </span>
-              </div>
-            </div>
-            <Link
-              href="/dashboard/landlord/add-listing"
-              className="flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
-            >
-              <Plus size={16} />
-              Add Listing
-            </Link>
-          </div>
+          {/* ─── LANDLORD HERO ─── */}
+          <LandlordHero
+            email={user.email}
+            totalListings={totalListings}
+            totalAvailableBeds={totalAvailableBeds}
+            pendingRequests={pendingRequests}
+            totalBookings={totalBookings}
+          />
 
           {listings.some((p) => p.verificationStatus !== "approved") && (
             <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700 flex items-center justify-between">
@@ -392,7 +354,7 @@ export default function LandlordDashboardPage() {
             </div>
           )}
 
-          {/* Tabs */}
+          {/* ─── TABS ─── */}
           <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-white p-1 shadow-sm">
             <button
               onClick={() => setActiveTab("listings")}
@@ -423,7 +385,7 @@ export default function LandlordDashboardPage() {
             </button>
           </div>
 
-          {/* Search */}
+          {/* ─── SEARCH ─── */}
           <div className="mt-4">
             <div className="relative">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -437,7 +399,7 @@ export default function LandlordDashboardPage() {
             </div>
           </div>
 
-          {/* Content */}
+          {/* ─── CONTENT ─── */}
           <div className="mt-6">
             {isFetching ? (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -871,6 +833,9 @@ export default function LandlordDashboardPage() {
           </div>
         )}
       </main>
+
+      {/* ─── ONBOARDING MODAL ─── */}
+      <LandlordOnboardingModal landlordName={user.email?.split("@")[0] || "Landlord"} />
     </PageTransition>
   );
 }

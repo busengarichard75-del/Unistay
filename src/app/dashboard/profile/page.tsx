@@ -1,327 +1,413 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
-import { deleteUser } from "firebase/auth";
+import dynamic from "next/dynamic";
+import { Home, Trash2, Info, MapPin, Ticket, CreditCard, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
-import { User, Mail, BadgeCheck, Trash2, Save, ArrowLeft, Home, AlertTriangle, Phone, IdCard } from "lucide-react";
-import { db, auth } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { getPropertyById } from "@/services/propertyService";
+import { deleteBooking, expireExpiredBookings } from "@/services/bookingService";
+import { useBookingListener } from "@/hooks/useBookingListener";
+import { useBookingConfirmationCelebration } from "@/hooks/useBookingConfirmationCelebration";
+import { Booking } from "@/types/booking";
+import { Property } from "@/types/property";
+import { BackButton } from "@/components/ui/BackButton";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { TermsModal } from "@/components/auth/TermsModal";
+import { NotificationOptIn } from "@/components/NotificationOptIn";
+import { BookingCountdown } from "@/components/BookingCountdown";
+import { ConfirmationCelebration } from "@/components/ConfirmationCelebration";
 
-export default function ProfilePage() {
+const PropertyMap = dynamic(
+  () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
+  { ssr: false }
+);
+
+const PAYMENT_NUMBER = "+260 0771319817";
+
+function statusMessage(booking: Booking) {
+  if (!booking || !booking.status) {
+    return { text: "Status unknown", color: "var(--nexora-text-secondary)" };
+  }
+  if (booking.status === "requested") {
+    return { text: "Waiting for landlord approval", color: "var(--nexora-warning)" };
+  }
+  if (booking.status === "approved") {
+    return {
+      text: "Pay K100 agent fee to confirm your booking",
+      color: "var(--nexora-primary)",
+    };
+  }
+  if (booking.status === "rejected") {
+    return { text: "Request rejected by landlord", color: "var(--nexora-danger)" };
+  }
+  if (booking.status === "expired") {
+    return { text: "Approval expired", color: "var(--nexora-danger)" };
+  }
+  return { text: "Booking confirmed!", color: "var(--nexora-success)" };
+}
+
+function getBadgeStyles(status: string | undefined) {
+  if (!status) return "bg-gray-100 text-gray-500";
+  switch (status) {
+    case "requested": return "bg-yellow-100 text-yellow-800";
+    case "approved": return "bg-blue-100 text-blue-800";
+    case "confirmed": return "bg-green-100 text-green-800";
+    case "rejected": return "bg-red-100 text-red-800";
+    case "expired": return "bg-gray-100 text-gray-500";
+    default: return "bg-gray-100 text-gray-800";
+  }
+}
+
+function getStatusDisplayName(status: string | undefined) {
+  if (!status) return "Unknown";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+export default function StudentDashboardPage() {
   const { user, isLoading } = useRequireAuth();
-  const router = useRouter();
+  const userLocation = useGeolocation();
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
-  const [phone, setPhone] = useState("");
-  const [studentNumber, setStudentNumber] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { bookings, loading: bookingsLoading, error: bookingsError } = useBookingListener();
+  const { justConfirmed, dismiss } = useBookingConfirmationCelebration();
 
+  const [propertyMap, setPropertyMap] = useState<Record<string, Property>>({});
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [userFullName, setUserFullName] = useState<string | null>(null);
+  const [isFetchingProperties, setIsFetchingProperties] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  // ─── Fetch user data and expire bookings ──────────────────
   useEffect(() => {
     if (!user) return;
 
-    const fetchProfile = async () => {
+    const fetchUserData = async () => {
       try {
         const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setFullName(data.fullName || user.fullName || "");
-          setEmail(user.email || "");
-          setRole(data.role || "student");
-          setPhone(data.phone || "");
-          setStudentNumber(data.studentNumber || "");
-        } else {
-          setFullName(user.fullName || "");
-          setEmail(user.email || "");
+          if (data?.fullName) setUserFullName(data.fullName);
+          if (data?.hasAcceptedTerms === false) setShowTermsModal(true);
         }
       } catch {
-        setError("Failed to load profile data.");
-      } finally {
-        setIsFetching(false);
+        // Silent fail
       }
     };
+    fetchUserData();
 
-    fetchProfile();
+    const checkExpired = async () => {
+      try {
+        await expireExpiredBookings(user.uid);
+      } catch (error) {
+        console.error("Failed to check expired bookings:", error);
+      }
+    };
+    checkExpired();
   }, [user]);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    if (!fullName.trim()) {
-      toast.error("Name cannot be empty.");
+  // ─── Fetch property details for map ─────────────────────────
+  useEffect(() => {
+    if (!bookings.length) {
+      setPropertyMap({});
+      setIsFetchingProperties(false);
       return;
     }
 
-    setIsSaving(true);
+    setIsFetchingProperties(true);
+    const fetchProperties = async () => {
+      const map: Record<string, Property> = {};
+      const propertyPromises = bookings.map(async (booking) => {
+        const property = await getPropertyById(booking.propertyId);
+        if (property) map[booking.propertyId] = property;
+      });
+      await Promise.all(propertyPromises);
+      setPropertyMap(map);
+      setIsFetchingProperties(false);
+    };
+    fetchProperties();
+  }, [bookings]);
+
+  // ─── Handle delete ──────────────────────────────────────────
+  async function handleDelete(bookingId: string) {
+    if (!window.confirm("Remove this confirmed booking from your history?")) return;
     try {
-      const userRef = doc(db, "users", user.uid);
-      const updateData: any = {
-        fullName: fullName,
-        phone,
-      };
-      if (role === "student") {
-        updateData.studentNumber = studentNumber;
-      }
-      await updateDoc(userRef, updateData);
-      toast.success("Profile updated successfully!");
+      await deleteBooking(bookingId);
+      toast.success("Booking removed successfully.");
     } catch {
-      toast.error("Failed to update profile. Please try again.");
-    } finally {
-      setIsSaving(false);
+      toast.error("Failed to delete booking. Please try again.");
     }
-  };
+  }
 
-  const handleDeleteAccount = async () => {
-    if (!user) return;
+  // ─── Copy number to clipboard ──────────────────────────────
+  function copyNumber() {
+    navigator.clipboard.writeText(PAYMENT_NUMBER).then(() => {
+      setCopied(true);
+      toast.success("Number copied! Open your mobile money app and paste it.");
+      setTimeout(() => setCopied(false), 3000);
+    }).catch(() => {
+      toast.error("Could not copy. Please manually copy: " + PAYMENT_NUMBER);
+    });
+  }
 
-    const confirmed = window.confirm(
-      "⚠️ Are you sure you want to permanently delete your account?\n\n" +
-      "This will remove all your data (bookings, listings, profile) and cannot be undone."
-    );
-    if (!confirmed) return;
-
-    const doubleConfirmed = window.confirm(
-      "This is your final warning. ALL your data will be lost. Click OK to proceed."
-    );
-    if (!doubleConfirmed) return;
-
-    setIsDeleting(true);
-    try {
-      // ✅ Use auth.currentUser directly
-      const firebaseUser = auth.currentUser;
-      if (!firebaseUser) {
-        toast.error("You are not logged in.");
-        return;
-      }
-
-      await deleteDoc(doc(db, "users", user.uid));
-      await deleteUser(firebaseUser);
-      toast.success("Account deleted successfully.");
-      router.push("/");
-    } catch (err: any) {
-      console.error("Delete account failed:", err);
-      if (err.code === "auth/requires-recent-login") {
-        toast.error(
-          "For security, please log out and log back in, then try deleting your account again."
-        );
-      } else {
-        toast.error("Failed to delete account. Please try again.");
-      }
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const initials = fullName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
-  if (isLoading || isFetching) {
+  if (isLoading || !user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--nexora-surface)]">
-        <div className="animate-pulse text-center">
-          <div className="mx-auto h-20 w-20 rounded-full bg-gray-200" />
-          <div className="mt-4 h-4 w-48 rounded bg-gray-200" />
-          <div className="mt-2 h-3 w-32 rounded bg-gray-200" />
-        </div>
+        <p className="text-sm text-gray-500">Loading...</p>
       </main>
     );
   }
 
+  const isFetching = bookingsLoading || isFetchingProperties;
+  const validBookings = bookings.filter((b) => b && b.status);
+
   return (
-    <main className="min-h-screen bg-[var(--nexora-surface)] py-8">
+    <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
       <div className="container-medium">
-        {/* Navigation */}
-        <div className="mb-6 flex items-center gap-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[var(--nexora-navy)] transition-colors"
+        <div className="mb-4">
+          <BackButton />
+        </div>
+
+        {/* ─── Header ─── */}
+        <div className="card-premium p-6 bg-[var(--nexora-navy)] text-white">
+          <p className="text-sm text-gray-300">Welcome back</p>
+          <h1 className="mt-1 text-xl font-bold">{userFullName || user.email}</h1>
+          {userFullName && <p className="mt-0.5 text-xs text-gray-400">{user.email}</p>}
+        </div>
+
+        {/* ─── BIG BROWSE BUTTON ─── */}
+        <div className="mt-6">
+          <button
+            onClick={() => window.location.href = "/"}
+            className="w-full rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 p-6 shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] text-white text-left"
           >
-            <Home size={18} />
-            Home
-          </Link>
-          <span className="text-gray-300">/</span>
-          <span className="text-sm text-gray-500">Profile</span>
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-white">
+                <Home size={24} />
+              </div>
+              <div className="flex-1">
+                <p className="text-lg font-bold">Find Your Perfect Room</p>
+                <p className="text-sm text-white/80">
+                  Browse all available properties near your campus
+                </p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white">
+                <Home size={20} />
+              </div>
+            </div>
+          </button>
         </div>
 
-        {/* Header Card */}
-        <div className="card-premium overflow-hidden bg-[var(--nexora-navy)] p-6 text-white">
-          <div className="flex items-center gap-5">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-2xl font-bold text-white shadow-lg ring-2 ring-white/20">
-              {initials || "U"}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Profile & Settings</h1>
-              <p className="text-sm text-gray-300">Manage your account information and preferences</p>
-            </div>
-          </div>
+        {/* ─── Notification Opt-In Banner ─── */}
+        <div className="mt-6">
+          <NotificationOptIn variant="banner" />
         </div>
 
-        {error && (
+        {bookingsError && (
           <div className="mt-6 rounded-2xl bg-red-50 p-4 text-center text-sm text-red-600">
-            {error}
+            Failed to load bookings. Please refresh.
           </div>
         )}
 
-        {/* Profile Form */}
-        <div className="mt-6 card-premium bg-white p-6 shadow-sm">
-          <form onSubmit={handleSave} className="space-y-5">
-            {/* Full Name */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--nexora-text-secondary)]">
-                Full Name (as on NRC)
-              </label>
-              <div className="relative">
-                <User
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/20"
-                  placeholder="Your full name"
-                />
-              </div>
-            </div>
+        {/* ─── My Bookings ─── */}
+        <div className="mt-8">
+          <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
+            My Bookings
+            <span className="ml-2 text-sm font-normal text-gray-400">
+              ({validBookings.length})
+            </span>
+          </h2>
 
-            {/* Phone Number */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--nexora-text-secondary)]">
-                Phone Number
-              </label>
-              <div className="relative">
-                <Phone
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/20"
-                  placeholder="e.g., +260 97 123 4567"
-                />
-              </div>
-            </div>
-
-            {/* Student ID – only for students */}
-            {role === "student" && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--nexora-text-secondary)]">
-                  Student ID
-                </label>
-                <div className="relative">
-                  <IdCard
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <input
-                    type="text"
-                    value={studentNumber}
-                    onChange={(e) => setStudentNumber(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/20"
-                    placeholder="e.g., 2023123456"
-                  />
+          {isFetching ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm">
+                  <div className="mb-1 h-4 w-2/3 rounded bg-gray-200" />
+                  <div className="mb-1 h-3 w-1/3 rounded bg-gray-200" />
+                  <div className="h-3 w-1/2 rounded bg-gray-200" />
                 </div>
-              </div>
-            )}
-
-            {/* Email */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--nexora-text-secondary)]">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-                <input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-500 cursor-not-allowed"
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">Email cannot be changed here.</p>
+              ))}
             </div>
-
-            {/* Role */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--nexora-text-secondary)]">
-                Account Role
-              </label>
-              <div className="relative">
-                <BadgeCheck
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-                <input
-                  type="text"
-                  value={role.charAt(0).toUpperCase() + role.slice(1)}
-                  disabled
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-500 capitalize cursor-not-allowed"
-                />
+          ) : validBookings.length === 0 ? (
+            <div className="card-premium p-10 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[var(--nexora-primary)]">
+                <Home size={28} />
               </div>
+              <p className="text-sm font-medium text-[var(--nexora-text-primary)]">
+                No bookings yet
+              </p>
+              <p className="mt-1 text-xs text-[var(--nexora-text-secondary)]">
+                Discover verified accommodation near your campus.
+              </p>
+              <button
+                onClick={() => window.location.href = "/"}
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
+              >
+                <Home size={16} />
+                Browse Properties →
+              </button>
             </div>
+          ) : (
+            <>
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-400">
+                <Info size={16} className="shrink-0 mt-0.5 text-gray-400" />
+                <span>
+                  You can only remove <strong className="text-gray-500">confirmed</strong> bookings from your history.
+                </span>
+              </div>
 
-            {/* Save Button */}
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--nexora-primary)] py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)] disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              <Save size={18} />
-              {isSaving ? "Saving..." : "Save Changes"}
-            </button>
-          </form>
-        </div>
+              <div className="space-y-4">
+                {validBookings.map((booking) => {
+                  const status = statusMessage(booking);
+                  const property = propertyMap[booking.propertyId];
+                  const hasCoordinates =
+                    property?.latitude !== undefined && property?.longitude !== undefined;
+                  const isConfirmed = booking.status === "confirmed";
+                  const isApproved = booking.status === "approved";
+                  const isExpired = booking.status === "expired";
 
-        {/* Danger Zone */}
-        <div className="mt-8 overflow-hidden rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="rounded-full bg-red-50 p-2 text-red-600">
-              <AlertTriangle size={20} />
-            </div>
-            <h2 className="text-lg font-semibold text-red-600">Danger Zone</h2>
-          </div>
-          <p className="mt-2 text-sm text-[var(--nexora-text-secondary)]">
-            Permanently delete your account and all associated data. This action cannot be undone.
-          </p>
-          <button
-            onClick={handleDeleteAccount}
-            disabled={isDeleting}
-            className="mt-4 flex items-center gap-2 rounded-full bg-red-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            <Trash2 size={16} />
-            {isDeleting ? "Deleting..." : "Delete Account"}
-          </button>
-        </div>
+                  const defaultCenter: [number, number] =
+                    userLocation.latitude && userLocation.longitude
+                      ? [userLocation.latitude, userLocation.longitude]
+                      : hasCoordinates
+                      ? [property!.latitude!, property!.longitude!]
+                      : [-15.3875, 28.3228];
 
-        {/* Back link */}
-        <div className="mt-8 text-center">
-          <button
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-sm font-medium text-[var(--nexora-text-secondary)] hover:text-[var(--nexora-navy)] transition-colors"
-          >
-            <ArrowLeft size={16} />
-            Go Back
-          </button>
+                  return (
+                    <div
+                      key={booking.id}
+                      className={`rounded-2xl bg-white p-4 shadow-sm ${
+                        isExpired ? "opacity-60" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {booking.propertyTitle}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            K{booking.price.toLocaleString()}/
+                            {booking.paymentPeriod === "termly" ? "term" : "month"}
+                          </p>
+                          {isApproved && <BookingCountdown booking={booking} />}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getBadgeStyles(booking.status)}`}
+                          >
+                            {getStatusDisplayName(booking.status)}
+                          </span>
+                          {isConfirmed && (
+                            <button
+                              onClick={() => handleDelete(booking.id)}
+                              className="rounded-full p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                              aria-label="Delete booking"
+                              title="Remove this confirmed booking from your history"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <p
+                        className="mt-1.5 text-xs font-medium"
+                        style={{ color: status.color }}
+                      >
+                        {status.text}
+                      </p>
+
+                      {/* ─── SIMPLIFIED PAYMENT SECTION ─── */}
+                      {isApproved && (
+                        <div className="mt-3 border-t border-gray-100 pt-3">
+                          <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                            <p className="text-sm font-semibold text-blue-900">📞 Pay K100 Agent Fee</p>
+                            
+                            <div className="mt-2 flex items-center gap-2">
+                              <div className="flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-sm font-mono text-blue-900">
+                                {PAYMENT_NUMBER}
+                              </div>
+                              <button
+                                onClick={copyNumber}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                              >
+                                {copied ? <Check size={16} /> : <Copy size={16} />}
+                                {copied ? "Copied!" : "Copy"}
+                              </button>
+                            </div>
+
+                            <div className="mt-3 space-y-1.5 text-xs text-blue-700">
+                              <p>1. Copy the number above</p>
+                              <p>2. Open your mobile money app</p>
+                              <p>3. Send <span className="font-bold">K100</span> to that number</p>
+                              <p className="mt-1 text-blue-500 text-[10px]">
+                                ✅ Your booking will be confirmed after admin verification
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {isExpired && (
+                        <div className="mt-2 rounded-md border-l-4 border-gray-400 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                          This approval has expired. The bed is now available again.
+                        </div>
+                      )}
+
+                      {isConfirmed && (
+                        <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+                          <Link
+                            href={`/booking/confirmation/${booking.id}`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-4 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-200"
+                          >
+                            <Ticket size={14} />
+                            View Your Booking Pass →
+                          </Link>
+                        </div>
+                      )}
+
+                      {isConfirmed && hasCoordinates && property && (
+                        <div className="mt-3 border-t border-gray-100 pt-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                              <MapPin size={14} className="text-[var(--nexora-primary)]" />
+                              Property Location
+                            </span>
+                            <a
+                              href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-medium text-[var(--nexora-primary)] hover:underline"
+                            >
+                              Open Directions ↗
+                            </a>
+                          </div>
+                          <PropertyMap
+                            latitude={property.latitude}
+                            longitude={property.longitude}
+                            height="clamp(150px, 25vw, 250px)"
+                            selectable={false}
+                            defaultCenter={defaultCenter}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      <ConfirmationCelebration booking={justConfirmed} onDismiss={dismiss} />
+      {showTermsModal && user && (
+        <TermsModal userId={user.uid} onAccept={() => setShowTermsModal(false)} />
+      )}
     </main>
   );
 }

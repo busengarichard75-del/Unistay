@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Home, Trash2, Info, MapPin, Ticket } from "lucide-react";
+import { Home, Trash2, Info, MapPin, Ticket, ArrowRight, Bed } from "lucide-react";
 import { toast } from "sonner";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { getPropertyById, updateBedAvailability } from "@/services/propertyService";
+import { getPropertyById } from "@/services/propertyService";
 import { deleteBooking, expireExpiredBookings } from "@/services/bookingService";
 import { useBookingListener } from "@/hooks/useBookingListener";
 import { useBookingConfirmationCelebration } from "@/hooks/useBookingConfirmationCelebration";
@@ -28,12 +29,10 @@ const PropertyMap = dynamic(
 
 const PAYMENT_NUMBER = "+260 0771319817";
 
-// ─── Helper functions with safe defaults ───
 function statusMessage(booking: Booking) {
   if (!booking || !booking.status) {
     return { text: "Status unknown", color: "var(--nexora-text-secondary)" };
   }
-
   if (booking.status === "requested") {
     return { text: "Waiting for landlord approval", color: "var(--nexora-warning)" };
   }
@@ -53,22 +52,14 @@ function statusMessage(booking: Booking) {
 }
 
 function getBadgeStyles(status: string | undefined) {
-  if (!status) {
-    return "bg-gray-100 text-gray-500";
-  }
+  if (!status) return "bg-gray-100 text-gray-500";
   switch (status) {
-    case "requested":
-      return "bg-yellow-100 text-yellow-800";
-    case "approved":
-      return "bg-blue-100 text-blue-800";
-    case "confirmed":
-      return "bg-green-100 text-green-800";
-    case "rejected":
-      return "bg-red-100 text-red-800";
-    case "expired":
-      return "bg-gray-100 text-gray-500";
-    default:
-      return "bg-gray-100 text-gray-800";
+    case "requested": return "bg-yellow-100 text-yellow-800";
+    case "approved": return "bg-blue-100 text-blue-800";
+    case "confirmed": return "bg-green-100 text-green-800";
+    case "rejected": return "bg-red-100 text-red-800";
+    case "expired": return "bg-gray-100 text-gray-500";
+    default: return "bg-gray-100 text-gray-800";
   }
 }
 
@@ -79,12 +70,10 @@ function getStatusDisplayName(status: string | undefined) {
 
 export default function StudentDashboardPage() {
   const { user, isLoading } = useRequireAuth();
+  const router = useRouter();
   const userLocation = useGeolocation();
 
-  // ─── Real-time bookings ───
   const { bookings, loading: bookingsLoading, error: bookingsError } = useBookingListener();
-
-  // ─── Confirmation celebration ───
   const { justConfirmed, dismiss } = useBookingConfirmationCelebration();
 
   const [propertyMap, setPropertyMap] = useState<Record<string, Property>>({});
@@ -92,7 +81,7 @@ export default function StudentDashboardPage() {
   const [userFullName, setUserFullName] = useState<string | null>(null);
   const [isFetchingProperties, setIsFetchingProperties] = useState(true);
 
-  // ─── Fetch user data and expire bookings ───
+  // ─── Fetch user data and expire bookings ──────────────────
   useEffect(() => {
     if (!user) return;
 
@@ -103,9 +92,7 @@ export default function StudentDashboardPage() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data?.fullName) setUserFullName(data.fullName);
-          if (data?.hasAcceptedTerms === false) {
-            setShowTermsModal(true);
-          }
+          if (data?.hasAcceptedTerms === false) setShowTermsModal(true);
         }
       } catch {
         // Silent fail
@@ -113,7 +100,6 @@ export default function StudentDashboardPage() {
     };
     fetchUserData();
 
-    // Check for expired bookings when dashboard loads
     const checkExpired = async () => {
       try {
         await expireExpiredBookings(user.uid);
@@ -124,7 +110,7 @@ export default function StudentDashboardPage() {
     checkExpired();
   }, [user]);
 
-  // ─── Fetch property details for map ───
+  // ─── Fetch property details for map ─────────────────────────
   useEffect(() => {
     if (!bookings.length) {
       setPropertyMap({});
@@ -146,7 +132,7 @@ export default function StudentDashboardPage() {
     fetchProperties();
   }, [bookings]);
 
-  // ─── Handle delete ───
+  // ─── Handle delete ──────────────────────────────────────────
   async function handleDelete(bookingId: string) {
     if (!window.confirm("Remove this confirmed booking from your history?")) return;
     try {
@@ -155,6 +141,11 @@ export default function StudentDashboardPage() {
     } catch {
       toast.error("Failed to delete booking. Please try again.");
     }
+  }
+
+  // ─── Navigate to home with smooth transition ──────────────
+  function goToBrowse() {
+    router.push("/");
   }
 
   if (isLoading || !user) {
@@ -166,8 +157,6 @@ export default function StudentDashboardPage() {
   }
 
   const isFetching = bookingsLoading || isFetchingProperties;
-
-  // ✅ Filter out any bookings without a status
   const validBookings = bookings.filter((b) => b && b.status);
 
   return (
@@ -182,6 +171,29 @@ export default function StudentDashboardPage() {
           <p className="text-sm text-gray-300">Welcome back</p>
           <h1 className="mt-1 text-xl font-bold">{userFullName || user.email}</h1>
           {userFullName && <p className="mt-0.5 text-xs text-gray-400">{user.email}</p>}
+        </div>
+
+        {/* ─── BIG BROWSE BUTTON ─── */}
+        <div className="mt-6">
+          <button
+            onClick={goToBrowse}
+            className="w-full rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 p-6 shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] text-white text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-white">
+                <Bed size={24} />
+              </div>
+              <div className="flex-1">
+                <p className="text-lg font-bold">Find Your Perfect Room</p>
+                <p className="text-sm text-white/80">
+                  Browse all available properties near your campus
+                </p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white">
+                <ArrowRight size={20} />
+              </div>
+            </div>
+          </button>
         </div>
 
         {/* ─── Notification Opt-In Banner ─── */}
@@ -215,7 +227,6 @@ export default function StudentDashboardPage() {
               ))}
             </div>
           ) : validBookings.length === 0 ? (
-            /* ─── Empty State ─── */
             <div className="card-premium p-10 text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[var(--nexora-primary)]">
                 <Home size={28} />
@@ -226,17 +237,16 @@ export default function StudentDashboardPage() {
               <p className="mt-1 text-xs text-[var(--nexora-text-secondary)]">
                 Discover verified accommodation near your campus.
               </p>
-              <Link
-                href="/"
+              <button
+                onClick={goToBrowse}
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
               >
                 <Home size={16} />
-                Find Your First Room →
-              </Link>
+                Browse Properties →
+              </button>
             </div>
           ) : (
             <>
-              {/* ─── Helper note ─── */}
               <div className="mb-3 flex items-start gap-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-400">
                 <Info size={16} className="shrink-0 mt-0.5 text-gray-400" />
                 <span>
@@ -268,7 +278,6 @@ export default function StudentDashboardPage() {
                         isExpired ? "opacity-60" : ""
                       }`}
                     >
-                      {/* ─── Top row ─── */}
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">
@@ -278,7 +287,6 @@ export default function StudentDashboardPage() {
                             K{booking.price.toLocaleString()}/
                             {booking.paymentPeriod === "termly" ? "term" : "month"}
                           </p>
-                          {/* ─── Countdown for approved bookings ─── */}
                           {isApproved && <BookingCountdown booking={booking} />}
                         </div>
                         <div className="flex items-center gap-2">
@@ -300,7 +308,6 @@ export default function StudentDashboardPage() {
                         </div>
                       </div>
 
-                      {/* ─── Status message ─── */}
                       <p
                         className="mt-1.5 text-xs font-medium"
                         style={{ color: status.color }}
@@ -308,22 +315,18 @@ export default function StudentDashboardPage() {
                         {status.text}
                       </p>
 
-                      {/* ─── Action Required (approved bookings) – no button ─── */}
                       {isApproved && (
                         <div className="mt-2 rounded-md border-l-4 border-[var(--nexora-primary)] bg-blue-50 px-3 py-2 text-xs text-blue-800">
                           <span className="font-semibold">Action Required:</span> {status.text}
-                          {/* ❌ Removed Confirm Booking button */}
                         </div>
                       )}
 
-                      {/* ─── Expired message ─── */}
                       {isExpired && (
                         <div className="mt-2 rounded-md border-l-4 border-gray-400 bg-gray-50 px-3 py-2 text-xs text-gray-500">
                           This approval has expired. The bed is now available again.
                         </div>
                       )}
 
-                      {/* ─── "View Confirmation" (confirmed only) ─── */}
                       {isConfirmed && (
                         <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
                           <Link
@@ -337,7 +340,6 @@ export default function StudentDashboardPage() {
                         </div>
                       )}
 
-                      {/* ─── Map (confirmed only) ─── */}
                       {isConfirmed && hasCoordinates && property && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
                           <div className="flex items-center justify-between mb-2">
@@ -372,10 +374,7 @@ export default function StudentDashboardPage() {
         </div>
       </div>
 
-      {/* ─── Confirmation Celebration Modal ─── */}
       <ConfirmationCelebration booking={justConfirmed} onDismiss={dismiss} />
-
-      {/* ─── Terms Modal ─── */}
       {showTermsModal && user && (
         <TermsModal userId={user.uid} onAccept={() => setShowTermsModal(false)} />
       )}
