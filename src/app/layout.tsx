@@ -6,12 +6,13 @@ import { Toaster } from "sonner";
 import { AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NetworkStatus } from "@/components/NetworkStatus";
+import { WelcomeModal } from "@/components/WelcomeModal"; // ✅ Import the modal
 
 export const metadata: Metadata = {
   title: "Peza Accommodation – Student Housing Platform",
   description: "Find safe, affordable student accommodation near your campus in Zambia.",
   icons: {
-    icon: "/favicon.png", // ✅ PNG favicon
+    icon: "/favicon.png",
   },
 };
 
@@ -33,6 +34,8 @@ export default function RootLayout({
               {children}
             </AnimatePresence>
             <Toaster position="bottom-right" richColors closeButton />
+            {/* ✅ Welcome Modal (only shows for guests after 5s) */}
+            <WelcomeModal />
           </AuthProvider>
         </ErrorBoundary>
       </body>
