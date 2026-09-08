@@ -358,3 +358,34 @@
 .horizontal-scroll > * {
   flex-shrink: 0;
 }
+
+/* ─── Animated Navbar Gradient ─── */
+@keyframes navbarGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 50% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  75% {
+    background-position: 50% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.navbar-animated {
+  background: linear-gradient(135deg, 
+    #1A365D 0%, 
+    #2563EB 25%, 
+    #4F46E5 50%, 
+    #7C3AED 75%, 
+    #1A365D 100%
+  );
+  background-size: 300% 300%;
+  animation: navbarGradient 12s ease-in-out infinite;
+}

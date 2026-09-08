@@ -83,7 +83,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[var(--nexora-navy)]">
+    <header className="sticky top-0 z-50 w-full navbar-animated">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <Link href="/" className="text-lg font-bold text-white">
           Peza ZM
@@ -265,7 +265,7 @@ export function Navbar() {
 
       {/* Mobile Menu (full dropdown) */}
       {isMobileMenuOpen && user && (
-        <div ref={mobileMenuRef} className="md:hidden bg-[var(--nexora-navy)] border-t border-white/10 px-4 py-4">
+        <div ref={mobileMenuRef} className="md:hidden navbar-animated border-t border-white/10 px-4 py-4">
           <div className="flex flex-col space-y-3">
             <p className="text-sm text-gray-300 border-b border-white/10 pb-2">
               <span className="font-semibold text-white">{displayName}</span>
