@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Search, X, MapPin, CheckCircle, AlertCircle, Loader2, Navigation, Crosshair } from "lucide-react";
@@ -27,6 +27,30 @@ const locationIcon = L.divIcon({
   iconAnchor: [15, 15],
 });
 
+// ─── Distance helpers ──────────────────────────────────────────
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function formatDistance(km: number): string {
+  const walkMin = Math.max(1, Math.round(km * 12)); // ~5 km/h
+  if (km < 1) {
+    return `${Math.round(km * 1000)} m · ${walkMin} min walk`;
+  }
+  if (km < 10) {
+    return `${km.toFixed(1)} km · ${walkMin} min walk`;
+  }
+  return `${Math.round(km)} km · ${walkMin} min walk`;
+}
+
 interface PropertyMapProps {
   latitude?: number;
   longitude?: number;
@@ -38,6 +62,10 @@ interface PropertyMapProps {
   showSearch?: boolean;
   showFallback?: boolean;
   showMyLocation?: boolean;
+  // ─── NEW (all optional, backward compatible) ───
+  showUserDistance?: boolean;
+  userLocation?: { latitude: number; longitude: number } | null;
+  showCoordinateBadge?: boolean;
 }
 
 export function PropertyMap({
@@ -51,6 +79,9 @@ export function PropertyMap({
   showSearch = true,
   showFallback = true,
   showMyLocation = true,
+  showUserDistance = false,
+  userLocation = null,
+  showCoordinateBadge = true,
 }: PropertyMapProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -69,6 +100,24 @@ export function PropertyMap({
     latitude !== undefined && longitude !== undefined
       ? [latitude, longitude]
       : defaultCenter;
+
+  const hasPropertyCoords =
+    latitude !== undefined && longitude !== undefined && latitude !== 0 && longitude !== 0;
+
+  // ─── Distance calculation (external user location) ─────────
+  const hasUserCoords =
+    showUserDistance &&
+    userLocation !== null &&
+    userLocation !== undefined &&
+    typeof userLocation.latitude === "number" &&
+    typeof userLocation.longitude === "number";
+
+  const distanceText =
+    hasUserCoords && hasPropertyCoords
+      ? formatDistance(
+          haversineKm(userLocation!.latitude, userLocation!.longitude, latitude!, longitude!)
+        )
+      : null;
 
   // ─── Get My Location ────────────────────────────────────────
   const getMyLocation = () => {
@@ -114,7 +163,7 @@ export function PropertyMap({
     );
   };
 
-  // ─── Geocode search ──────────────────────────────────────────
+  // ─── Geocode search ─────────────────────────────────────────
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
@@ -180,7 +229,6 @@ export function PropertyMap({
 
   // ─── Map ready handler ──────────────────────────────────────
   const handleMapReady = () => {
-    // Map loaded successfully – clear any error state
     setMapError(false);
   };
 
@@ -224,7 +272,7 @@ export function PropertyMap({
             </button>
           )}
 
-          {latitude !== undefined && longitude !== undefined && latitude !== 0 && longitude !== 0 && (
+          {hasPropertyCoords && (
             <button
               type="button"
               onClick={handleClearLocation}
@@ -254,10 +302,10 @@ export function PropertyMap({
       )}
 
       {/* ─── Location Confirmation Badge ─── */}
-      {latitude !== undefined && longitude !== undefined && latitude !== 0 && longitude !== 0 && (
+      {showCoordinateBadge && hasPropertyCoords && (
         <div className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 border border-green-200">
           <CheckCircle size={16} className="text-green-600" />
-          <span>Location set: {latitude.toFixed(6)}, {longitude.toFixed(6)}</span>
+          <span>Location set: {latitude!.toFixed(6)}, {longitude!.toFixed(6)}</span>
         </div>
       )}
 
@@ -311,7 +359,7 @@ export function PropertyMap({
       ) : (
         <div
           style={{ height, width: "100%", borderRadius: "0.75rem", overflow: "hidden" }}
-          className="shadow-sm border border-gray-200"
+          className="shadow-sm border border-gray-200 relative"
         >
           <MapContainer
             center={center}
@@ -332,19 +380,55 @@ export function PropertyMap({
             />
 
             {/* Property marker */}
-            {latitude !== undefined && longitude !== undefined && latitude !== 0 && longitude !== 0 && (
-              <Marker position={[latitude, longitude]}>
+            {hasPropertyCoords && (
+              <Marker position={[latitude!, longitude!]}>
                 <Popup>
                   {selectable ? "Selected location" : "Property location"}
                 </Popup>
               </Marker>
             )}
 
-            {/* Current location marker (blue dot) */}
+            {/* Current location marker (from My Location button) */}
             {currentLocation && (
               <Marker position={[currentLocation.lat, currentLocation.lng]} icon={locationIcon}>
                 <Popup>📍 Your current location</Popup>
               </Marker>
+            )}
+
+            {/* External user location marker (dashboard) */}
+            {hasUserCoords && (
+              <Marker
+                position={[userLocation!.latitude, userLocation!.longitude]}
+                icon={locationIcon}
+              >
+                <Popup>📍 You are here</Popup>
+              </Marker>
+            )}
+
+            {/* Dashed line user → property */}
+            {hasUserCoords && hasPropertyCoords && (
+              <Polyline
+                positions={[
+                  [userLocation!.latitude, userLocation!.longitude],
+                  [latitude!, longitude!],
+                ]}
+                pathOptions={{
+                  color: "#4A90D9",
+                  weight: 2,
+                  dashArray: "6 8",
+                  opacity: 0.7,
+                }}
+              />
+            )}
+
+            {/* Auto-fit both markers */}
+            {hasUserCoords && hasPropertyCoords && (
+              <FitBounds
+                points={[
+                  [userLocation!.latitude, userLocation!.longitude],
+                  [latitude!, longitude!],
+                ]}
+              />
             )}
 
             <LocationMarker
@@ -354,19 +438,41 @@ export function PropertyMap({
               longitude={longitude}
             />
           </MapContainer>
+
+          {/* Floating distance pill */}
+          {distanceText && (
+            <div
+              className="absolute top-3 left-3 z-[1000] pointer-events-none flex items-center gap-1.5 rounded-full bg-white/95 backdrop-blur px-3 py-1.5 shadow-md border border-gray-100 text-xs font-semibold text-gray-800"
+            >
+              <Navigation size={12} className="text-[var(--nexora-primary)]" />
+              {distanceText}
+            </div>
+          )}
         </div>
       )}
 
       {/* ─── Help text ─── */}
       {selectable && !mapError && (
         <p className="text-xs text-gray-400">
-          {latitude && longitude && latitude !== 0 && longitude !== 0
+          {hasPropertyCoords
             ? "Click on the map to adjust the location, or use 'My Location' to find yourself."
             : "Click on the map to set the property location, or use 'My Location' to find yourself."}
         </p>
       )}
     </div>
   );
+}
+
+// ─── FitBounds: auto-zoom to include both points ───────────────
+function FitBounds({ points }: { points: [number, number][] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (points.length >= 2) {
+      const bounds = L.latLngBounds(points);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    }
+  }, [map, points]);
+  return null;
 }
 
 // ─── LocationMarker Component ──────────────────────────────────

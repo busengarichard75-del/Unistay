@@ -12,6 +12,7 @@ import { getPropertyById, updateProperty } from "@/services/propertyService";
 import { getBookingsByStudent } from "@/services/bookingService";
 import { addBooking } from "@/services/bookingService";
 import { BookingAuthPrompt } from "@/components/property/BookingAuthPrompt";
+import { BookingConfirmationModal } from "@/components/property/BookingConfirmationModal";
 import { useAuth } from "@/lib/AuthContext";
 import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
@@ -40,6 +41,10 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedBedId, setSubmittedBedId] = useState<string | null>(null);
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
+
+  // ✅ Confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingBed, setPendingBed] = useState<{ id: string; type: string } | null>(null);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -107,15 +112,26 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
 
   if (!property) return notFound();
 
-  async function handleBookClick(bedSpaceId: string) {
+  function getBedTypeLabel(bed: any): string {
+    if (bed.type === "Top") return "Top Bunk";
+    if (bed.type === "Bottom") return "Bottom Bunk";
+    return "Standard Bed";
+  }
+
+  // ✅ Step 1: Open the confirmation modal
+  function handleBookClick(bedId: string, bedType: string) {
     if (!user || !property) {
       setShowAuthPrompt(true);
       return;
     }
+    setPendingBed({ id: bedId, type: bedType });
+    setShowConfirmModal(true);
+  }
 
-    if (isSubmitting) return;
+  // ✅ Step 2: Confirm – send the booking
+  async function handleConfirmBooking() {
+    if (!pendingBed || !user || !property) return;
 
-    setSubmittedBedId(bedSpaceId);
     setIsSubmitting(true);
 
     try {
@@ -144,7 +160,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         studentPhone,
         landlordId: property.ownerId,
         propertyId: property.id,
-        bedSpaceId,
+        bedSpaceId: pendingBed.id,
         propertyTitle: property.title,
         price: property.price,
         paymentPeriod: property.paymentPeriod,
@@ -156,7 +172,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         "Request sent! The landlord will review and approve your booking. The bed remains available until approved."
       );
 
-      // ─── Push notification (non‑critical, try/catch) ───
+      // Push notification (non-critical)
       try {
         await sendPushNotification({
           userId: property.ownerId,
@@ -165,10 +181,10 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           url: "/dashboard/landlord",
         });
       } catch (pushErr) {
-        console.warn("Push notification failed (non‑critical):", pushErr);
+        console.warn("Push notification failed (non-critical):", pushErr);
       }
 
-      // ─── In‑app notification (non‑critical, try/catch) ───
+      // In-app notification (non-critical)
       try {
         await createNotification(property.ownerId, {
           title: "New Booking Request",
@@ -177,26 +193,31 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           link: "/dashboard/landlord",
         });
       } catch (notifErr) {
-        console.warn("In‑app notification failed (non‑critical):", notifErr);
+        console.warn("In-app notification failed (non-critical):", notifErr);
       }
 
       toast.success("Booking request sent successfully!");
 
+      // Close modal
+      setShowConfirmModal(false);
+      setPendingBed(null);
+
     } catch (err) {
       console.error("Booking error:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to send booking request. Please try again.");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to send booking request. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
-      setTimeout(() => {
-        setSubmittedBedId(null);
-      }, 3000);
     }
   }
 
-  function getBedTypeLabel(bed: any): string {
-    if (bed.type === "Top") return "Top Bunk";
-    if (bed.type === "Bottom") return "Bottom Bunk";
-    return "Standard Bed";
+  function handleCloseModal() {
+    if (isSubmitting) return;
+    setShowConfirmModal(false);
+    setPendingBed(null);
   }
 
   const images = property.imageUrls?.length
@@ -205,21 +226,26 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     ? [property.imageUrl]
     : [];
 
-  const hasCoordinates = property.latitude !== undefined && property.longitude !== undefined;
+  const hasCoordinates =
+    property.latitude !== undefined && property.longitude !== undefined;
 
   const isLandlord = user && property.ownerId === user.uid;
-  const isAdmin = user?.email && ['admin@unistay.com', 'busengarichard75@gmail.com'].includes(user.email);
+  const isAdmin =
+    user?.email &&
+    ["admin@unistay.com", "busengarichard75@gmail.com"].includes(user.email);
   const hasConfirmedBooking = userBookings.some(
-    (booking) => booking.propertyId === property.id && booking.status === "confirmed"
+    (booking) =>
+      booking.propertyId === property.id && booking.status === "confirmed"
   );
 
   const showMap = hasCoordinates && (isLandlord || isAdmin || hasConfirmedBooking);
 
-  const defaultCenter: [number, number] = userLocation.latitude && userLocation.longitude
-    ? [userLocation.latitude, userLocation.longitude]
-    : hasCoordinates
-    ? [property.latitude!, property.longitude!]
-    : [-15.3875, 28.3228];
+  const defaultCenter: [number, number] =
+    userLocation.latitude && userLocation.longitude
+      ? [userLocation.latitude, userLocation.longitude]
+      : hasCoordinates
+      ? [property.latitude!, property.longitude!]
+      : [-15.3875, 28.3228];
 
   const customAmenities = property.additionalAmenities || [];
   const hasRooms = property.rooms && property.rooms.length > 0;
@@ -247,7 +273,11 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
                 />
               </div>
             ) : (
-              <div className={`grid gap-2 ${images.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+              <div
+                className={`grid gap-2 ${
+                  images.length === 2 ? "grid-cols-2" : "grid-cols-3"
+                }`}
+              >
                 {images.map((url, index) => (
                   <div key={index} className="relative overflow-hidden rounded-xl">
                     <img
@@ -291,7 +321,9 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
             {isVerified && (
               <div className="shrink-0 ml-4 flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 border border-blue-200">
                 <Star size={16} className="fill-blue-600 text-blue-600" />
-                <span className="text-xs font-medium text-blue-700">Peza Verified</span>
+                <span className="text-xs font-medium text-blue-700">
+                  Peza Verified
+                </span>
               </div>
             )}
           </div>
@@ -301,7 +333,9 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           <div className="mt-4 card-premium p-4 bg-blue-50/30 border border-blue-100">
             <div className="flex items-center gap-2 mb-2">
               <Tag size={16} className="text-[var(--nexora-primary)]" />
-              <h3 className="text-sm font-semibold text-[var(--nexora-text-primary)]">Additional Amenities</h3>
+              <h3 className="text-sm font-semibold text-[var(--nexora-text-primary)]">
+                Additional Amenities
+              </h3>
             </div>
             <div className="flex flex-wrap gap-2">
               {customAmenities.map((amenity, index) => (
@@ -371,13 +405,17 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
                 <div key={room.id} className="rounded-xl bg-white p-4 shadow-sm">
                   <div className="flex items-center gap-2 mb-2">
                     <DoorOpen size={16} className="text-[var(--nexora-primary)]" />
-                    <h3 className="text-sm font-semibold text-gray-800">{room.name}</h3>
-                    <span className="text-xs text-gray-400 ml-1">({room.bedSpaces.length} beds)</span>
+                    <h3 className="text-sm font-semibold text-gray-800">
+                      {room.name}
+                    </h3>
+                    <span className="text-xs text-gray-400 ml-1">
+                      ({room.bedSpaces.length} beds)
+                    </span>
                   </div>
                   <div className="space-y-2">
                     {room.bedSpaces.map((bed) => {
                       const isAvailable = bed.isAvailable;
-                      const isDisabled = !isAvailable || isSubmitting || submittedBedId === bed.id;
+                      const isDisabled = !isAvailable || isSubmitting;
 
                       return (
                         <div
@@ -392,7 +430,11 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
                               <p className="text-sm font-medium text-gray-900">
                                 {getBedTypeLabel(bed)}
                               </p>
-                              <span className={`text-xs ${isAvailable ? "text-green-600" : "text-red-500"}`}>
+                              <span
+                                className={`text-xs ${
+                                  isAvailable ? "text-green-600" : "text-red-500"
+                                }`}
+                              >
                                 {isAvailable ? "Available" : "Occupied"}
                               </span>
                             </div>
@@ -400,20 +442,16 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
 
                           <button
                             disabled={isDisabled}
-                            onClick={() => handleBookClick(bed.id)}
+                            onClick={() =>
+                              handleBookClick(bed.id, getBedTypeLabel(bed))
+                            }
                             className={`rounded-full px-4 py-1.5 text-sm font-medium text-white transition-all ${
                               isAvailable && !isDisabled
                                 ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
                                 : "cursor-not-allowed bg-gray-300"
                             }`}
                           >
-                            {submittedBedId === bed.id
-                              ? "Sending..."
-                              : isSubmitting
-                              ? "Processing..."
-                              : isAvailable
-                              ? "Request Bed"
-                              : "Unavailable"}
+                            {isAvailable ? "Request Bed" : "Unavailable"}
                           </button>
                         </div>
                       );
@@ -426,7 +464,7 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
             <div className="space-y-3">
               {property.bedSpaces?.map((bed) => {
                 const isAvailable = bed.isAvailable;
-                const isDisabled = !isAvailable || isSubmitting || submittedBedId === bed.id;
+                const isDisabled = !isAvailable || isSubmitting;
 
                 return (
                   <div
@@ -441,7 +479,11 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
                         <p className="text-sm font-medium text-gray-900">
                           {getBedTypeLabel(bed)}
                         </p>
-                        <span className={`text-xs ${isAvailable ? "text-green-600" : "text-red-500"}`}>
+                        <span
+                          className={`text-xs ${
+                            isAvailable ? "text-green-600" : "text-red-500"
+                          }`}
+                        >
                           {isAvailable ? "Available" : "Occupied"}
                         </span>
                       </div>
@@ -449,20 +491,16 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
 
                     <button
                       disabled={isDisabled}
-                      onClick={() => handleBookClick(bed.id)}
+                      onClick={() =>
+                        handleBookClick(bed.id, getBedTypeLabel(bed))
+                      }
                       className={`rounded-full px-5 py-2 text-sm font-medium text-white transition-all ${
                         isAvailable && !isDisabled
                           ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
                           : "cursor-not-allowed bg-gray-300"
                       }`}
                     >
-                      {submittedBedId === bed.id
-                        ? "Sending..."
-                        : isSubmitting
-                        ? "Processing..."
-                        : isAvailable
-                        ? "Request Bed"
-                        : "Unavailable"}
+                      {isAvailable ? "Request Bed" : "Unavailable"}
                     </button>
                   </div>
                 );
@@ -472,18 +510,37 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         </div>
 
         <div className="mt-8 text-center">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-[var(--nexora-primary)] hover:underline">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[var(--nexora-primary)] hover:underline"
+          >
             <Home size={16} />
             Browse more properties
           </Link>
         </div>
-
       </div>
 
+      {/* ─── CONFIRMATION MODAL ─── */}
+      <BookingConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmBooking}
+        property={
+          property
+            ? {
+                title: property.title,
+                location: property.location,
+                price: property.price,
+                paymentPeriod: property.paymentPeriod,
+              }
+            : null
+        }
+        bedType={pendingBed?.type || "Standard Bed"}
+        isSubmitting={isSubmitting}
+      />
+
       {showAuthPrompt && (
-        <BookingAuthPrompt
-          onClose={() => setShowAuthPrompt(false)}
-        />
+        <BookingAuthPrompt onClose={() => setShowAuthPrompt(false)} />
       )}
     </main>
   );

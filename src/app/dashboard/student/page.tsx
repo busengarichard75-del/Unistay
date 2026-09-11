@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Home, Trash2, Info, MapPin, Ticket, ArrowRight, Bed } from "lucide-react";
+import { Home, Trash2, Info, MapPin, Ticket, ArrowRight, Bed, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -21,6 +21,8 @@ import { TermsModal } from "@/components/auth/TermsModal";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { BookingCountdown } from "@/components/BookingCountdown";
 import { ConfirmationCelebration } from "@/components/ConfirmationCelebration";
+import { PostBookingChecklist } from "@/components/PostBookingChecklist";
+import { PaymentInstructionsModal } from "@/components/PaymentInstructionsModal";
 
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
@@ -80,6 +82,7 @@ export default function StudentDashboardPage() {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [userFullName, setUserFullName] = useState<string | null>(null);
   const [isFetchingProperties, setIsFetchingProperties] = useState(true);
+  const [payModalBooking, setPayModalBooking] = useState<Booking | null>(null);
 
   // ─── Fetch user data and expire bookings ──────────────────
   useEffect(() => {
@@ -143,7 +146,7 @@ export default function StudentDashboardPage() {
     }
   }
 
-  // ─── Navigate to home with smooth transition ──────────────
+  // ─── Navigate to home ───────────────────────────────────────
   function goToBrowse() {
     router.push("/");
   }
@@ -316,8 +319,18 @@ export default function StudentDashboardPage() {
                       </p>
 
                       {isApproved && (
-                        <div className="mt-2 rounded-md border-l-4 border-[var(--nexora-primary)] bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                          <span className="font-semibold">Action Required:</span> {status.text}
+                        <div className="mt-2 rounded-md border-l-4 border-[var(--nexora-primary)] bg-blue-50 px-3 py-2.5">
+                          <p className="text-xs text-blue-800">
+                            <span className="font-semibold">Action Required:</span>{" "}
+                            {status.text}
+                          </p>
+                          <button
+                            onClick={() => setPayModalBooking(booking)}
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--nexora-primary)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
+                          >
+                            <CreditCard size={14} />
+                            Pay K100 Now
+                          </button>
                         </div>
                       )}
 
@@ -339,6 +352,9 @@ export default function StudentDashboardPage() {
                           </Link>
                         </div>
                       )}
+
+                      {/* ─── Post-Booking Checklist (confirmed only) ─── */}
+                      {isConfirmed && <PostBookingChecklist booking={booking} />}
 
                       {isConfirmed && hasCoordinates && property && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
@@ -362,6 +378,18 @@ export default function StudentDashboardPage() {
                             height="clamp(150px, 25vw, 250px)"
                             selectable={false}
                             defaultCenter={defaultCenter}
+                            showSearch={false}
+                            showMyLocation={false}
+                            showUserDistance={true}
+                            showCoordinateBadge={false}
+                            userLocation={
+                              userLocation.latitude && userLocation.longitude
+                                ? {
+                                    latitude: userLocation.latitude,
+                                    longitude: userLocation.longitude,
+                                  }
+                                : null
+                            }
                           />
                         </div>
                       )}
@@ -377,6 +405,15 @@ export default function StudentDashboardPage() {
       <ConfirmationCelebration booking={justConfirmed} onDismiss={dismiss} />
       {showTermsModal && user && (
         <TermsModal userId={user.uid} onAccept={() => setShowTermsModal(false)} />
+      )}
+
+      {/* ─── Payment Instructions Modal ─── */}
+      {payModalBooking && (
+        <PaymentInstructionsModal
+          isOpen={!!payModalBooking}
+          onClose={() => setPayModalBooking(null)}
+          booking={payModalBooking}
+        />
       )}
     </main>
   );
