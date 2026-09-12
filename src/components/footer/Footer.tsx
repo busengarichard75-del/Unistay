@@ -29,15 +29,15 @@ export function Footer() {
             <div className="space-y-2 text-sm text-gray-600">
               <p className="flex items-center gap-2">
                 <Phone size={16} className="text-gray-400" />
-                <span>📞 +260 0771319817 (General)</span>
+                <span> +260 0771319817 (General)</span>
               </p>
               <p className="flex items-center gap-2">
                 <Phone size={16} className="text-gray-400" />
-                <span>📞 +260 971652675 (Student Support)</span>
+                <span> +260 971652675(Student Support)</span>
               </p>
               <p className="flex items-center gap-2">
                 <Phone size={16} className="text-gray-400" />
-                <span>📞 +260 979759372 (Landlord Support)</span>
+                <span> +260 971652675(Landlord Support)</span>
               </p>
               <p className="flex items-center gap-2">
                 <Mail size={16} className="text-gray-400" />

@@ -153,7 +153,8 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         }
       }
 
-      await addBooking({
+      // ✅ Capture the newly-created booking ID
+      const newBookingId = await addBooking({
         studentId: user.uid,
         studentName,
         studentNumber,
@@ -194,6 +195,18 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         });
       } catch (notifErr) {
         console.warn("In-app notification failed (non-critical):", notifErr);
+      }
+
+      // ─── Fire-and-forget email to landlord ───
+      if (newBookingId) {
+        fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookingId: newBookingId,
+            type: "booking_requested",
+          }),
+        }).catch(() => {});
       }
 
       toast.success("Booking request sent successfully!");

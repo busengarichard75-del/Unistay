@@ -284,6 +284,16 @@ export default function AdminPage() {
           type: "booking_confirmed",
           link: "/dashboard/landlord",
         });
+
+        // ─── Fire-and-forget email to student + landlord ───
+        fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookingId: booking.id,
+            type: "booking_confirmed",
+          }),
+        }).catch(() => {});
       }
 
       toast.success("Payment confirmed and booking marked as confirmed!");

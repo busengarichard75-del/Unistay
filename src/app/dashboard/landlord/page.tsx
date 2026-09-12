@@ -161,6 +161,16 @@ export default function LandlordDashboardPage() {
         link: "/dashboard/student",
       });
 
+      // ─── Fire-and-forget email to student ───
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          type: "booking_approved",
+        }),
+      }).catch(() => {});
+
       toast.success("Booking approved successfully!");
     } catch {
       toast.error("Failed to approve booking. Please try again.");
@@ -195,6 +205,16 @@ export default function LandlordDashboardPage() {
         type: "booking_rejected",
         link: "/dashboard/student",
       });
+
+      // ─── Fire-and-forget email to student ───
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          type: "booking_rejected",
+        }),
+      }).catch(() => {});
 
       toast.success("Booking rejected successfully.");
     } catch {

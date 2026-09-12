@@ -18,6 +18,7 @@ import { Sparkles } from "lucide-react";
 import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal";
 import { NexoraChat } from "@/components/nexora/NexoraChat";
 import { LandlordOnboardingModal } from "@/components/landlord/LandlordOnboardingModal";
+import { WhyPezaSection } from "@/components/home/WhyPezaSection";
 
 function HomeContent() {
   const { user } = useAuth();
@@ -131,6 +132,9 @@ function HomeContent() {
       <AnnouncementBanner />
 
       <Hero />
+
+      {/* ─── WHY PEZA (compact trust section) ─── */}
+      <WhyPezaSection />
 
       {isStudent && (
         <div className="container-wide mt-6">
