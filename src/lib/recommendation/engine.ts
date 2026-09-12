@@ -80,13 +80,15 @@ function matchesAnyKeyword(text: string, keywords: string[]): boolean {
   return keywords.some((k) => text.includes(k.toLowerCase()));
 }
 
-function getRoomTypeMatch(property: Property, preference: string): "match" | "partial" | "none" {
+function getRoomTypeMatch(
+  property: Property,
+  preference: string
+): "match" | "partial" | "none" {
   if (preference === "any") return "match";
 
   const bedSpaces = property.bedSpaces || [];
   const rooms = property.rooms || [];
 
-  // Check bed-space level for bunks
   if (preference === "top_bunk") {
     return bedSpaces.some((b) => b.type === "Top") ? "match" : "none";
   }
@@ -94,7 +96,6 @@ function getRoomTypeMatch(property: Property, preference: string): "match" | "pa
     return bedSpaces.some((b) => b.type === "Bottom") ? "match" : "none";
   }
   if (preference === "single") {
-    // A "single" room = a room with exactly 1 bed OR any single-type bed
     const hasSingleRoom = rooms.some((r) => r.bedSpaces.length === 1);
     return hasSingleRoom ? "match" : "none";
   }
@@ -103,17 +104,22 @@ function getRoomTypeMatch(property: Property, preference: string): "match" | "pa
 
 // ─── Scoring components ────────────────────────────────────────
 
-function scoreBudget(property: Property, prefs: Preferences): { score: number; answered: boolean } {
+function scoreBudget(
+  property: Property,
+  prefs: Preferences
+): { score: number; answered: boolean } {
   if (!prefs.budgetMax || prefs.budgetMax <= 0) return { score: 0, answered: false };
   if (property.price <= prefs.budgetMax) return { score: 1, answered: true };
 
-  // Over-budget: penalize linearly (25% over = 0.5)
   const ratio = property.price / prefs.budgetMax;
   const score = Math.max(0, 1 - (ratio - 1) * 2);
   return { score, answered: true };
 }
 
-function scoreDistance(property: Property, prefs: Preferences): { score: number; answered: boolean } {
+function scoreDistance(
+  property: Property,
+  prefs: Preferences
+): { score: number; answered: boolean } {
   if (!prefs.maxWalkingMinutes) return { score: 0, answered: false };
 
   const propertyMinutes = DISTANCE_BUCKET_MINUTES[property.distanceBucket] ?? 20;
@@ -125,7 +131,10 @@ function scoreDistance(property: Property, prefs: Preferences): { score: number;
   return { score, answered: true };
 }
 
-function scoreRoomType(property: Property, prefs: Preferences): { score: number; answered: boolean } {
+function scoreRoomType(
+  property: Property,
+  prefs: Preferences
+): { score: number; answered: boolean } {
   if (!prefs.roomType || prefs.roomType === "any") return { score: 0, answered: false };
   const match = getRoomTypeMatch(property, prefs.roomType);
   return { score: match === "match" ? 1 : 0, answered: true };
@@ -141,7 +150,10 @@ function scoreMustHaves(
   hasDisqualifier: boolean;
 } {
   const mustHaves = prefs.mustHaves || [];
-  const genderPref = prefs.genderPreference && prefs.genderPreference !== "mixed" ? prefs.genderPreference : null;
+  const genderPref =
+    prefs.genderPreference && prefs.genderPreference !== "mixed"
+      ? prefs.genderPreference
+      : null;
 
   if (mustHaves.length === 0 && !genderPref) {
     return { score: 0, answered: false, missing: [], hasDisqualifier: false };
@@ -152,19 +164,25 @@ function scoreMustHaves(
   let matched = 0;
   let total = 0;
 
-  // Gender must-haves
   if (mustHaves.includes("female_only")) {
     total++;
-    if (property.genderPreference === "female" || property.genderPreference === "mixed") matched++;
+    if (
+      property.genderPreference === "female" ||
+      property.genderPreference === "mixed"
+    )
+      matched++;
     else missing.push("female_only");
   }
   if (mustHaves.includes("male_only")) {
     total++;
-    if (property.genderPreference === "male" || property.genderPreference === "mixed") matched++;
+    if (
+      property.genderPreference === "male" ||
+      property.genderPreference === "mixed"
+    )
+      matched++;
     else missing.push("male_only");
   }
 
-  // Amenity must-haves
   const amenityKeys: MustHaveKey[] = [
     "private_bathroom",
     "backup_power",
@@ -182,7 +200,6 @@ function scoreMustHaves(
   });
 
   const score = total > 0 ? matched / total : 0;
-  // Disqualify if more than half of must-haves missing
   const hasDisqualifier = total > 0 && missing.length / total > 0.5;
 
   return { score, answered: true, missing, hasDisqualifier };
@@ -196,7 +213,9 @@ function scoreComforts(
   if (comforts.length === 0) return { score: 0, answered: false, matched: [] };
 
   const text = amenitiesText(property);
-  const matched = comforts.filter((key) => matchesAnyKeyword(text, COMFORT_KEYWORDS[key]));
+  const matched = comforts.filter((key) =>
+    matchesAnyKeyword(text, COMFORT_KEYWORDS[key])
+  );
   return { score: matched.length / comforts.length, answered: true, matched };
 }
 
@@ -221,17 +240,15 @@ function buildWeights(answered: {
   comforts: boolean;
   vibe: boolean;
 }) {
-  // Base ideal weights (when everything is answered)
   const ideal = {
-    budget: 0.20,
-    distance: 0.10,
+    budget: 0.2,
+    distance: 0.1,
     roomType: 0.05,
     mustHaves: 0.35,
-    comforts: 0.20,
-    vibe: 0.10,
+    comforts: 0.2,
+    vibe: 0.1,
   };
 
-  // Zero out unanswered
   const raw = {
     budget: answered.budget ? ideal.budget : 0,
     distance: answered.distance ? ideal.distance : 0,
@@ -241,9 +258,15 @@ function buildWeights(answered: {
     vibe: answered.vibe ? ideal.vibe : 0,
   };
 
-  const total = raw.budget + raw.distance + raw.roomType + raw.mustHaves + raw.comforts + raw.vibe;
+  const total =
+    raw.budget +
+    raw.distance +
+    raw.roomType +
+    raw.mustHaves +
+    raw.comforts +
+    raw.vibe;
+
   if (total === 0) {
-    // Nothing answered — return neutral weights for availability only
     return { ...raw, availability: 1 };
   }
 
@@ -256,68 +279,6 @@ function buildWeights(answered: {
     vibe: raw.vibe / total,
     availability: 0,
   };
-}
-
-// ─── Reason generation ─────────────────────────────────────────
-
-function buildReasons(
-  property: Property,
-  prefs: Preferences,
-  components: {
-    budget: { score: number; answered: boolean };
-    distance: { score: number; answered: boolean };
-    roomType: { score: number; answered: boolean };
-    mustHaves: { score: number; answered: boolean; missing: MustHaveKey[] };
-    comforts: { score: number; answered: boolean; matched: ComfortKey[] };
-    vibe: { score: number; answered: boolean };
-  }
-): { reasons: MatchReason[]; warnings: MatchWarning[] } {
-  const reasons: MatchReason[] = [];
-  const warnings: MatchWarning[] = [];
-
-  if (components.budget.answered) {
-    if (components.budget.score >= 0.95) reasons.push({ text: "Within your budget ✅" });
-    else if (components.budget.score >= 0.6) warnings.push({ text: `K${property.price.toLocaleString()} is slightly above your budget` });
-    else warnings.push({ text: `K${property.price.toLocaleString()} is above your budget` });
-  }
-
-  if (components.distance.answered) {
-    const minutes = DISTANCE_BUCKET_MINUTES[property.distanceBucket] ?? 20;
-    if (components.distance.score >= 0.95) reasons.push({ text: `Only ~${minutes} min walk to campus ✅` });
-    else warnings.push({ text: `~${minutes} min walk — more than you wanted` });
-  }
-
-  if (components.roomType.answered && components.roomType.score >= 0.95) {
-    reasons.push({ text: "Room type matches your preference ✅" });
-  }
-
-  if (components.mustHaves.answered) {
-    const missing = components.missing;
-    if (missing.length === 0) {
-      reasons.push({ text: "All your must-haves are available ✅" });
-    } else {
-      missing.forEach((key) => {
-        const label = MUST_HAVE_LABELS[key];
-        warnings.push({ text: `No ${label} listed` });
-      });
-    }
-  }
-
-  if (components.comforts.answered && components.comforts.matched.length > 0) {
-    const names = components.comforts.matched.map((k) => COMFORT_LABELS[k]);
-    reasons.push({ text: `Has ${names.slice(0, 3).join(", ")} ✅` });
-  }
-
-  if (components.vibe.answered && components.vibe.score >= 0.9) {
-    reasons.push({ text: `Matches your ${prefs.vibe} vibe ✅` });
-  }
-
-  // Always mention a verified badge
-  if (property.verificationStatus === "approved") {
-    reasons.push({ text: "Peza Verified ✅" });
-  }
-
-  return { reasons, warnings };
 }
 
 // ─── Display labels ────────────────────────────────────────────
@@ -342,35 +303,99 @@ export const COMFORT_LABELS: Record<ComfortKey, string> = {
   solar: "solar power",
 };
 
+// ─── Reason generation ─────────────────────────────────────────
+
+function buildReasons(
+  property: Property,
+  prefs: Preferences,
+  components: {
+    budget: { score: number; answered: boolean };
+    distance: { score: number; answered: boolean };
+    roomType: { score: number; answered: boolean };
+    mustHaves: { score: number; answered: boolean; missing: MustHaveKey[] };
+    comforts: { score: number; answered: boolean; matched: ComfortKey[] };
+    vibe: { score: number; answered: boolean };
+  }
+): { reasons: MatchReason[]; warnings: MatchWarning[] } {
+  const reasons: MatchReason[] = [];
+  const warnings: MatchWarning[] = [];
+
+  if (components.budget.answered) {
+    if (components.budget.score >= 0.95) reasons.push({ text: "Within your budget ✅" });
+    else if (components.budget.score >= 0.6)
+      warnings.push({
+        text: `K${property.price.toLocaleString()} is slightly above your budget`,
+      });
+    else
+      warnings.push({ text: `K${property.price.toLocaleString()} is above your budget` });
+  }
+
+  if (components.distance.answered) {
+    const minutes = DISTANCE_BUCKET_MINUTES[property.distanceBucket] ?? 20;
+    if (components.distance.score >= 0.95)
+      reasons.push({ text: `Only ~${minutes} min walk to campus ✅` });
+    else warnings.push({ text: `~${minutes} min walk — more than you wanted` });
+  }
+
+  if (components.roomType.answered && components.roomType.score >= 0.95) {
+    reasons.push({ text: "Room type matches your preference ✅" });
+  }
+
+  if (components.mustHaves.answered) {
+    const missing = components.mustHaves.missing;
+    if (missing.length === 0) {
+      reasons.push({ text: "All your must-haves are available ✅" });
+    } else {
+      missing.forEach((key) => {
+        const label = MUST_HAVE_LABELS[key];
+        warnings.push({ text: `No ${label} listed` });
+      });
+    }
+  }
+
+  if (components.comforts.answered && components.comforts.matched.length > 0) {
+    const names = components.comforts.matched.map((k) => COMFORT_LABELS[k]);
+    reasons.push({ text: `Has ${names.slice(0, 3).join(", ")} ✅` });
+  }
+
+  if (components.vibe.answered && components.vibe.score >= 0.9) {
+    reasons.push({ text: `Matches your ${prefs.vibe} vibe ✅` });
+  }
+
+  if (property.verificationStatus === "approved") {
+    reasons.push({ text: "Peza Verified ✅" });
+  }
+
+  return { reasons, warnings };
+}
+
 // ─── Main engine ───────────────────────────────────────────────
 export function recommendProperties(
   properties: Property[],
   prefs: Preferences
 ): ScoredProperty[] {
-  // 1. Hard filters (only for something essential)
-  let filtered = properties.filter((p) => {
+  // 1. Hard filters
+  const filtered = properties.filter((p) => {
     if (p.isActive === false) return false;
 
-    // Budget — only hard filter if a budget was set
     if (prefs.budgetMax && prefs.budgetMax > 0 && p.price > prefs.budgetMax * 1.5) {
       return false;
     }
 
-    // University — hard filter if specified
     if (prefs.universityId && p.universityId !== prefs.universityId) return false;
 
-    // Gender — hard filter
     if (prefs.genderPreference && prefs.genderPreference !== "mixed") {
-      if (p.genderPreference !== prefs.genderPreference && p.genderPreference !== "mixed") {
+      if (
+        p.genderPreference !== prefs.genderPreference &&
+        p.genderPreference !== "mixed"
+      ) {
         return false;
       }
     }
 
-    // Must have at least 1 available bed
     const bedSpaces = p.bedSpaces || [];
     if (!bedSpaces.some((b) => b.isAvailable)) return false;
 
-    // Must-have disqualifiers
     const mh = scoreMustHaves(p, prefs);
     if (mh.hasDisqualifier) return false;
 
@@ -397,7 +422,6 @@ export function recommendProperties(
       vibe: vibe.answered,
     });
 
-    // Compute weighted score
     let overall =
       weights.budget * budget.score +
       weights.distance * distance.score +
@@ -406,7 +430,7 @@ export function recommendProperties(
       weights.comforts * comforts.score +
       weights.vibe * vibe.score;
 
-    // Fallback when nothing is answered — show available properties ranked by availability
+    // Fallback when nothing was answered
     if (
       !budget.answered &&
       !distance.answered &&
@@ -416,11 +440,13 @@ export function recommendProperties(
       !vibe.answered
     ) {
       const beds = property.bedSpaces || [];
-      const ratio = beds.length > 0 ? beds.filter((b) => b.isAvailable).length / beds.length : 0;
+      const ratio =
+        beds.length > 0
+          ? beds.filter((b) => b.isAvailable).length / beds.length
+          : 0;
       overall = 0.5 + ratio * 0.5;
     }
 
-    // Small boost for boosted properties (max +3)
     const boostBonus = isBoosted(property) ? 0.03 : 0;
     overall = Math.min(1, overall + boostBonus);
 
@@ -451,7 +477,6 @@ export function recommendProperties(
     };
   });
 
-  // 3. Sort by score desc
   scored.sort((a, b) => b.score - a.score);
 
   return scored;
