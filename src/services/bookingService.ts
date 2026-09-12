@@ -116,17 +116,14 @@ export async function confirmBooking(
     const booking = bookingSnap.data() as Booking;
     const property = propertySnap.data() as any;
 
-    // Validate booking status
     if (booking.status !== "approved") {
       throw new Error("Booking must be approved to confirm");
     }
 
-    // Check expiration
     if (booking.approvalExpiresAt && Date.now() > booking.approvalExpiresAt) {
       throw new Error("Booking has expired");
     }
 
-    // Find the bed space
     const bedSpaces = property.bedSpaces || [];
     const bedIndex = bedSpaces.findIndex((b: any) => b.id === bedSpaceId);
     if (bedIndex === -1) {
@@ -136,13 +133,10 @@ export async function confirmBooking(
       throw new Error("Bed is no longer available");
     }
 
-    // Mark bed as unavailable
     bedSpaces[bedIndex].isAvailable = false;
 
-    // Update property
     transaction.update(propertyRef, { bedSpaces });
 
-    // Update booking
     transaction.update(bookingRef, {
       status: "confirmed",
       confirmedAt: Date.now(),
@@ -164,12 +158,21 @@ export async function expireExpiredBookings(userId: string): Promise<number> {
     for (const docRef of snapshot.docs) {
       const booking = { id: docRef.id, ...docRef.data() } as Booking;
       if (isBookingExpired(booking)) {
-        // Also need to free the bed space (optional – can be done in separate transaction)
         await updateDoc(docRef.ref, {
           status: "expired",
           expiredAt: Date.now(),
         });
         expiredCount++;
+
+        // ─── Fire-and-forget email to student ───
+        fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookingId: booking.id,
+            type: "booking_expired",
+          }),
+        }).catch(() => {});
       }
     }
     return expiredCount;

@@ -37,19 +37,13 @@ const SUPPORT_PHONE_TEL = "+2600771319817";
 const ADMIN_EMAIL = "busengarichard75@gmail.com";
 
 // ─── Phone normalization for WhatsApp wa.me links ─────────────
-// Accepts: 0771319817 · +260771319817 · 260771319817 · 260 77 1319817
-// Returns: 260771319817 (international, digits only) or null if invalid
 function normalizeZambianPhone(raw: string | undefined | null): string | null {
   if (!raw) return null;
   const digits = raw.replace(/\D/g, "");
   if (!digits) return null;
-  // Already international (260...)
   if (digits.startsWith("260") && digits.length >= 12) return digits;
-  // Local 0-prefixed (07... / 09...)
   if (digits.startsWith("0") && digits.length >= 9) return "260" + digits.slice(1);
-  // Bare 9-digit local (771319817)
   if (digits.length === 9) return "260" + digits;
-  // Fallback — return as-is if it looks long enough
   return digits.length >= 10 ? digits : null;
 }
 
@@ -111,7 +105,7 @@ export function PostBookingChecklist({ booking }: PostBookingChecklistProps) {
           setLandlordPhone(phone);
         }
       } catch {
-        // Silent — WhatsApp button just won't render
+        // Silent
       }
     };
     if (booking.landlordId) loadLandlord();
@@ -157,7 +151,7 @@ export function PostBookingChecklist({ booking }: PostBookingChecklistProps) {
       });
       toast.success("Welcome home! 🎉");
 
-      // Notify landlord (best-effort)
+      // Notify landlord (in-app + push)
       try {
         await createNotification(booking.landlordId, {
           title: "Student checked in 🎉",
@@ -175,7 +169,7 @@ export function PostBookingChecklist({ booking }: PostBookingChecklistProps) {
         // Silent
       }
 
-      // Notify admin (best-effort)
+      // Notify admin (in-app + push)
       try {
         const adminId = await findAdminUserId();
         if (adminId) {
@@ -195,6 +189,16 @@ export function PostBookingChecklist({ booking }: PostBookingChecklistProps) {
       } catch {
         // Silent
       }
+
+      // ─── Fire-and-forget email to landlord ───
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          type: "student_checked_in",
+        }),
+      }).catch(() => {});
     } catch {
       toast.error("Couldn't mark as checked in. Please try again.");
     } finally {
@@ -270,7 +274,6 @@ export function PostBookingChecklist({ booking }: PostBookingChecklistProps) {
           action={
             !steps.landlordContacted && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {/* WhatsApp — only if we have a valid number */}
                 {waHref && (
                   <a
                     href={waHref}
@@ -283,7 +286,6 @@ export function PostBookingChecklist({ booking }: PostBookingChecklistProps) {
                   </a>
                 )}
 
-                {/* Booking pass fallback / alternative */}
                 <Link
                   href={`/booking/confirmation/${booking.id}`}
                   target="_blank"
@@ -293,7 +295,6 @@ export function PostBookingChecklist({ booking }: PostBookingChecklistProps) {
                   Open Booking Pass
                 </Link>
 
-                {/* Mark as contacted */}
                 <button
                   onClick={handleToggleLandlordContacted}
                   disabled={busy}
@@ -330,7 +331,7 @@ export function PostBookingChecklist({ booking }: PostBookingChecklistProps) {
         />
       </div>
 
-      {/* Footer — support line only */}
+      {/* Footer */}
       <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3 text-xs text-gray-500">
         <Phone size={12} className="text-[var(--nexora-primary)]" />
         <span>Need help?</span>

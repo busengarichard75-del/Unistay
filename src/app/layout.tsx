@@ -6,7 +6,8 @@ import { Toaster } from "sonner";
 import { AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NetworkStatus } from "@/components/NetworkStatus";
-import { WelcomeModal } from "@/components/WelcomeModal"; // ✅ Import the modal
+import { WelcomeModal } from "@/components/WelcomeModal";
+import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 
 export const metadata: Metadata = {
   title: "Peza Accommodation – Student Housing Platform",
@@ -34,8 +35,9 @@ export default function RootLayout({
               {children}
             </AnimatePresence>
             <Toaster position="bottom-right" richColors closeButton />
-            {/* ✅ Welcome Modal (only shows for guests after 5s) */}
             <WelcomeModal />
+            {/* ✅ Floating WhatsApp support button (stacked above Nexora chat) */}
+            <FloatingWhatsAppButton />
           </AuthProvider>
         </ErrorBoundary>
       </body>

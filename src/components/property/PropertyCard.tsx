@@ -62,7 +62,6 @@ export function PropertyCard({
   const periodLabel = paymentPeriod === "termly" ? "/term" : "/mo";
   const status = getAvailabilityStatus(availableCount);
   const boosted = isBoosted(property);
-  const daysRemaining = boosted ? getBoostDaysRemaining(property) : 0;
   const isVerified = property.verificationStatus === "approved";
 
   // ─── COMPACT CARD ──────────────────────────────────────────────
@@ -91,14 +90,14 @@ export function PropertyCard({
             className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent opacity-70"
           />
 
-          {/* ─── BOOSTED BADGE (with glow + days) ─── */}
+          {/* ─── BOOSTED BADGE (star only) ─── */}
           {boosted && (
-            <span className="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-yellow-400/95 px-1.5 py-1 text-[9px] font-bold text-black shadow-lg shadow-yellow-400/40 backdrop-blur-sm">
-              <Star size={9} fill="currentColor" aria-hidden="true" />
-              Boosted
-              {daysRemaining > 0 && (
-                <span className="ml-0.5 text-[8px] text-black/70">{daysRemaining}d</span>
-              )}
+            <span
+              className="pointer-events-none absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400/95 text-black shadow-lg shadow-yellow-400/40 backdrop-blur-sm"
+              aria-label="Boosted listing"
+              title="Boosted listing"
+            >
+              <Star size={12} fill="currentColor" aria-hidden="true" />
             </span>
           )}
 
@@ -215,14 +214,14 @@ export function PropertyCard({
             className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
 
-          {/* ─── BOOSTED BADGE (full card) ─── */}
+          {/* ─── BOOSTED BADGE (star only, full card) ─── */}
           {boosted && (
-            <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-yellow-400/95 px-2 py-1 text-xs font-semibold text-black shadow-lg shadow-yellow-400/40 backdrop-blur-sm">
-              <Star size={11} fill="currentColor" aria-hidden="true" />
-              Boosted
-              {daysRemaining > 0 && (
-                <span className="ml-0.5 text-[10px] text-black/70">{daysRemaining}d</span>
-              )}
+            <span
+              className="pointer-events-none absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400/95 text-black shadow-lg shadow-yellow-400/40 backdrop-blur-sm"
+              aria-label="Boosted listing"
+              title="Boosted listing"
+            >
+              <Star size={14} fill="currentColor" aria-hidden="true" />
             </span>
           )}
 
