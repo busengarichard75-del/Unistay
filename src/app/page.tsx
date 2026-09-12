@@ -133,9 +133,6 @@ function HomeContent() {
 
       <Hero />
 
-      {/* ─── WHY PEZA (compact trust section) ─── */}
-      <WhyPezaSection />
-
       {isStudent && (
         <div className="container-wide mt-6">
           <div className="card-premium flex flex-col items-start justify-between gap-4 border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-5 sm:flex-row sm:items-center">
@@ -223,6 +220,9 @@ function HomeContent() {
           <PropertyGrid properties={filteredProperties} />
         </div>
       )}
+
+      {/* ─── WHY PEZA (below properties, above footer) ─── */}
+      <WhyPezaSection />
 
       <Footer />
 
