@@ -1,52 +1,82 @@
+// src/lib/recommendation/types.ts
 import { Property } from "@/types/property";
 
-/**
- * Student preferences for accommodation recommendation.
- * This is the input to the recommendation engine.
- */
-export interface Preferences {
-  /** Maximum monthly budget in K (ZMW) */
-  budgetMax: number;
+// ─── Layer 2: Must-haves (deal-breakers) ───────────────────────
+export type MustHaveKey =
+  | "private_bathroom"
+  | "backup_power"
+  | "borehole_water"
+  | "wifi"
+  | "gated_compound"
+  | "female_only"
+  | "male_only";
 
-  /** University ID (optional – if not specified, no university filter) */
+// ─── Layer 3: Comfort needs (score boosters) ───────────────────
+export type ComfortKey =
+  | "study_desk"
+  | "wardrobe"
+  | "ceiling_fan"
+  | "hot_water"
+  | "tiled_floors"
+  | "shared_kitchen"
+  | "cctv"
+  | "solar";
+
+// ─── Layer 1: Essentials ───────────────────────────────────────
+export type RoomTypePreference = "single" | "top_bunk" | "bottom_bunk" | "any";
+export type PaymentPeriodPreference = "monthly" | "termly" | "semester" | "any";
+
+// ─── Layer 4: Vibe ─────────────────────────────────────────────
+export type VibePreference = "quiet" | "social" | "any";
+export type RoommatePreference = "alone" | "ok_with_others" | "any";
+export type MoveInTiming = "this_week" | "this_month" | "next_term" | "flexible";
+
+// ─── Main Preferences object ───────────────────────────────────
+export interface Preferences {
+  // Layer 1 — Essentials (all optional)
+  budgetMax?: number;
+  paymentPeriod?: PaymentPeriodPreference;
+  maxWalkingMinutes?: number;
+  roomType?: RoomTypePreference;
   universityId?: string;
 
-  /** Maximum walking time in minutes (optional – uses distanceBucket if not specified) */
-  maxWalkingMinutes?: number;
-
-  /** Gender preference – uses the property's genderPreference field */
+  // Layer 2 — Must-haves
+  mustHaves?: MustHaveKey[];
   genderPreference?: "male" | "female" | "mixed";
 
-  /** Priority weights for different factors (0-1, sum should be 1) */
-  priorities: PriorityWeights;
+  // Layer 3 — Comfort
+  comforts?: ComfortKey[];
 
-  /** Specific amenities required (e.g., ["wifi", "security"]) */
-  requiredAmenities?: string[];
+  // Layer 4 — Vibe
+  vibe?: VibePreference;
+  roommates?: RoommatePreference;
+  moveInTiming?: MoveInTiming;
+
+  // Meta — for the engine
+  completedLayers?: 0 | 1 | 2 | 3 | 4;
 }
 
-/**
- * Priority weights determine how much each factor influences the match score.
- * All weights should be between 0 and 1, and sum to 1 (normalised).
- */
-export interface PriorityWeights {
-  budget: number;      // 0-1, higher means budget matters more
-  distance: number;    // 0-1, higher means distance matters more
-  amenities: number;   // 0-1, higher means amenities matter more
-  availability: number;// 0-1, higher means availability matters more
-  security: number;    // 0-1, higher means security matters more
-  // Optional future: gender, reviews, etc.
+// ─── Score reasons ─────────────────────────────────────────────
+export interface MatchReason {
+  text: string;
 }
 
-/**
- * The result of scoring a single property against preferences.
- */
+export interface MatchWarning {
+  text: string;
+}
+
+// ─── Scored property ───────────────────────────────────────────
 export interface ScoredProperty {
   property: Property;
-  score: number;          // overall match score (0-100)
-  budgetScore: number;
-  distanceScore: number;
-  amenitiesScore: number;
-  availabilityScore: number;
-  securityScore: number;
-  matchReasons: string[]; // human-readable explanations
+  score: number; // 0-100
+  reasons: MatchReason[];
+  warnings: MatchWarning[];
+  breakdown?: {
+    budget?: number;
+    distance?: number;
+    roomType?: number;
+    mustHaves?: number;
+    comforts?: number;
+    vibe?: number;
+  };
 }
