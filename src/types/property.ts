@@ -40,19 +40,29 @@ export interface Property {
   rooms?: Room[];
   latitude?: number;
   longitude?: number;
-  
+
   // Boost & Verification
   isBoosted?: boolean;
   boostedAt?: number;
   boostExpiry?: number;
   verificationStatus?: VerificationStatus;
   additionalAmenities?: string[];
-  
+
   // Landlord Experience
-  isActive?: boolean;        // default: true – if false, hidden from public
+  isActive?: boolean;        // default: true – if false, hidden from public (landlord-controlled)
   views?: number;            // view counter
   bookings?: number;         // confirmed bookings count
-  
+
+  // ─── Admin moderation ────────────────────────────────────────
+  adminHidden?: boolean;               // if true → hidden from public by admin
+  adminHiddenReason?: string | null;   // e.g., "Spam", "Duplicate listing"
+  adminHiddenAt?: number | null;
+  adminHiddenBy?: string | null;       // admin email
+
+  // ─── Boost refund tracking ───────────────────────────────────
+  boostRefundedAt?: number | null;
+  boostRefundedBy?: string | null;     // admin email
+
   // Timestamps
   createdAt?: number;        // When property was first added
   updatedAt?: number;        // When property was last updated

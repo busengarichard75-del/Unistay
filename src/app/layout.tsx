@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NetworkStatus } from "@/components/NetworkStatus";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
+import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 
 export const metadata: Metadata = {
   title: "Peza Accommodation – Student Housing Platform",
@@ -31,12 +32,12 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthProvider>
             <NetworkStatus />
+            <AnalyticsTracker />
             <AnimatePresence mode="wait" initial={false}>
               {children}
             </AnimatePresence>
             <Toaster position="bottom-right" richColors closeButton />
             <WelcomeModal />
-            {/* ✅ Floating WhatsApp support button (stacked above Nexora chat) */}
             <FloatingWhatsAppButton />
           </AuthProvider>
         </ErrorBoundary>
