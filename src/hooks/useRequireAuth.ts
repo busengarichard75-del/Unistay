@@ -2,10 +2,10 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 
-type AllowedRole = "student" | "landlord" | "admin" | null;
+type AllowedRole = "student" | "landlord" | "service_provider" | null;
 
 export function useRequireAuth(requiredRole?: AllowedRole) {
-  const { user, isLoading } = useAuth(); // ✅ Removed `role` from destructuring
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   // ✅ Use user.role directly
@@ -24,8 +24,8 @@ export function useRequireAuth(requiredRole?: AllowedRole) {
           router.push("/dashboard/landlord");
         } else if (effectiveRole === "student") {
           router.push("/dashboard/student");
-        } else if (effectiveRole === "admin") {
-          router.push("/admin");
+        } else if (effectiveRole === "service_provider") {
+          router.push("/dashboard/provider");
         } else {
           router.push("/");
         }

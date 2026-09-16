@@ -19,6 +19,8 @@ import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal
 import { NexoraChat } from "@/components/nexora/NexoraChat";
 import { LandlordOnboardingModal } from "@/components/landlord/LandlordOnboardingModal";
 import { WhyPezaSection } from "@/components/home/WhyPezaSection";
+import { ExplorePezaSection } from "@/components/home/ExplorePezaSection";
+import { ServicesMarketplaceStrip } from "@/components/home/ServicesMarketplaceStrip";
 
 function HomeContent() {
   const { user } = useAuth();
@@ -133,6 +135,9 @@ function HomeContent() {
 
       <Hero />
 
+      {/* ─── EXPLORE PEZA ─── */}
+      <ExplorePezaSection onAccommodationSearch={setKeyword} />
+
       {isStudent && (
         <div className="container-wide mt-6">
           <div className="card-premium flex flex-col items-start justify-between gap-4 border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-5 sm:flex-row sm:items-center">
@@ -217,11 +222,14 @@ function HomeContent() {
         </p>
       ) : (
         <div className="container-wide pb-8 pt-4">
-          <PropertyGrid properties={filteredProperties} />
+          <PropertyGrid
+            properties={filteredProperties}
+            afterFirstGroup={<ServicesMarketplaceStrip />}
+          />
         </div>
       )}
 
-      {/* ─── WHY PEZA (below properties, above footer) ─── */}
+      {/* ─── WHY PEZA (below properties) ─── */}
       <WhyPezaSection />
 
       <Footer />

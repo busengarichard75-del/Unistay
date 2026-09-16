@@ -415,7 +415,7 @@ export function CancelBookingModal({
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 5. DIRECT MESSAGE MODAL (reuses notifications)
+// 5. DIRECT MESSAGE MODAL
 // ═══════════════════════════════════════════════════════════════
 export function DirectMessageModal({
   userName,
@@ -636,7 +636,7 @@ export interface UserProfileData {
   fullName?: string;
   email: string;
   phone?: string;
-  role: "student" | "landlord";
+  role: "student" | "landlord" | "service_provider";
   university?: string;
   studentNumber?: string;
   createdAt?: number;
@@ -670,6 +670,7 @@ export function ViewUserProfileModal({
   onToggleSuspend: () => void;
 }) {
   const isLandlord = profile.role === "landlord";
+  const isProvider = profile.role === "service_provider";
 
   return (
     <ModalShell
@@ -711,10 +712,10 @@ export function ViewUserProfileModal({
             }
           />
           <DetailRow
-            icon={isLandlord ? Home : Calendar}
-            label={isLandlord ? "Listings" : "Bookings"}
+            icon={isLandlord || isProvider ? Home : Calendar}
+            label={isLandlord || isProvider ? "Listings" : "Bookings"}
             value={String(
-              isLandlord
+              isLandlord || isProvider
                 ? profile.listings?.length || 0
                 : profile.bookings?.length || 0
             )}
@@ -752,8 +753,8 @@ export function ViewUserProfileModal({
           </button>
         </div>
 
-        {/* Listings (landlord) */}
-        {isLandlord && profile.listings && profile.listings.length > 0 && (
+        {/* Listings (landlord or provider) */}
+        {(isLandlord || isProvider) && profile.listings && profile.listings.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-400 mb-2">
               Listings ({profile.listings.length})

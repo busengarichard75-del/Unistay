@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, ReactNode } from "react";
 import { ArrowLeft, ArrowRight, Plus } from "lucide-react";
 import { PropertyCard } from "./PropertyCard";
 import { Property } from "@/types/property";
@@ -8,6 +8,8 @@ import { universities } from "@/data/universities";
 
 interface PropertyGridProps {
   properties: Property[];
+  /** Optional React node rendered after the first group preview on the homepage view */
+  afterFirstGroup?: ReactNode;
 }
 
 const PREVIEW_COUNT = 3;
@@ -61,7 +63,10 @@ function getGroupName(property: Property): string {
   return property.location.split(",")[0]?.trim() || "Other locations";
 }
 
-export default function PropertyGrid({ properties }: PropertyGridProps) {
+export default function PropertyGrid({
+  properties,
+  afterFirstGroup,
+}: PropertyGridProps) {
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
 
   const groups = useMemo<Group[]>(() => {
@@ -136,12 +141,17 @@ export default function PropertyGrid({ properties }: PropertyGridProps) {
   // ─── HOMEPAGE VIEW ──────────────────────────────────────────────
   return (
     <div className="space-y-10">
-      {groups.map((group) => (
-        <GroupPreview
-          key={group.key}
-          group={group}
-          onShowAll={() => setActiveGroupKey(group.key)}
-        />
+      {groups.map((group, index) => (
+        <div key={group.key} className="space-y-10">
+          <GroupPreview
+            group={group}
+            onShowAll={() => setActiveGroupKey(group.key)}
+          />
+          {/* Slot after the first group only */}
+          {index === 0 && afterFirstGroup ? (
+            <div>{afterFirstGroup}</div>
+          ) : null}
+        </div>
       ))}
     </div>
   );

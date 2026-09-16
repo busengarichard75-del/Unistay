@@ -5,11 +5,14 @@ import { useState, useEffect, useRef } from "react";
 const messages = [
   "Find your next Boarding house.",
   "Verified accommodation near your campus.",
-  "The right place. The right price.",
+  "Book a barber. Print your notes. Fix your phone.",
+  "Buy and sell with students near you.",
+  "Rooms, services, and deals — all in one place.",
+  "Your campus, all in one place.",
   "Stop searching. Start settling in.",
-  "Your next Boarding house is closer than you think.",
+  "The right place. The right price.",
   "Let Peza find your best match.",
-  "Accommodation that understands students."
+  "Everything a student needs, close to campus."
 ];
 
 export function HeroHeadline() {

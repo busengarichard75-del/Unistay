@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (firebaseUser: FirebaseUser): Promise<User | null> => {
     try {
-      // ✅ Reload Firebase user to get latest emailVerified status
       await reloadFirebaseUser(firebaseUser);
 
       const docRef = doc(db, "users", firebaseUser.uid);
@@ -46,10 +45,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: data.role || "student",
           createdAt: data.createdAt || Date.now(),
           hasAcceptedTerms: data.hasAcceptedTerms || false,
-          emailVerified: firebaseUser.emailVerified, // ✅ New field
+          emailVerified: firebaseUser.emailVerified,
           studentNumber: data.studentNumber,
           university: data.university,
           preferences: data.preferences,
+          whatsapp: data.whatsapp,
+          businessName: data.businessName,
+          providerType: data.providerType,
+          verificationStatus: data.verificationStatus,
+          verificationReviewedAt: data.verificationReviewedAt,
+          verificationReviewedBy: data.verificationReviewedBy,
+          verificationReason: data.verificationReason,
         };
       }
       return null;
@@ -64,7 +70,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       return;
     }
-    // ✅ Reload Firebase user to refresh emailVerified
     await reloadFirebaseUser(auth.currentUser);
     const profile = await fetchUserProfile(auth.currentUser);
     setUser(profile);

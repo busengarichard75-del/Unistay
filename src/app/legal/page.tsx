@@ -2,8 +2,8 @@ import Link from "next/link";
 import { ArrowLeft, Shield, FileText, Mail, Phone } from "lucide-react";
 
 export const metadata = {
-  title: "Trust & Legal – UniStayZM",
-  description: "Privacy Policy, Terms of Service, and contact information for UniStayZM.",
+  title: "Trust & Legal – Peza",
+  description: "Privacy Policy, Terms of Service, and contact information for Peza.",
 };
 
 export default function LegalPage() {
@@ -36,15 +36,17 @@ export default function LegalPage() {
 
             <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
               <p>
-                <strong>UniStayZM</strong> (operated by Nexora Tech, Zambia) respects your privacy. This policy explains how we collect, use, and protect your personal data.
+                <strong>Peza</strong> (operated in Zambia) respects your privacy. This policy explains how we collect, use, and protect your personal data.
               </p>
 
               <div>
                 <h3 className="font-semibold text-gray-800">1. What We Collect</h3>
                 <ul className="list-disc list-inside pl-2 space-y-1 text-gray-600">
                   <li>Your name, email address, and phone number</li>
+                  <li>WhatsApp number (for service providers and marketplace sellers)</li>
                   <li>Student ID and university (for students)</li>
                   <li>Property details and contact information (for landlords)</li>
+                  <li>Service and product listing details (for service providers)</li>
                   <li>Booking history and communication</li>
                   <li>Payment records (agent fees and boosts)</li>
                 </ul>
@@ -54,6 +56,7 @@ export default function LegalPage() {
                 <h3 className="font-semibold text-gray-800">2. How We Use Your Data</h3>
                 <ul className="list-disc list-inside pl-2 space-y-1 text-gray-600">
                   <li>To match students with accommodation</li>
+                  <li>To connect students with service providers and marketplace sellers</li>
                   <li>To process bookings and payments</li>
                   <li>To send booking confirmations and important updates</li>
                   <li>To improve our platform and services</li>
@@ -68,7 +71,10 @@ export default function LegalPage() {
                     <strong>Landlords:</strong> We share your name and phone number only after your booking is confirmed.
                   </li>
                   <li>
-                    <strong>Admins:</strong> Our team has access to verify bookings and resolve issues.
+                    <strong>Service providers &amp; sellers:</strong> Your WhatsApp number is shared with students only when they choose to contact you through the Peza contact button.
+                  </li>
+                  <li>
+                    <strong>Admins:</strong> Our team has access to verify bookings, providers, and resolve issues.
                   </li>
                   <li>
                     <strong>We never sell your data.</strong>
@@ -102,7 +108,7 @@ export default function LegalPage() {
               <div>
                 <h3 className="font-semibold text-gray-800">7. Contact</h3>
                 <p className="text-gray-600">
-                  For any privacy‑related questions, email us at <strong>unistayzm2@gmail.com</strong>.
+                  For any privacy‑related questions, email us at <strong>pezaaccommodation@gmail.com</strong>.
                 </p>
               </div>
             </div>
@@ -117,7 +123,7 @@ export default function LegalPage() {
 
             <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
               <p>
-                By using UniStayZM, you agree to the following terms. Please read them carefully.
+                By using Peza, you agree to the following terms. Please read them carefully.
               </p>
 
               <div>
@@ -130,16 +136,17 @@ export default function LegalPage() {
               <div>
                 <h3 className="font-semibold text-gray-800">2. User Roles</h3>
                 <ul className="list-disc list-inside pl-2 space-y-1 text-gray-600">
-                  <li><strong>Student:</strong> Can browse, search, and request bookings.</li>
-                  <li><strong>Landlord:</strong> Can list properties, manage bookings, and approve/ reject requests.</li>
-                  <li><strong>Admin:</strong> Manages platform integrity, verifies listings and payments.</li>
+                  <li><strong>Student:</strong> Can browse, search, request bookings, and contact service providers or sellers.</li>
+                  <li><strong>Landlord:</strong> Can list properties, manage bookings, and approve/reject requests.</li>
+                  <li><strong>Service Provider:</strong> Can list services and/or products, and connect with students via WhatsApp. New providers must be verified by Peza before listing.</li>
+                  <li><strong>Admin:</strong> Manages platform integrity, verifies listings and payments, and approves service providers.</li>
                 </ul>
               </div>
 
               <div>
                 <h3 className="font-semibold text-gray-800">3. Listings &amp; Accuracy</h3>
                 <p className="text-gray-600">
-                  Landlords must provide accurate and truthful information about their properties. UniStay verifies listings but does not guarantee their accuracy in real‑time. Students are encouraged to ask questions before booking.
+                  Landlords and service providers must provide accurate and truthful information about their properties, services, and products. Peza verifies listings but does not guarantee their accuracy in real‑time. Students are encouraged to ask questions before committing.
                 </p>
               </div>
 
@@ -154,14 +161,21 @@ export default function LegalPage() {
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-800">5. Cancellation</h3>
+                <h3 className="font-semibold text-gray-800">5. Services &amp; Marketplace</h3>
+                <p className="text-gray-600">
+                  Peza connects students with service providers and marketplace sellers. Peza does not process payments, delivery, or guarantee transactions between students and providers. All agreements, payments, and delivery arrangements are made directly between the parties.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-gray-800">6. Cancellation</h3>
                 <p className="text-gray-600">
                   Students can cancel a confirmed booking from their dashboard before the admin confirms payment. After confirmation, cancellations are handled on a case‑by‑case basis. Contact support for assistance.
                 </p>
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-800">6. User Conduct</h3>
+                <h3 className="font-semibold text-gray-800">7. User Conduct</h3>
                 <ul className="list-disc list-inside pl-2 space-y-1 text-gray-600">
                   <li>Do not post fake or misleading listings.</li>
                   <li>Do not spam, harass, or scam other users.</li>
@@ -171,30 +185,30 @@ export default function LegalPage() {
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-800">7. Account Suspension</h3>
+                <h3 className="font-semibold text-gray-800">8. Account Suspension</h3>
                 <p className="text-gray-600">
                   We reserve the right to suspend or delete accounts that violate our terms, engage in fraudulent activity, or negatively impact the community.
                 </p>
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-800">8. Liability</h3>
+                <h3 className="font-semibold text-gray-800">9. Liability</h3>
                 <p className="text-gray-600">
-                  UniStay is a platform that connects students and landlords. We are not responsible for disputes, agreements, or quality of accommodation. Students should verify listings and landlords before committing.
+                  Peza is a platform that connects students with landlords, service providers, and sellers. We are not responsible for disputes, agreements, or quality of services and products. Students should verify listings and providers before committing.
                 </p>
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-800">9. Governing Law</h3>
+                <h3 className="font-semibold text-gray-800">10. Governing Law</h3>
                 <p className="text-gray-600">
                   These terms are governed by the laws of the Republic of Zambia.
                 </p>
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-800">10. Contact</h3>
+                <h3 className="font-semibold text-gray-800">11. Contact</h3>
                 <p className="text-gray-600">
-                  For any questions about these terms, email <strong>unistayzm2@gmail.com</strong>.
+                  For any questions about these terms, email <strong>pezaaccommodation@gmail.com</strong>.
                 </p>
               </div>
             </div>
@@ -210,7 +224,7 @@ export default function LegalPage() {
             <div className="space-y-2 text-sm text-gray-700">
               <p className="flex items-center gap-2">
                 <Mail size={16} className="text-gray-400" />
-                <strong>Email:</strong> unistayzm2@gmail.com
+                <strong>Email:</strong> pezaaccommodation@gmail.com
               </p>
               <p className="flex items-center gap-2">
                 <Phone size={16} className="text-gray-400" />

@@ -1,24 +1,31 @@
-// src/types/user.ts
 import { Preferences } from "@/lib/recommendation/types";
 
-export type UserRole = "student" | "landlord";
+export type UserRole = "student" | "landlord" | "service_provider";
+export type ProviderType = "service" | "product";
+
+export type VerificationStatus = "pending" | "approved" | "rejected";
 
 export interface User {
-  uid: string;               // Firebase Auth UID (also the Firestore document ID)
-  fullName: string;          // Full name as on NRC
+  uid: string;
+  fullName: string;
   email: string;
   phone: string;
   role: UserRole;
   createdAt: number;
   hasAcceptedTerms: boolean;
   emailVerified: boolean;
-  studentNumber?: string;    // only for students
-  university?: string;       // university ID from the universities list
-  preferences?: Preferences; // stored from Find My Best House
+  studentNumber?: string;
+  university?: string;
+  preferences?: Preferences;
 
-  // ─── Admin moderation ────────────────────────────────────────
-  suspended?: boolean;
-  suspendedReason?: string | null;
-  suspendedAt?: number | null;
-  suspendedBy?: string | null;   // admin email who suspended
+  // ─── Service provider fields ───
+  whatsapp?: string;
+  businessName?: string;
+  providerType?: ProviderType;
+
+  // ─── Provider verification ───
+  verificationStatus?: VerificationStatus;
+  verificationReviewedAt?: number;
+  verificationReviewedBy?: string;
+  verificationReason?: string | null;
 }

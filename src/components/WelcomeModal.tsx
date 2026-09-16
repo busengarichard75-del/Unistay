@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, Sparkles, Heart, ArrowRight, Users, Home } from "lucide-react";
+import {
+  X,
+  Sparkles,
+  ArrowRight,
+  Home,
+  Wrench,
+  ShoppingBag,
+} from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 export function WelcomeModal() {
@@ -26,21 +33,26 @@ export function WelcomeModal() {
     return () => clearTimeout(timer);
   }, [user]);
 
-  const handleClose = () => {
-    setIsOpen(false);
+  const dismiss = () => {
     localStorage.setItem("peza_welcome_seen", "true");
+    setIsOpen(false);
   };
 
+  const handleClose = () => dismiss();
+
   const handleLogin = () => {
-    setIsOpen(false);
-    localStorage.setItem("peza_welcome_seen", "true");
+    dismiss();
     router.push("/login");
   };
 
   const handleSignup = () => {
-    setIsOpen(false);
-    localStorage.setItem("peza_welcome_seen", "true");
+    dismiss();
     router.push("/signup");
+  };
+
+  const handleExplore = (href: string) => {
+    dismiss();
+    router.push(href);
   };
 
   if (!isOpen) return null;
@@ -64,35 +76,43 @@ export function WelcomeModal() {
 
         {/* Title */}
         <h2 className="text-center text-2xl font-bold text-gray-900">
-          Welcome to Peza 🏠
+          Welcome to Peza 🎉
         </h2>
 
         {/* Subtitle */}
         <p className="mt-2 text-center text-sm text-gray-600">
-          Your journey to finding the perfect student accommodation starts here.
-          <br />
-          <span className="font-medium text-[var(--nexora-primary)]">
-            Discover, book, and move in with confidence.
+          <span className="font-semibold text-[var(--nexora-primary)]">
+            Find what you need.
           </span>
+          <br />
+          Rooms, services, and products — all in one place.
         </p>
 
-        {/* ─── Dual Welcome Message ─── */}
-        <div className="mt-4 space-y-2 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 p-3 text-sm text-gray-700">
-          <div className="flex items-center gap-2">
-            <Users size={16} className="text-blue-600 shrink-0" />
-            <span>
-              <span className="font-semibold">🎓 For Students:</span> Find verified rooms near your campus.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Home size={16} className="text-purple-600 shrink-0" />
-            <span>
-              <span className="font-semibold">🏠 For Landlords:</span> List your property and connect with students.
-            </span>
-          </div>
-          <p className="mt-1 text-center text-[11px] text-gray-500">
-            Join thousands of students and landlords already on Peza.
-          </p>
+        {/* ─── 3 Peza Sections ─── */}
+        <div className="mt-5 space-y-2">
+          <SectionTile
+            icon={<Home size={18} />}
+            title="Accommodation"
+            line="Verified rooms near your campus"
+            gradient="from-blue-500 to-indigo-600"
+            onClick={() => handleExplore("/")}
+          />
+          <SectionTile
+            icon={<Wrench size={18} />}
+            title="Services"
+            line="Barbers, printing, repairs & more"
+            gradient="from-cyan-500 to-teal-600"
+            badge="NEW"
+            onClick={() => handleExplore("/services")}
+          />
+          <SectionTile
+            icon={<ShoppingBag size={18} />}
+            title="Marketplace"
+            line="Buy and sell with students"
+            gradient="from-orange-500 to-pink-600"
+            badge="NEW"
+            onClick={() => handleExplore("/marketplace")}
+          />
         </div>
 
         {/* Buttons */}
@@ -116,10 +136,59 @@ export function WelcomeModal() {
             onClick={handleClose}
             className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors"
           >
-            I'm just browsing – continue without signing up
+            I&apos;m just browsing – continue without signing up
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+/* ──────────────────────────────────────────────── */
+/* Section Tile                                    */
+/* ──────────────────────────────────────────────── */
+
+function SectionTile({
+  icon,
+  title,
+  line,
+  gradient,
+  badge,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  line: string;
+  gradient: string;
+  badge?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left transition-all hover:border-gray-200 hover:shadow-sm"
+    >
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${gradient} text-white shadow-sm`}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-gray-900">{title}</p>
+          {badge && (
+            <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-blue-700">
+              {badge}
+            </span>
+          )}
+        </div>
+        <p className="mt-0.5 truncate text-[11px] text-gray-500">{line}</p>
+      </div>
+      <ArrowRight
+        size={14}
+        className="shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--nexora-primary)]"
+      />
+    </button>
   );
 }

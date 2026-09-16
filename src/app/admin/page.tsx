@@ -9,6 +9,7 @@ import {
   Shield, AlertTriangle, MessageCircle, Building, CheckCircle, XCircle,
   BarChart3, Settings, Wrench, User as UserIcon, Mail, Ban, Trash2,
   TrendingUp, Smartphone, Monitor, Tablet, GraduationCap, UserX, ScrollText,
+  Store, ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
@@ -78,7 +79,7 @@ const BOOST_FEE = 100;
 const ADMIN_PIN = "3542";
 
 type AdminTab =
-  | "dashboard" | "payments" | "properties" | "users"
+  | "dashboard" | "payments" | "properties" | "users" | "providers"
   | "bookings" | "comms" | "analytics" | "tools";
 
 const TABS: { id: AdminTab; label: string; icon: typeof LayoutGrid; color: string }[] = [
@@ -86,6 +87,7 @@ const TABS: { id: AdminTab; label: string; icon: typeof LayoutGrid; color: strin
   { id: "payments", label: "Payments", icon: DollarSign, color: "text-green-400" },
   { id: "properties", label: "Properties", icon: Home, color: "text-cyan-400" },
   { id: "users", label: "Users", icon: Users, color: "text-purple-400" },
+  { id: "providers", label: "Providers", icon: Store, color: "text-emerald-400" },
   { id: "bookings", label: "Bookings", icon: Calendar, color: "text-orange-400" },
   { id: "comms", label: "Comms", icon: Megaphone, color: "text-pink-400" },
   { id: "analytics", label: "Analytics", icon: BarChart3, color: "text-yellow-400" },
@@ -106,12 +108,20 @@ interface DirectoryUser {
   fullName?: string;
   email: string;
   phone?: string;
-  role: "student" | "landlord";
+  role: "student" | "landlord" | "service_provider";
   university?: string;
   studentNumber?: string;
   createdAt?: number;
   suspended?: boolean;
   suspendedReason?: string | null;
+
+  businessName?: string;
+  whatsapp?: string;
+  providerType?: "service" | "product";
+  verificationStatus?: "pending" | "approved" | "rejected";
+  verificationReviewedAt?: number;
+  verificationReviewedBy?: string;
+  verificationReason?: string | null;
 }
 
 export default function AdminPage() {
@@ -180,6 +190,12 @@ export default function AdminPage() {
   const [profileModal, setProfileModal] = useState<UserProfileData | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [bulkModal, setBulkModal] = useState<{ status: "approved" | "rejected" } | null>(null);
+
+  const [providerFilter, setProviderFilter] = useState<"pending" | "approved" | "rejected">("pending");
+  const [providerSearchTerm, setProviderSearchTerm] = useState("");
+  const [busyProviderId, setBusyProviderId] = useState<string | null>(null);
+  const [rejectProviderModal, setRejectProviderModal] = useState<DirectoryUser | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const [stats, setStats] = useState({
     totalProperties: 0, totalBookings: 0, pendingPayments: 0, boostedListings: 0,
@@ -486,7 +502,7 @@ export default function AdminPage() {
           url: "/dashboard/landlord",
         });
       } catch {
-        // silent — notification is best-effort
+        // silent
       }
 
       toast.success(`Property ${status}!`);
@@ -696,6 +712,116 @@ export default function AdminPage() {
     fetchAudit();
   };
 
+  // ─── Provider verification handlers ───
+  const handleApproveProvider = async (provider: DirectoryUser) => {
+    setBusyProviderId(provider.uid);
+    try {
+      await updateDoc(doc(db, "users", provider.uid), {
+        verificationStatus: "approved",
+        verificationReason: null,
+        verificationReviewedAt: Date.now(),
+        verificationReviewedBy: adminCtx.adminEmail,
+      });
+      setDirectoryUsers((prev) =>
+        prev.map((u) =>
+          u.uid === provider.uid
+            ? {
+                ...u,
+                verificationStatus: "approved",
+                verificationReason: null,
+                verificationReviewedAt: Date.now(),
+                verificationReviewedBy: adminCtx.adminEmail,
+              }
+            : u
+        )
+      );
+
+      // ─── Notify provider ───
+      try {
+        await createNotification(provider.uid, {
+          title: "You're verified! 🎉",
+          body: "Your Peza provider account has been approved. You can now start adding listings.",
+          type: "announcement",
+          link: "/dashboard/provider",
+        });
+        await sendPushNotification({
+          userId: provider.uid,
+          title: "You're verified! 🎉",
+          body: "Your Peza provider account has been approved. You can now start adding listings.",
+          url: "/dashboard/provider",
+        });
+      } catch {
+        // silent — notification is best-effort
+      }
+
+      toast.success(
+        `Approved ${provider.businessName || provider.fullName || provider.email}`
+      );
+      fetchAudit();
+    } catch {
+      toast.error("Failed to approve provider.");
+    } finally {
+      setBusyProviderId(null);
+    }
+  };
+
+  const handleRejectProvider = async () => {
+    if (!rejectProviderModal) return;
+    if (!rejectReason.trim()) {
+      toast.error("Please write a reason.");
+      return;
+    }
+    setBusyProviderId(rejectProviderModal.uid);
+    try {
+      await updateDoc(doc(db, "users", rejectProviderModal.uid), {
+        verificationStatus: "rejected",
+        verificationReason: rejectReason.trim(),
+        verificationReviewedAt: Date.now(),
+        verificationReviewedBy: adminCtx.adminEmail,
+      });
+      setDirectoryUsers((prev) =>
+        prev.map((u) =>
+          u.uid === rejectProviderModal.uid
+            ? {
+                ...u,
+                verificationStatus: "rejected",
+                verificationReason: rejectReason.trim(),
+                verificationReviewedAt: Date.now(),
+                verificationReviewedBy: adminCtx.adminEmail,
+              }
+            : u
+        )
+      );
+
+      // ─── Notify provider ───
+      try {
+        await createNotification(rejectProviderModal.uid, {
+          title: "Account update",
+          body: `Your provider account wasn't approved. Reason: ${rejectReason.trim()}. Contact support for help.`,
+          type: "announcement",
+          link: "/dashboard/provider",
+        });
+        await sendPushNotification({
+          userId: rejectProviderModal.uid,
+          title: "Account update",
+          body: `Your provider account wasn't approved. Contact support for help.`,
+          url: "/dashboard/provider",
+        });
+      } catch {
+        // silent — notification is best-effort
+      }
+
+      toast.success("Provider rejected.");
+      setRejectProviderModal(null);
+      setRejectReason("");
+      fetchAudit();
+    } catch {
+      toast.error("Failed to reject provider.");
+    } finally {
+      setBusyProviderId(null);
+    }
+  };
+
   const filteredPropertiesForBoost = allProperties.filter((p) => {
     const s = boostSearchTerm.toLowerCase();
     const matchesSearch =
@@ -719,6 +845,24 @@ export default function AdminPage() {
     const matchesRole = userRoleFilter === "all" || u.role === userRoleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const providerList = directoryUsers.filter((u) => u.role === "service_provider");
+  const providerCounts = {
+    pending: providerList.filter((p) => (p.verificationStatus || "pending") === "pending").length,
+    approved: providerList.filter((p) => p.verificationStatus === "approved").length,
+    rejected: providerList.filter((p) => p.verificationStatus === "rejected").length,
+  };
+  const filteredProviders = providerList
+    .filter((p) => (p.verificationStatus || "pending") === providerFilter)
+    .filter((p) => {
+      const s = providerSearchTerm.toLowerCase().trim();
+      if (!s) return true;
+      return (
+        (p.fullName || "").toLowerCase().includes(s) ||
+        (p.businessName || "").toLowerCase().includes(s) ||
+        p.email.toLowerCase().includes(s)
+      );
+    });
 
   const formatCurrency = (n: number) => `K${n.toLocaleString()}`;
 
@@ -882,7 +1026,7 @@ export default function AdminPage() {
               <h3 className="text-sm font-semibold text-white mb-4">Quick Actions</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <QuickAction label={`Payments (${stats.pendingPayments})`} icon={DollarSign} onClick={() => setActiveTab("payments")} />
-                <QuickAction label={`Verify (${pendingProperties.length})`} icon={CheckCircle} onClick={() => { setActiveTab("properties"); setPropertyFilter("pending"); }} />
+                <QuickAction label={`Providers (${providerCounts.pending})`} icon={Store} onClick={() => { setActiveTab("providers"); setProviderFilter("pending"); }} />
                 <QuickAction label="Announce" icon={Megaphone} onClick={() => setActiveTab("comms")} />
                 <QuickAction label="Analytics" icon={BarChart3} onClick={() => setActiveTab("analytics")} />
               </div>
@@ -1303,6 +1447,159 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "providers" && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap gap-2">
+              {(["pending", "approved", "rejected"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setProviderFilter(f)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
+                    providerFilter === f
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                  }`}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)} ({providerCounts[f]})
+                </button>
+              ))}
+            </div>
+
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={providerSearchTerm}
+                onChange={(e) => setProviderSearchTerm(e.target.value)}
+                placeholder="Search by name or email..."
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pl-10 pr-4 text-sm text-white placeholder-gray-400 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            {isFetchingUsers ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse h-24 rounded-xl bg-gray-800" />
+                ))}
+              </div>
+            ) : filteredProviders.length === 0 ? (
+              <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-10 text-center">
+                <Store size={32} className="mx-auto text-gray-700" />
+                <p className="mt-2 text-sm text-gray-400">
+                  {providerSearchTerm
+                    ? "No providers match your search."
+                    : `No ${providerFilter} providers.`}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredProviders.map((p) => {
+                  const isService = p.providerType !== "product";
+                  const Icon = isService ? Wrench : ShoppingBag;
+                  const typeLabel = isService ? "Service" : "Product";
+                  const status = p.verificationStatus || "pending";
+                  const busy = busyProviderId === p.uid;
+                  const displayName = p.businessName || p.fullName || p.email;
+
+                  return (
+                    <div
+                      key={p.uid}
+                      className="rounded-xl border border-gray-800 bg-gray-900/50 p-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ${
+                            isService
+                              ? "bg-gradient-to-br from-cyan-500 to-teal-600"
+                              : "bg-gradient-to-br from-orange-500 to-pink-600"
+                          }`}
+                        >
+                          <Icon size={16} />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-white">
+                              {displayName}
+                            </p>
+                            <span className="rounded-full bg-gray-800 px-2 py-0.5 text-[10px] font-medium text-gray-400">
+                              {typeLabel}
+                            </span>
+                            {status === "approved" && (
+                              <span className="rounded-full bg-green-900/40 px-2 py-0.5 text-[10px] font-medium text-green-300">
+                                Approved
+                              </span>
+                            )}
+                            {status === "rejected" && (
+                              <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-300">
+                                Rejected
+                              </span>
+                            )}
+                            {status === "pending" && (
+                              <span className="rounded-full bg-amber-900/40 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                                Pending
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-1 space-y-0.5 text-xs text-gray-400">
+                            <p>{p.email}</p>
+                            {p.whatsapp && <p>📱 {p.whatsapp}</p>}
+                            {p.university && <p>🎓 {p.university}</p>}
+                          </div>
+
+                          {status === "rejected" && p.verificationReason && (
+                            <p className="mt-2 text-[11px] italic text-red-400/80">
+                              Reason: {p.verificationReason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {status !== "approved" && (
+                        <div className="mt-3 flex gap-2 border-t border-gray-800 pt-3">
+                          <button
+                            onClick={() => {
+                              setRejectProviderModal(p);
+                              setRejectReason("");
+                            }}
+                            disabled={busy}
+                            className="flex-1 rounded-lg border border-red-800/50 bg-red-900/20 px-3 py-2 text-xs font-medium text-red-300 transition-colors hover:bg-red-900/40 disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                          <button
+                            onClick={() => handleApproveProvider(p)}
+                            disabled={busy}
+                            className="flex-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {busy ? "..." : "Approve"}
+                          </button>
+                        </div>
+                      )}
+
+                      {status === "approved" && (
+                        <div className="mt-3 flex gap-2 border-t border-gray-800 pt-3">
+                          <button
+                            onClick={() => {
+                              setRejectProviderModal(p);
+                              setRejectReason("");
+                            }}
+                            disabled={busy}
+                            className="rounded-lg border border-red-800/50 bg-red-900/20 px-3 py-1.5 text-[11px] font-medium text-red-300 transition-colors hover:bg-red-900/40 disabled:opacity-50"
+                          >
+                            Revoke approval
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1751,9 +2048,78 @@ export default function AdminPage() {
           onConfirm={confirmBulk}
         />
       )}
+
+      {rejectProviderModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          onClick={() => {
+            if (busyProviderId) return;
+            setRejectProviderModal(null);
+            setRejectReason("");
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-white">
+              {rejectProviderModal.verificationStatus === "approved"
+                ? "Revoke approval?"
+                : "Reject provider?"}
+            </h3>
+            <p className="mt-1 text-xs text-gray-400">
+              {rejectProviderModal.businessName ||
+                rejectProviderModal.fullName ||
+                rejectProviderModal.email}
+            </p>
+
+            <div className="mt-4">
+              <label className="mb-1.5 block text-xs font-medium text-gray-400">
+                Reason (shown to the provider)
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                placeholder="e.g., Could not verify business details. Please contact support."
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-red-500"
+                autoFocus
+              />
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => {
+                  setRejectProviderModal(null);
+                  setRejectReason("");
+                }}
+                disabled={!!busyProviderId}
+                className="flex-1 rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectProvider}
+                disabled={!!busyProviderId || !rejectReason.trim()}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {busyProviderId
+                  ? "Processing..."
+                  : rejectProviderModal.verificationStatus === "approved"
+                  ? "Revoke"
+                  : "Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+/* ──────────────────────────────────────────────── */
+/* Sub-components                                  */
+/* ──────────────────────────────────────────────── */
 
 function KpiCard({
   label, value, icon: Icon, color, onClick,

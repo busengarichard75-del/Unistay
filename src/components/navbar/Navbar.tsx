@@ -4,7 +4,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { signOut } from "firebase/auth";
-import { Plus, ClipboardList, Calendar, ShieldCheck, User, LogOut, Settings, LayoutDashboard, ChevronDown, Menu, X, Bell } from "lucide-react";
+import {
+  Plus,
+  ClipboardList,
+  Calendar,
+  ShieldCheck,
+  User,
+  LogOut,
+  Settings,
+  LayoutDashboard,
+  ChevronDown,
+  Menu,
+  X,
+  Bell,
+  Wrench,
+  ShoppingBag,
+  Store,
+} from "lucide-react";
 import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
@@ -63,7 +79,7 @@ export function Navbar() {
     setIsMobileMenuOpen(false);
   };
 
-  const displayName = user?.fullName || user?.email?.split("@")[0] || "User";
+  const displayName = user?.fullName || user?.businessName || user?.email?.split("@")[0] || "User";
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -92,8 +108,25 @@ export function Navbar() {
         <nav className="flex items-center gap-4">
           {isLoading ? null : user ? (
             <>
-              {/* Quick actions (desktop) */}
+              {/* Universal + role-specific actions (desktop) */}
               <div className="hidden items-center gap-4 md:flex">
+                {/* Universal — always visible */}
+                <Link
+                  href="/services"
+                  className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                >
+                  <Wrench size={16} />
+                  Services
+                </Link>
+                <Link
+                  href="/marketplace"
+                  className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                >
+                  <ShoppingBag size={16} />
+                  Marketplace
+                </Link>
+
+                {/* Admin */}
                 {isAdminEmail(user.email) && (
                   <Link
                     href="/admin"
@@ -103,6 +136,8 @@ export function Navbar() {
                     Admin
                   </Link>
                 )}
+
+                {/* Landlord */}
                 {effectiveRole === "landlord" && (
                   <>
                     <Link
@@ -121,6 +156,28 @@ export function Navbar() {
                     </Link>
                   </>
                 )}
+
+                {/* Service Provider */}
+                {effectiveRole === "service_provider" && (
+                  <>
+                    <Link
+                      href="/dashboard/provider/add-listing"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                    >
+                      <Plus size={16} />
+                      Add Listing
+                    </Link>
+                    <Link
+                      href="/dashboard/provider"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                    >
+                      <Store size={16} />
+                      My Listings
+                    </Link>
+                  </>
+                )}
+
+                {/* Student */}
                 {effectiveRole === "student" && (
                   <Link
                     href="/dashboard/student"
@@ -190,10 +247,13 @@ export function Navbar() {
                       </p>
                       <p className="truncate text-xs text-gray-500">{user.email}</p>
                       <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs capitalize text-blue-600">
-                        {effectiveRole || "user"}
+                        {effectiveRole === "service_provider"
+                          ? "Service Provider"
+                          : effectiveRole || "user"}
                       </span>
                     </div>
                     <div className="py-1">
+                      {/* Dashboard link by role */}
                       {effectiveRole === "landlord" && (
                         <Link
                           href="/dashboard/landlord"
@@ -214,6 +274,36 @@ export function Navbar() {
                           Dashboard
                         </Link>
                       )}
+                      {effectiveRole === "service_provider" && (
+                        <Link
+                          href="/dashboard/provider"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <LayoutDashboard size={16} />
+                          My Dashboard
+                        </Link>
+                      )}
+
+                      {/* Universal links */}
+                      <Link
+                        href="/services"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Wrench size={16} />
+                        Services
+                      </Link>
+                      <Link
+                        href="/marketplace"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <ShoppingBag size={16} />
+                        Marketplace
+                      </Link>
+
+                      {/* Admin */}
                       {isAdminEmail(user.email) && (
                         <Link
                           href="/admin"
@@ -224,6 +314,7 @@ export function Navbar() {
                           Admin Panel
                         </Link>
                       )}
+
                       <Link
                         href="/dashboard/profile"
                         onClick={() => setIsMenuOpen(false)}
@@ -249,6 +340,21 @@ export function Navbar() {
             </>
           ) : (
             <>
+              {/* Guest — universal links + auth */}
+              <Link
+                href="/services"
+                className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+              >
+                <Wrench size={16} />
+                Services
+              </Link>
+              <Link
+                href="/marketplace"
+                className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+              >
+                <ShoppingBag size={16} />
+                Marketplace
+              </Link>
               <Link href="/login" className="text-sm font-medium text-gray-300 hover:text-white">
                 Log In
               </Link>
@@ -271,6 +377,26 @@ export function Navbar() {
               <span className="font-semibold text-white">{displayName}</span>
               <span className="ml-2 text-xs text-gray-400">{user.email}</span>
             </p>
+
+            {/* Universal */}
+            <Link
+              href="/services"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
+            >
+              <Wrench size={16} />
+              Services
+            </Link>
+            <Link
+              href="/marketplace"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
+            >
+              <ShoppingBag size={16} />
+              Marketplace
+            </Link>
+
+            {/* Role-specific */}
             {effectiveRole === "landlord" && (
               <>
                 <Link
@@ -291,6 +417,26 @@ export function Navbar() {
                 </Link>
               </>
             )}
+            {effectiveRole === "service_provider" && (
+              <>
+                <Link
+                  href="/dashboard/provider/add-listing"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
+                >
+                  <Plus size={16} />
+                  Add Listing
+                </Link>
+                <Link
+                  href="/dashboard/provider"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
+                >
+                  <Store size={16} />
+                  My Listings
+                </Link>
+              </>
+            )}
             {effectiveRole === "student" && (
               <Link
                 href="/dashboard/student"
@@ -301,6 +447,8 @@ export function Navbar() {
                 My Bookings
               </Link>
             )}
+
+            {/* Admin */}
             {isAdminEmail(user.email) && (
               <Link
                 href="/admin"
@@ -311,6 +459,7 @@ export function Navbar() {
                 Admin
               </Link>
             )}
+
             <Link
               href="/dashboard/profile"
               onClick={() => setIsMobileMenuOpen(false)}

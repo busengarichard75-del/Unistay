@@ -12,8 +12,11 @@ export function Hero() {
           <HeroHeadline />
         </h1>
         <p className="mt-4 text-base text-gray-600 sm:text-lg">
-          Peza helps university students discover verified accommodation
-          close to where they study.
+          Your campus, all in one place.
+        </p>
+        <p className="mt-2 text-sm text-gray-500 sm:text-base">
+          Find verified rooms, trusted services, and student deals — everything
+          you need to settle in and thrive at university.
         </p>
       </div>
     </section>
