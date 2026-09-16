@@ -87,7 +87,6 @@ export function Navbar() {
     .toUpperCase()
     .slice(0, 2);
 
-  // Use unreadCount from the new notification system, fallback to counts.total
   const notificationCount = unreadCount ?? counts.total;
 
   const toggleNotification = () => {
@@ -100,17 +99,16 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full navbar-animated">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link href="/" className="text-lg font-bold text-white">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-4">
+        <Link href="/" className="shrink-0 text-base font-bold text-white sm:text-lg">
           Peza ZM
         </Link>
 
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-2 sm:gap-4">
           {isLoading ? null : user ? (
             <>
-              {/* Universal + role-specific actions (desktop) */}
+              {/* Quick actions (desktop) */}
               <div className="hidden items-center gap-4 md:flex">
-                {/* Universal — always visible */}
                 <Link
                   href="/services"
                   className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
@@ -126,7 +124,6 @@ export function Navbar() {
                   Marketplace
                 </Link>
 
-                {/* Admin */}
                 {isAdminEmail(user.email) && (
                   <Link
                     href="/admin"
@@ -137,7 +134,6 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {/* Landlord */}
                 {effectiveRole === "landlord" && (
                   <>
                     <Link
@@ -157,7 +153,6 @@ export function Navbar() {
                   </>
                 )}
 
-                {/* Service Provider */}
                 {effectiveRole === "service_provider" && (
                   <>
                     <Link
@@ -177,7 +172,6 @@ export function Navbar() {
                   </>
                 )}
 
-                {/* Student */}
                 {effectiveRole === "student" && (
                   <Link
                     href="/dashboard/student"
@@ -193,12 +187,13 @@ export function Navbar() {
               <div className="relative">
                 <button
                   onClick={toggleNotification}
-                  className="relative flex items-center justify-center rounded-full p-2 text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+                  className="relative flex items-center justify-center rounded-full p-1.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors sm:p-2"
                   aria-label="Notifications"
                 >
-                  <Bell size={20} />
+                  <Bell size={18} className="sm:hidden" />
+                  <Bell size={20} className="hidden sm:block" />
                   {notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg">
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-lg sm:h-5 sm:w-5 sm:text-[10px]">
                       {notificationCount > 9 ? "9+" : notificationCount}
                     </span>
                   )}
@@ -214,13 +209,13 @@ export function Navbar() {
               {/* Hamburger (mobile) */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="flex items-center justify-center rounded-full p-2 text-gray-300 hover:bg-white/10 hover:text-white transition-colors md:hidden"
+                className="flex items-center justify-center rounded-full p-1.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors sm:p-2 md:hidden"
                 aria-label="Toggle menu"
               >
-                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
 
-              {/* User Menu Dropdown */}
+              {/* User Menu Dropdown (desktop) */}
               <div className="relative hidden md:block" ref={menuRef}>
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -238,7 +233,6 @@ export function Navbar() {
                   />
                 </button>
 
-                {/* Dropdown Menu */}
                 {isMenuOpen && (
                   <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5">
                     <div className="border-b border-gray-100 px-4 py-3">
@@ -253,7 +247,6 @@ export function Navbar() {
                       </span>
                     </div>
                     <div className="py-1">
-                      {/* Dashboard link by role */}
                       {effectiveRole === "landlord" && (
                         <Link
                           href="/dashboard/landlord"
@@ -285,7 +278,6 @@ export function Navbar() {
                         </Link>
                       )}
 
-                      {/* Universal links */}
                       <Link
                         href="/services"
                         onClick={() => setIsMenuOpen(false)}
@@ -303,7 +295,6 @@ export function Navbar() {
                         Marketplace
                       </Link>
 
-                      {/* Admin */}
                       {isAdminEmail(user.email) && (
                         <Link
                           href="/admin"
@@ -340,27 +331,32 @@ export function Navbar() {
             </>
           ) : (
             <>
-              {/* Guest — universal links + auth */}
+              {/* Guest — mobile-optimized */}
               <Link
                 href="/services"
-                className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
               >
-                <Wrench size={16} />
-                Services
+                <Wrench size={14} className="sm:hidden" />
+                <Wrench size={16} className="hidden sm:block" />
+                <span className="hidden xs:inline sm:inline">Services</span>
               </Link>
               <Link
                 href="/marketplace"
-                className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
               >
-                <ShoppingBag size={16} />
-                Marketplace
+                <ShoppingBag size={14} className="sm:hidden" />
+                <ShoppingBag size={16} className="hidden sm:block" />
+                <span className="hidden xs:inline sm:inline">Marketplace</span>
               </Link>
-              <Link href="/login" className="text-sm font-medium text-gray-300 hover:text-white">
+              <Link
+                href="/login"
+                className="text-xs font-medium text-gray-300 hover:text-white sm:text-sm"
+              >
                 Log In
               </Link>
               <Link
                 href="/signup"
-                className="rounded-full bg-[var(--nexora-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
+                className="shrink-0 whitespace-nowrap rounded-full bg-[var(--nexora-primary)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[var(--nexora-primary-hover)] sm:px-4 sm:py-2 sm:text-sm"
               >
                 Sign Up
               </Link>
@@ -378,7 +374,6 @@ export function Navbar() {
               <span className="ml-2 text-xs text-gray-400">{user.email}</span>
             </p>
 
-            {/* Universal */}
             <Link
               href="/services"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -396,7 +391,6 @@ export function Navbar() {
               Marketplace
             </Link>
 
-            {/* Role-specific */}
             {effectiveRole === "landlord" && (
               <>
                 <Link
@@ -448,7 +442,6 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* Admin */}
             {isAdminEmail(user.email) && (
               <Link
                 href="/admin"
