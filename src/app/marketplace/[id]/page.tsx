@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { getProductById } from "@/services/productService";
@@ -10,6 +11,9 @@ import { getUniversityFullName } from "@/lib/universityLabels";
 import { trackListing } from "@/lib/trackListing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
+import { ReportButton } from "@/components/shared/ReportButton";
+import { ShareButton } from "@/components/shared/ShareButton";
+import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import {
   ArrowLeft,
   MapPin,
@@ -17,6 +21,8 @@ import {
   ShieldCheck,
   Tag,
   ImagePlus,
+  Store,
+  ChevronRight,
 } from "lucide-react";
 
 export default function ProductDetailPage() {
@@ -27,6 +33,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const tracked = useRef(false);
 
   useEffect(() => {
@@ -34,11 +41,8 @@ export default function ProductDetailPage() {
     const load = async () => {
       try {
         const data = await getProductById(id);
-        if (!data) {
-          setNotFound(true);
-        } else {
-          setProduct(data);
-        }
+        if (!data) setNotFound(true);
+        else setProduct(data);
       } catch {
         setNotFound(true);
       } finally {
@@ -119,27 +123,33 @@ export default function ProductDetailPage() {
         {/* ─── Images ─── */}
         {images.length > 0 && (
           <>
-            <div className="mb-3 overflow-hidden rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setLightboxIndex(0)}
+              className="mb-3 block w-full overflow-hidden rounded-2xl"
+            >
               <img
                 src={images[0]}
                 alt={product.name}
-                className="h-56 w-full object-cover sm:h-72"
+                className="h-56 w-full object-cover transition-transform duration-300 hover:scale-[1.02] sm:h-72"
               />
-            </div>
+            </button>
 
             {images.length > 1 && (
               <div className="mb-3 grid grid-cols-2 gap-3">
                 {images.slice(1, 3).map((url, i) => (
-                  <div
+                  <button
                     key={i}
+                    type="button"
+                    onClick={() => setLightboxIndex(i + 1)}
                     className="aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
                   >
                     <img
                       src={url}
                       alt={`${product.name} ${i + 2}`}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -204,8 +214,27 @@ export default function ProductDetailPage() {
             </span>
           </div>
 
+          {/* ─── View provider link ─── */}
+          <Link
+            href={`/provider/${product.ownerId}`}
+            className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
+                <Store size={14} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">Sold by</p>
+                <p className="truncate text-sm font-semibold text-[var(--nexora-navy)]">
+                  View seller profile
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-gray-400" />
+          </Link>
+
           {!isSold && (
-            <div className="mt-5">
+            <div className="mt-4">
               <WhatsAppContactButton
                 whatsapp={product.whatsapp}
                 message={prefillMessage}
@@ -216,6 +245,18 @@ export default function ProductDetailPage() {
               />
             </div>
           )}
+        </div>
+
+        {/* ─── Share + Report ─── */}
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <ShareButton targetType="product" targetTitle={product.name} />
+          <span className="text-gray-300">·</span>
+          <ReportButton
+            targetType="product"
+            targetId={product.id}
+            targetTitle={product.name}
+            targetOwnerId={product.ownerId}
+          />
         </div>
 
         {/* ─── Description ─── */}
@@ -232,6 +273,15 @@ export default function ProductDetailPage() {
           Peza connects you with the seller — payment and delivery are arranged between you both.
         </div>
       </div>
+
+      {/* Lightbox */}
+      <ImageLightbox
+        images={images}
+        initialIndex={lightboxIndex ?? 0}
+        isOpen={lightboxIndex !== null}
+        onClose={() => setLightboxIndex(null)}
+        alt={product.name}
+      />
 
       <Footer />
     </main>

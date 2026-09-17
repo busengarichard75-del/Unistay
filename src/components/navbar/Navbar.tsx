@@ -9,7 +9,6 @@ import {
   ClipboardList,
   Calendar,
   ShieldCheck,
-  User,
   LogOut,
   Settings,
   LayoutDashboard,
@@ -20,6 +19,7 @@ import {
   Wrench,
   ShoppingBag,
   Store,
+  Map as MapIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
@@ -42,12 +42,10 @@ export function Navbar() {
 
   const effectiveRole = user?.role || null;
 
-  // Hide navbar on admin pages
   if (pathname?.startsWith("/admin")) {
     return null;
   }
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -107,7 +105,6 @@ export function Navbar() {
         <nav className="flex items-center gap-2 sm:gap-4">
           {isLoading ? null : user ? (
             <>
-              {/* Quick actions (desktop) */}
               <div className="hidden items-center gap-4 md:flex">
                 <Link
                   href="/services"
@@ -122,6 +119,13 @@ export function Navbar() {
                 >
                   <ShoppingBag size={16} />
                   Marketplace
+                </Link>
+                <Link
+                  href="/map"
+                  className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                >
+                  <MapIcon size={16} />
+                  Map
                 </Link>
 
                 {isAdminEmail(user.email) && (
@@ -183,7 +187,6 @@ export function Navbar() {
                 )}
               </div>
 
-              {/* Notification Bell with Dropdown */}
               <div className="relative">
                 <button
                   onClick={toggleNotification}
@@ -206,7 +209,6 @@ export function Navbar() {
                 />
               </div>
 
-              {/* Hamburger (mobile) */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="flex items-center justify-center rounded-full p-1.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors sm:p-2 md:hidden"
@@ -215,7 +217,6 @@ export function Navbar() {
                 {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
 
-              {/* User Menu Dropdown (desktop) */}
               <div className="relative hidden md:block" ref={menuRef}>
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -294,6 +295,14 @@ export function Navbar() {
                         <ShoppingBag size={16} />
                         Marketplace
                       </Link>
+                      <Link
+                        href="/map"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <MapIcon size={16} />
+                        Peza Map
+                      </Link>
 
                       {isAdminEmail(user.email) && (
                         <Link
@@ -331,7 +340,6 @@ export function Navbar() {
             </>
           ) : (
             <>
-              {/* Guest — mobile-optimized */}
               <Link
                 href="/services"
                 className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
@@ -347,6 +355,14 @@ export function Navbar() {
                 <ShoppingBag size={14} className="sm:hidden" />
                 <ShoppingBag size={16} className="hidden sm:block" />
                 <span className="hidden xs:inline sm:inline">Marketplace</span>
+              </Link>
+              <Link
+                href="/map"
+                className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
+              >
+                <MapIcon size={14} className="sm:hidden" />
+                <MapIcon size={16} className="hidden sm:block" />
+                <span className="hidden xs:inline sm:inline">Map</span>
               </Link>
               <Link
                 href="/login"
@@ -365,7 +381,6 @@ export function Navbar() {
         </nav>
       </div>
 
-      {/* Mobile Menu (full dropdown) */}
       {isMobileMenuOpen && user && (
         <div ref={mobileMenuRef} className="md:hidden navbar-animated border-t border-white/10 px-4 py-4">
           <div className="flex flex-col space-y-3">
@@ -389,6 +404,14 @@ export function Navbar() {
             >
               <ShoppingBag size={16} />
               Marketplace
+            </Link>
+            <Link
+              href="/map"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
+            >
+              <MapIcon size={16} />
+              Peza Map
             </Link>
 
             {effectiveRole === "landlord" && (

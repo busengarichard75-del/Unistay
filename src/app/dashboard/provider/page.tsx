@@ -15,9 +15,19 @@ import {
   deleteProduct,
   updateProduct,
 } from "@/services/productService";
-import { Service } from "@/types/service";
-import { Product } from "@/types/product";
+import {
+  Service,
+  isServiceBoosted,
+  isServiceDiscountActive,
+  BoostDuration,
+} from "@/types/service";
+import {
+  Product,
+  isProductBoosted,
+  isProductDiscountActive,
+} from "@/types/product";
 import { VerificationBanner } from "@/components/provider/VerificationBanner";
+import { BoostListingModal } from "@/components/provider/BoostListingModal";
 import { toast } from "sonner";
 import {
   Eye,
@@ -31,7 +41,24 @@ import {
   Check,
   Flame,
   Pencil,
+  Zap,
 } from "lucide-react";
+
+// ─── Small time formatter for discount countdown ───
+function formatDiscountRemaining(expiresAt: number, now: number): string {
+  const ms = expiresAt - now;
+  if (ms <= 0) return "Expired";
+  const hours = Math.floor(ms / 3600000);
+  if (hours < 1) {
+    const minutes = Math.max(1, Math.floor(ms / 60000));
+    return `${minutes}m left`;
+  }
+  if (hours < 24) {
+    return `${hours}h left`;
+  }
+  const days = Math.floor(hours / 24);
+  return `${days}d left`;
+}
 
 export default function ProviderDashboardPage() {
   const { user, isLoading } = useRequireAuth("service_provider");
@@ -40,6 +67,16 @@ export default function ProviderDashboardPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [boostTarget, setBoostTarget] = useState<
+    { kind: "service" | "product"; id: string; title: string } | null
+  >(null);
+
+  // Ticking clock for live countdown pills (updates every 60s)
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -77,6 +114,11 @@ export default function ProviderDashboardPage() {
   );
   const activeCount = allItems.filter((x) => x.data.status === "available").length;
   const soldOrInactive = allItems.filter((x) => x.data.status !== "available").length;
+  const boostedCount = allItems.filter((x) =>
+    x.kind === "service"
+      ? isServiceBoosted(x.data as Service)
+      : isProductBoosted(x.data as Product)
+  ).length;
 
   const mostViewed = [...allItems]
     .filter((x) => (x.data.views || 0) > 0)
@@ -129,6 +171,75 @@ export default function ProviderDashboardPage() {
     }
   }
 
+  async function handleBoostConfirm(duration: BoostDuration, amount: number) {
+    if (!boostTarget) return;
+    try {
+      const nowTs = Date.now();
+      if (boostTarget.kind === "service") {
+        await updateService(boostTarget.id, {
+          boostRequested: true,
+          boostRequestedAt: nowTs,
+          boostRequestedDuration: duration,
+          boostRequestedAmount: amount,
+          updatedAt: nowTs,
+        });
+        setServices((prev) =>
+          prev.map((s) =>
+            s.id === boostTarget.id
+              ? {
+                  ...s,
+                  boostRequested: true,
+                  boostRequestedAt: nowTs,
+                  boostRequestedDuration: duration,
+                  boostRequestedAmount: amount,
+                }
+              : s
+          )
+        );
+      } else {
+        await updateProduct(boostTarget.id, {
+          boostRequested: true,
+          boostRequestedAt: nowTs,
+          boostRequestedDuration: duration,
+          boostRequestedAmount: amount,
+          updatedAt: nowTs,
+        });
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === boostTarget.id
+              ? {
+                  ...p,
+                  boostRequested: true,
+                  boostRequestedAt: nowTs,
+                  boostRequestedDuration: duration,
+                  boostRequestedAmount: amount,
+                }
+              : p
+          )
+        );
+      }
+
+      try {
+        await fetch("/api/admin/announce", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "⚡ New boost request",
+            body: `${boostTarget.title} — K${amount.toFixed(2)} ${duration} payment pending`,
+            targetRole: undefined,
+          }),
+        });
+      } catch {
+        // silent
+      }
+
+      toast.success("Boost request sent! Admin will activate shortly.");
+      setBoostTarget(null);
+    } catch {
+      toast.error("Failed to send boost request.");
+    }
+  }
+
   if (isLoading || !user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--nexora-surface)]">
@@ -161,7 +272,6 @@ export default function ProviderDashboardPage() {
           </p>
         </div>
 
-        {/* Verification banner */}
         <div className="mt-6">
           <VerificationBanner user={user} />
         </div>
@@ -171,7 +281,7 @@ export default function ProviderDashboardPage() {
           <StatCard icon={Eye} label="Views" value={totalViews} />
           <StatCard icon={MessageCircle} label="WhatsApp" value={totalContacts} />
           <StatCard icon={Package} label="Active" value={activeCount} />
-          <StatCard icon={Check} label="Sold / Off" value={soldOrInactive} />
+          <StatCard icon={Zap} label="Boosted" value={boostedCount} />
         </div>
 
         {mostViewed && (
@@ -195,7 +305,7 @@ export default function ProviderDashboardPage() {
           </div>
         )}
 
-        {/* Add listing CTA — gated by verification */}
+        {/* Add listing CTA */}
         {isVerified ? (
           <div className="mt-6">
             <Link
@@ -222,11 +332,6 @@ export default function ProviderDashboardPage() {
                 ? "You can add listings once your account is approved"
                 : "Add Listing is locked until your account is verified"}
             </p>
-            <p className="mt-1 text-xs text-gray-500">
-              {verificationStatus === "pending"
-                ? "We usually review within 24 hours."
-                : "Please contact support for help."}
-            </p>
           </div>
         )}
 
@@ -242,10 +347,7 @@ export default function ProviderDashboardPage() {
           {isFetching ? (
             <div className="space-y-3">
               {Array.from({ length: 2 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="animate-pulse rounded-2xl bg-white p-4 shadow-sm"
-                >
+                <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm">
                   <div className="mb-2 h-4 w-2/3 rounded bg-gray-200" />
                   <div className="h-3 w-1/3 rounded bg-gray-200" />
                 </div>
@@ -279,9 +381,16 @@ export default function ProviderDashboardPage() {
                   views={s.views || 0}
                   contacts={s.whatsappClicks || 0}
                   status={s.status}
+                  isBoosted={isServiceBoosted(s)}
+                  boostRequested={!!s.boostRequested}
+                  discountActive={isServiceDiscountActive(s)}
+                  discountPercent={s.discountPercent}
+                  discountExpiresAt={s.discountExpiresAt}
+                  now={now}
                   busy={busyId === s.id}
                   onToggle={() => handleToggleStatus("service", s.id)}
                   onDelete={() => handleDelete("service", s.id, s.title)}
+                  onBoost={() => setBoostTarget({ kind: "service", id: s.id, title: s.title })}
                 />
               ))}
               {products.map((p) => (
@@ -294,15 +403,33 @@ export default function ProviderDashboardPage() {
                   views={p.views || 0}
                   contacts={p.whatsappClicks || 0}
                   status={p.status}
+                  isBoosted={isProductBoosted(p)}
+                  boostRequested={!!p.boostRequested}
+                  discountActive={isProductDiscountActive(p)}
+                  discountPercent={p.discountPercent}
+                  discountExpiresAt={p.discountExpiresAt}
+                  now={now}
                   busy={busyId === p.id}
                   onToggle={() => handleToggleStatus("product", p.id)}
                   onDelete={() => handleDelete("product", p.id, p.name)}
+                  onBoost={() => setBoostTarget({ kind: "product", id: p.id, title: p.name })}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Boost modal */}
+      {boostTarget && (
+        <BoostListingModal
+          listingId={boostTarget.id}
+          listingTitle={boostTarget.title}
+          listingType={boostTarget.kind}
+          onClose={() => setBoostTarget(null)}
+          onConfirm={handleBoostConfirm}
+        />
+      )}
     </main>
   );
 }
@@ -335,9 +462,16 @@ function ListingRow({
   views,
   contacts,
   status,
+  isBoosted,
+  boostRequested,
+  discountActive,
+  discountPercent,
+  discountExpiresAt,
+  now,
   busy,
   onToggle,
   onDelete,
+  onBoost,
 }: {
   kind: "service" | "product";
   id: string;
@@ -346,9 +480,16 @@ function ListingRow({
   views: number;
   contacts: number;
   status: string;
+  isBoosted: boolean;
+  boostRequested: boolean;
+  discountActive: boolean;
+  discountPercent?: number;
+  discountExpiresAt?: number;
+  now: number;
   busy: boolean;
   onToggle: () => void;
   onDelete: () => void;
+  onBoost: () => void;
 }) {
   const isActive = status === "available";
   const KindIcon = kind === "service" ? Wrench : ShoppingBag;
@@ -363,15 +504,52 @@ function ListingRow({
 
   const editHref = `/dashboard/provider/edit-listing/${kind}/${id}`;
 
+  const discountRemaining =
+    discountActive && discountExpiresAt
+      ? formatDiscountRemaining(discountExpiresAt, now)
+      : null;
+
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className={`rounded-2xl border bg-white p-4 shadow-sm ${isBoosted ? "border-amber-200" : "border-gray-100"}`}>
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[var(--nexora-primary)]">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+            isBoosted ? "bg-amber-100 text-amber-600" : "bg-blue-50 text-[var(--nexora-primary)]"
+          }`}
+        >
           <KindIcon size={16} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-gray-900">{title}</p>
+          <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900">
+            <span className="truncate">{title}</span>
+
+            {isBoosted && (
+              <span
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-sm"
+                title="Boosted"
+              >
+                <Zap size={11} fill="currentColor" />
+              </span>
+            )}
+
+            {boostRequested && !isBoosted && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                BOOST PENDING
+              </span>
+            )}
+          </p>
+
           <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>
+
+          {discountRemaining && (
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-medium text-red-700 border border-red-100">
+              <Flame size={11} fill="currentColor" />
+              <span>
+                {discountPercent}% OFF · {discountRemaining}
+              </span>
+            </div>
+          )}
+
           <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-gray-500">
             <span className="inline-flex items-center gap-1">
               <Eye size={11} />
@@ -383,9 +561,7 @@ function ListingRow({
             </span>
             <span
               className={`rounded-full px-2 py-0.5 font-medium ${
-                isActive
-                  ? "bg-green-100 text-green-700"
-                  : "bg-gray-100 text-gray-600"
+                isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
               }`}
             >
               {status}
@@ -395,6 +571,17 @@ function ListingRow({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+        {!isBoosted && !boostRequested && (
+          <button
+            type="button"
+            onClick={onBoost}
+            disabled={busy}
+            className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <Zap size={12} />
+            Boost
+          </button>
+        )}
         <Link
           href={editHref}
           className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"

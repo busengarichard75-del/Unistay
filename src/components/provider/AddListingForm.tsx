@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { addService } from "@/services/serviceService";
 import { addProduct } from "@/services/productService";
 import { universities } from "@/data/universities";
@@ -32,15 +34,31 @@ import {
   Image as ImageIcon,
   FileText,
   Clock,
+  Flame,
+  Timer,
+  Globe,
 } from "lucide-react";
 
+const PropertyMap = dynamic(
+  () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
+  { ssr: false }
+);
+
 type ListingType = "service" | "product";
+type DiscountDuration = "daily" | "weekly" | "monthly";
 
 const ALL_DAYS: AvailabilityDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+const DISCOUNT_DURATIONS: { id: DiscountDuration; label: string; ms: number }[] = [
+  { id: "daily", label: "Daily", ms: 1 * 86400000 },
+  { id: "weekly", label: "Weekly", ms: 7 * 86400000 },
+  { id: "monthly", label: "Monthly", ms: 30 * 86400000 },
+];
 
 export function AddListingForm() {
   const router = useRouter();
   const { user } = useAuth();
+  const userLocation = useGeolocation();
 
   const [type, setType] = useState<ListingType>("service");
 
@@ -51,6 +69,13 @@ export function AddListingForm() {
   const [universityId, setUniversityId] = useState(user?.university || "");
   const [whatsapp, setWhatsapp] = useState(user?.whatsapp || user?.phone || "");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+
+  // 🌐 Online service
+  const [isOnline, setIsOnline] = useState(false);
+
+  // 📍 Map coordinates
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
 
   // Service-specific
   const [serviceCategory, setServiceCategory] = useState<ServiceCategory>("barber");
@@ -71,10 +96,14 @@ export function AddListingForm() {
   const [productCategory, setProductCategory] = useState("");
   const [condition, setCondition] = useState<ProductCondition>("used");
 
+  // Flash deal
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState("20");
+  const [discountDuration, setDiscountDuration] = useState<DiscountDuration>("daily");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Sync whatsapp/university if user loads after mount
   useEffect(() => {
     if (user?.whatsapp && !whatsapp) setWhatsapp(user.whatsapp);
     if (user?.university && !universityId) setUniversityId(user.university);
@@ -92,14 +121,28 @@ export function AddListingForm() {
     );
   }
 
+  const showDiscountSection =
+    type === "product" || (type === "service" && priceType === "from");
+
+  // Map is hidden only for online services
+  const showMapPicker = !(type === "service" && isOnline);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
 
     setError("");
 
-    if (!title.trim() || !description.trim() || !location.trim()) {
-      setError("Please fill in title, description, and location.");
+    if (!title.trim() || !description.trim()) {
+      setError("Please fill in title and description.");
+      return;
+    }
+    if (!isOnline && !location.trim()) {
+      setError("Please enter a location, or mark this as an online service.");
+      return;
+    }
+    if (showMapPicker && (latitude === undefined || longitude === undefined)) {
+      setError("Please pin your location on the map.");
       return;
     }
     if (!universityId) {
@@ -127,15 +170,30 @@ export function AddListingForm() {
       }
     }
 
+    let discountPayload: { discountPercent?: number; discountExpiresAt?: number } = {};
+    if (hasDiscount && showDiscountSection) {
+      const percent = Math.round(Number(discountPercent));
+      if (!percent || percent < 5 || percent > 90) {
+        setError("Discount must be between 5% and 90%.");
+        return;
+      }
+      const duration = DISCOUNT_DURATIONS.find((d) => d.id === discountDuration);
+      if (!duration) return;
+      discountPayload = {
+        discountPercent: percent,
+        discountExpiresAt: Date.now() + duration.ms,
+      };
+    }
+
     setIsSubmitting(true);
 
     try {
       const now = Date.now();
-      const commonBase = {
+      const commonBase: any = {
         ownerId: user.uid,
         description: description.trim(),
         imageUrls,
-        location: location.trim(),
+        location: isOnline ? "Online service" : location.trim(),
         universityId,
         whatsapp: whatsapp.trim(),
         views: 0,
@@ -144,7 +202,14 @@ export function AddListingForm() {
         updatedAt: now,
         adminHidden: false,
         adminHiddenReason: null,
+        ...discountPayload,
       };
+
+      // Only attach coordinates when there's a physical pin
+      if (showMapPicker && latitude !== undefined && longitude !== undefined) {
+        commonBase.latitude = latitude;
+        commonBase.longitude = longitude;
+      }
 
       if (type === "service") {
         await addService({
@@ -152,6 +217,7 @@ export function AddListingForm() {
           title: title.trim(),
           category: serviceCategory,
           status: "available",
+          isOnline,
           availability: {
             days: availDays,
             from: availFrom,
@@ -162,7 +228,7 @@ export function AddListingForm() {
           priceType,
           priceFrom: priceType === "from" ? Number(priceFrom) : undefined,
           paymentMethods,
-          serviceArea: serviceArea.trim() || undefined,
+          serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
         });
       } else {
         await addProduct({
@@ -190,6 +256,11 @@ export function AddListingForm() {
       setIsSubmitting(false);
     }
   }
+
+  const defaultCenter: [number, number] | undefined =
+    userLocation.latitude && userLocation.longitude
+      ? [userLocation.latitude, userLocation.longitude]
+      : undefined;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -247,7 +318,7 @@ export function AddListingForm() {
         </Field>
       </Section>
 
-      {/* ─── Category & type-specific ─── */}
+      {/* ─── Category & pricing ─── */}
       <Section icon={<Tag size={16} />} title="Category & pricing">
         {type === "service" ? (
           <>
@@ -385,6 +456,89 @@ export function AddListingForm() {
         )}
       </Section>
 
+      {/* ─── Flash deal ─── */}
+      {showDiscountSection && (
+        <section className="space-y-4 rounded-2xl border border-red-100 bg-gradient-to-br from-red-50/40 to-white p-6 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-red-100 pb-3">
+            <span className="text-red-500">
+              <Flame size={16} fill="currentColor" />
+            </span>
+            <h2 className="text-base font-semibold text-gray-900">
+              Flash Deal <span className="text-xs font-normal text-gray-500">(optional)</span>
+            </h2>
+            <label className="ml-auto flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={hasDiscount}
+                onChange={(e) => setHasDiscount(e.target.checked)}
+                disabled={isSubmitting}
+                className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+              />
+              <span className="text-xs font-medium text-gray-700">Add discount</span>
+            </label>
+          </div>
+
+          {hasDiscount && (
+            <div className="space-y-4">
+              <Field label="Discount percentage">
+                <div className="relative">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(e.target.value)}
+                    min={5}
+                    max={90}
+                    placeholder="20"
+                    disabled={isSubmitting}
+                    className={`${inputClass} pr-12`}
+                  />
+                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                    % OFF
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[10, 20, 30, 50].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setDiscountPercent(String(p))}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        discountPercent === String(p)
+                          ? "bg-red-500 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {p}%
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="Duration">
+                <div className="grid grid-cols-3 gap-2">
+                  {DISCOUNT_DURATIONS.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setDiscountDuration(d.id)}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
+                        discountDuration === d.id
+                          ? "border-red-500 bg-red-50 text-red-700"
+                          : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                      }`}
+                    >
+                      <Timer size={12} />
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ─── Availability (service only) ─── */}
       {type === "service" && (
         <Section icon={<Clock size={16} />} title="Availability">
@@ -392,9 +546,7 @@ export function AddListingForm() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  setAvailDays(availDays.length === 7 ? [] : ALL_DAYS)
-                }
+                onClick={() => setAvailDays(availDays.length === 7 ? [] : ALL_DAYS)}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all ${
                   availDays.length === 7
                     ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
@@ -454,11 +606,7 @@ export function AddListingForm() {
                       : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
                   }`}
                 >
-                  {m === "walk_in"
-                    ? "🚶 Walk-in"
-                    : m === "appointment"
-                    ? "📅 By appointment"
-                    : "🤝 Both"}
+                  {m === "walk_in" ? "🚶 Walk-in" : m === "appointment" ? "📅 By appointment" : "🤝 Both"}
                 </button>
               ))}
             </div>
@@ -479,16 +627,51 @@ export function AddListingForm() {
 
       {/* ─── Location ─── */}
       <Section icon={<MapPin size={16} />} title="Location">
-        <Field label="Area / address">
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="e.g., Riverside, Kitwe"
-            disabled={isSubmitting}
-            className={inputClass}
-          />
-        </Field>
+        {type === "service" && (
+          <label
+            className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3.5 transition-all ${
+              isOnline
+                ? "border-cyan-500 bg-cyan-50/60"
+                : "border-gray-100 bg-white hover:border-gray-200"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={isOnline}
+              onChange={(e) => {
+                setIsOnline(e.target.checked);
+                if (e.target.checked) {
+                  setLatitude(undefined);
+                  setLongitude(undefined);
+                }
+              }}
+              disabled={isSubmitting}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                <Globe size={14} className={isOnline ? "text-cyan-600" : "text-gray-400"} />
+                Online service
+              </p>
+              <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
+                Offer your service remotely. No physical address or map pin needed.
+              </p>
+            </div>
+          </label>
+        )}
+
+        {!isOnline && (
+          <Field label="Area / address">
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g., Riverside, Kitwe"
+              disabled={isSubmitting}
+              className={inputClass}
+            />
+          </Field>
+        )}
 
         <Field label="University / primary area">
           <div className="relative">
@@ -512,7 +695,7 @@ export function AddListingForm() {
           </div>
         </Field>
 
-        {type === "service" && (
+        {type === "service" && !isOnline && (
           <Field label="Also serves (optional)">
             <input
               type="text"
@@ -522,10 +705,50 @@ export function AddListingForm() {
               disabled={isSubmitting}
               className={inputClass}
             />
-            <p className="mt-1 text-[11px] text-gray-400">
-              Other areas you serve beyond your main location
-            </p>
           </Field>
+        )}
+
+        {/* Map picker */}
+        {showMapPicker && (
+          <Field label="Pin your location on the map">
+            <PropertyMap
+              selectable
+              onLocationSelect={(lat, lng) => {
+                if (lat === 0 && lng === 0) {
+                  setLatitude(undefined);
+                  setLongitude(undefined);
+                } else {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                }
+              }}
+              latitude={latitude}
+              longitude={longitude}
+              height="260px"
+              defaultCenter={defaultCenter}
+              showMyLocation={true}
+              showSearch={true}
+              showFallback={true}
+            />
+            {latitude !== undefined && longitude !== undefined ? (
+              <p className="mt-2 text-xs text-green-600">
+                ✓ Location pinned: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-gray-400">
+                Tap the map to pin your exact location, or use &quot;My Location&quot;. Buyers will see this pin on the Peza Map.
+              </p>
+            )}
+          </Field>
+        )}
+
+        {isOnline && (
+          <div className="flex items-start gap-2 rounded-lg bg-cyan-50 border border-cyan-200 p-3">
+            <Globe size={14} className="mt-0.5 shrink-0 text-cyan-600" />
+            <p className="text-xs text-cyan-900 leading-relaxed">
+              Your listing will show a <strong>🌐 Online</strong> badge and won&apos;t appear on the map.
+            </p>
+          </div>
         )}
       </Section>
 

@@ -11,23 +11,28 @@ export type ServiceCategory =
 
 export type ServiceStatus = "available" | "inactive";
 
-// ─── New: Availability ───
 export type AvailabilityDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type AvailabilityMode = "walk_in" | "appointment" | "both";
 
 export interface ServiceAvailability {
   days?: AvailabilityDay[];
-  from?: string;  // "08:00"
-  to?: string;    // "18:00"
+  from?: string;
+  to?: string;
   mode?: AvailabilityMode;
   note?: string;
 }
 
-// ─── New: Price ───
 export type ServicePriceType = "from" | "contact";
-
-// ─── New: Payment methods ───
 export type PaymentMethod = "cash" | "mobile_money" | "bank_transfer";
+
+// ─── Boost tiers ───
+export type BoostDuration = "daily" | "weekly" | "monthly";
+
+export const BOOST_TIERS: { id: BoostDuration; label: string; amount: number; ms: number }[] = [
+  { id: "daily", label: "Daily", amount: 4.99, ms: 1 * 86400000 },
+  { id: "weekly", label: "Weekly", amount: 24.99, ms: 7 * 86400000 },
+  { id: "monthly", label: "Monthly", amount: 49.99, ms: 30 * 86400000 },
+];
 
 export interface Service {
   id: string;
@@ -49,12 +54,27 @@ export interface Service {
   adminHidden?: boolean;
   adminHiddenReason?: string | null;
 
-  // ─── New (all optional, backward compatible) ───
   availability?: ServiceAvailability;
   priceType?: ServicePriceType;
   priceFrom?: number;
   paymentMethods?: PaymentMethod[];
   serviceArea?: string;
+
+  /** 🌐 When true, this is an online/remote service — no physical map pin required. */
+  isOnline?: boolean;
+
+  // ─── Boost ───
+  isBoosted?: boolean;
+  boostedAt?: number | null;
+  boostExpiry?: number | null;
+  boostRequested?: boolean;
+  boostRequestedAt?: number | null;
+  boostRequestedDuration?: BoostDuration;
+  boostRequestedAmount?: number;
+
+  // ─── Flash deals ───
+  discountPercent?: number;
+  discountExpiresAt?: number;
 }
 
 export const SERVICE_CATEGORIES: { id: ServiceCategory; label: string; icon: string }[] = [
@@ -68,13 +88,7 @@ export const SERVICE_CATEGORIES: { id: ServiceCategory; label: string; icon: str
 ];
 
 export const AVAILABILITY_DAY_LABELS: Record<AvailabilityDay, string> = {
-  mon: "Mon",
-  tue: "Tue",
-  wed: "Wed",
-  thu: "Thu",
-  fri: "Fri",
-  sat: "Sat",
-  sun: "Sun",
+  mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
 
 export const AVAILABILITY_MODE_LABELS: Record<AvailabilityMode, string> = {
@@ -88,3 +102,30 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   mobile_money: "Mobile Money",
   bank_transfer: "Bank Transfer",
 };
+
+// ─── Boost helpers ───
+export function isServiceBoosted(s: Service): boolean {
+  if (!s.isBoosted) return false;
+  if (s.boostExpiry && s.boostExpiry < Date.now()) return false;
+  return true;
+}
+
+export function getServiceBoostDaysRemaining(s: Service): number {
+  if (!s.isBoosted || !s.boostExpiry) return 0;
+  const ms = s.boostExpiry - Date.now();
+  return Math.max(0, Math.ceil(ms / 86400000));
+}
+
+// ─── Discount helpers ───
+export function isServiceDiscountActive(s: Service): boolean {
+  if (!s.discountPercent || s.discountPercent <= 0) return false;
+  if (!s.discountExpiresAt) return false;
+  return s.discountExpiresAt > Date.now();
+}
+
+export function getServiceDiscountedPrice(s: Service): number | null {
+  if (!isServiceDiscountActive(s)) return null;
+  if (s.priceType !== "from" || !s.priceFrom) return null;
+  const discounted = s.priceFrom * (1 - (s.discountPercent || 0) / 100);
+  return Math.round(discounted);
+}

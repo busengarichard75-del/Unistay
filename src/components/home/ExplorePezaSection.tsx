@@ -3,13 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Home, Wrench, ShoppingBag, ArrowRight } from "lucide-react";
+import { Search, Wrench, ShoppingBag, Map as MapIcon, ArrowRight } from "lucide-react";
 
 interface ExplorePezaSectionProps {
   onAccommodationSearch?: (query: string) => void;
 }
 
-// V1 keyword intent — basic matching, no AI.
 const SERVICE_KEYWORDS = [
   "barber", "salon", "haircut", "print", "printing", "photo", "photography",
   "repair", "tech", "food", "meal", "catering", "transport", "delivery",
@@ -44,26 +43,23 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
     } else if (intent === "marketplace") {
       router.push(`/marketplace?q=${encodeURIComponent(trimmed)}`);
     } else {
-      // Accommodation — filter the grid below
       if (onAccommodationSearch) onAccommodationSearch(trimmed);
     }
   };
 
   return (
-    <section className="container-wide pt-6">
-      <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/40 to-white p-6 sm:p-8">
-        {/* Headline */}
+    <section className="container-wide pt-3 sm:pt-4">
+      <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/40 to-white p-4 sm:p-6">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-[var(--nexora-navy)] sm:text-2xl">
+          <h2 className="text-lg font-bold text-[var(--nexora-navy)] sm:text-2xl">
             🎯 Find what you need
           </h2>
-          <p className="mx-auto mt-1.5 max-w-xl text-sm text-gray-600">
-            Rooms, services, and products — all in one place, near your campus.
+          <p className="mx-auto mt-1 max-w-xl text-xs text-gray-600 sm:mt-1.5 sm:text-sm">
+            Services, products, and everything on the map — near your campus.
           </p>
         </div>
 
-        {/* Universal search */}
-        <div className="mx-auto mt-5 max-w-xl">
+        <div className="mx-auto mt-3 max-w-xl sm:mt-4">
           <div className="flex items-center gap-0 overflow-hidden rounded-full border-2 border-[var(--nexora-primary)] bg-white shadow-md focus-within:ring-4 focus-within:ring-[var(--nexora-primary)]/20">
             <div className="flex items-center gap-2 pl-4 pr-1 text-[var(--nexora-primary)]">
               <Search size={18} className="shrink-0" />
@@ -78,7 +74,7 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
                   handleSearch();
                 }
               }}
-              placeholder="Try: barber, room under 1500, used phone..."
+              placeholder="Try: barber, used phone, room under 1500..."
               className="flex-1 bg-transparent py-3 pr-1 text-sm text-gray-800 outline-none placeholder:text-gray-400"
             />
             <button
@@ -89,32 +85,32 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
               Search
             </button>
           </div>
-          <p className="mt-2 text-center text-[11px] text-gray-400">
+          <p className="mt-1.5 text-center text-[11px] text-gray-400">
             We&apos;ll take you to the right section automatically
           </p>
         </div>
 
-        {/* 3 tiles */}
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Tile
-            href="/"
-            icon={Home}
-            title="Accommodation"
-            line="Find a room near your campus"
-            accent="from-blue-500 to-indigo-600"
-          />
-          <Tile
+        {/* 3 compact tiles — Services · Peza Map · Marketplace */}
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+          <CompactTile
             href="/services"
             icon={Wrench}
             title="Services"
-            line="Barbers, printing, repairs & more"
+            line="Barbers, printing, repairs"
             accent="from-cyan-500 to-teal-600"
           />
-          <Tile
+          <CompactTile
+            href="/map"
+            icon={MapIcon}
+            title="Peza Map"
+            line="See what's around you"
+            accent="from-emerald-500 to-green-600"
+          />
+          <CompactTile
             href="/marketplace"
             icon={ShoppingBag}
             title="Marketplace"
-            line="Buy and sell with students"
+            line="Buy & sell with students"
             accent="from-orange-500 to-pink-600"
           />
         </div>
@@ -123,7 +119,7 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
   );
 }
 
-function Tile({
+function CompactTile({
   href,
   icon: Icon,
   title,
@@ -131,7 +127,7 @@ function Tile({
   accent,
 }: {
   href: string;
-  icon: typeof Home;
+  icon: typeof Wrench;
   title: string;
   line: string;
   accent: string;
@@ -139,20 +135,25 @@ function Tile({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-gray-200 hover:shadow-md"
+      className="group flex flex-col items-center gap-1.5 rounded-xl border border-gray-100 bg-white p-2.5 text-center transition-all hover:border-gray-200 hover:shadow-sm sm:flex-row sm:gap-3 sm:p-3 sm:text-left"
     >
       <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${accent} text-white shadow-sm`}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${accent} text-white shadow-sm sm:h-10 sm:w-10`}
       >
-        <Icon size={22} />
+        <Icon size={16} className="sm:hidden" />
+        <Icon size={18} className="hidden sm:block" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-[var(--nexora-navy)]">{title}</p>
-        <p className="mt-0.5 text-xs text-gray-500 leading-snug">{line}</p>
+        <p className="text-[11px] font-bold leading-tight text-[var(--nexora-navy)] sm:text-sm">
+          {title}
+        </p>
+        <p className="mt-0.5 hidden text-[11px] leading-snug text-gray-500 sm:block sm:truncate">
+          {line}
+        </p>
       </div>
       <ArrowRight
-        size={16}
-        className="shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--nexora-primary)]"
+        size={14}
+        className="hidden shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--nexora-primary)] sm:block"
       />
     </Link>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { getServiceById } from "@/services/serviceService";
@@ -16,16 +17,21 @@ import { getUniversityFullName } from "@/lib/universityLabels";
 import { trackListing } from "@/lib/trackListing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
+import { ReportButton } from "@/components/shared/ReportButton";
+import { ShareButton } from "@/components/shared/ShareButton";
+import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import {
   ArrowLeft,
   MapPin,
   Eye,
   ShieldCheck,
   Clock,
-  DollarSign,
   CreditCard,
   ImagePlus,
   MessageCircle,
+  Globe,
+  Store,
+  ChevronRight,
 } from "lucide-react";
 
 export default function ServiceDetailPage() {
@@ -36,6 +42,7 @@ export default function ServiceDetailPage() {
   const [service, setService] = useState<Service | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const tracked = useRef(false);
 
   useEffect(() => {
@@ -98,7 +105,6 @@ export default function ServiceDetailPage() {
   const images = service.imageUrls || [];
   const isInactive = service.status !== "available";
 
-  // ─── Availability display ───
   const avail = service.availability;
   const availDaysLabel = avail?.days?.length
     ? avail.days.length === 7
@@ -116,7 +122,6 @@ export default function ServiceDetailPage() {
       ? "Walk-in & appointment"
       : null;
 
-  // ─── Price display ───
   const priceLabel =
     service.priceType === "from" && service.priceFrom
       ? `From K${service.priceFrom.toLocaleString()}`
@@ -147,27 +152,33 @@ export default function ServiceDetailPage() {
         {/* ─── Images ─── */}
         {images.length > 0 && (
           <>
-            <div className="mb-3 overflow-hidden rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setLightboxIndex(0)}
+              className="mb-3 block w-full overflow-hidden rounded-2xl"
+            >
               <img
                 src={images[0]}
                 alt={service.title}
-                className="h-56 w-full object-cover sm:h-72"
+                className="h-56 w-full object-cover transition-transform duration-300 hover:scale-[1.02] sm:h-72"
               />
-            </div>
+            </button>
 
             {images.length > 1 && (
               <div className="mb-3 grid grid-cols-2 gap-3">
                 {images.slice(1, 3).map((url, i) => (
-                  <div
+                  <button
                     key={i}
+                    type="button"
+                    onClick={() => setLightboxIndex(i + 1)}
                     className="aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
                   >
                     <img
                       src={url}
                       alt={`${service.title} ${i + 2}`}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -194,6 +205,11 @@ export default function ServiceDetailPage() {
               {cat && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-[var(--nexora-primary)]">
                   {cat.icon} {cat.label}
+                </span>
+              )}
+              {service.isOnline && (
+                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+                  <Globe size={11} /> Online
                 </span>
               )}
               <h1 className="mt-2 text-xl font-bold text-[var(--nexora-navy)] sm:text-2xl">
@@ -227,7 +243,6 @@ export default function ServiceDetailPage() {
             )}
           </div>
 
-          {/* ─── Availability + Payment + Views ─── */}
           {(availDaysLabel || availHoursLabel || availModeLabel || service.paymentMethods?.length) && (
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
               {(availDaysLabel || availHoursLabel) && (
@@ -254,12 +269,9 @@ export default function ServiceDetailPage() {
           )}
 
           {avail?.note && (
-            <p className="mt-2 text-xs text-gray-500 italic">
-              📌 {avail.note}
-            </p>
+            <p className="mt-2 text-xs text-gray-500 italic">📌 {avail.note}</p>
           )}
 
-          {/* ─── Secondary meta ─── */}
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
               <Eye size={12} />
@@ -271,9 +283,27 @@ export default function ServiceDetailPage() {
             </span>
           </div>
 
-          {/* ─── Primary CTA ─── */}
+          {/* ─── View provider link ─── */}
+          <Link
+            href={`/provider/${service.ownerId}`}
+            className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
+                <Store size={14} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">Sold by</p>
+                <p className="truncate text-sm font-semibold text-[var(--nexora-navy)]">
+                  View provider profile
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-gray-400" />
+          </Link>
+
           {!isInactive && (
-            <div className="mt-5">
+            <div className="mt-4">
               <WhatsAppContactButton
                 whatsapp={service.whatsapp}
                 message={prefillMessage}
@@ -284,6 +314,18 @@ export default function ServiceDetailPage() {
               />
             </div>
           )}
+        </div>
+
+        {/* ─── Share + Report ─── */}
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <ShareButton targetType="service" targetTitle={service.title} />
+          <span className="text-gray-300">·</span>
+          <ReportButton
+            targetType="service"
+            targetId={service.id}
+            targetTitle={service.title}
+            targetOwnerId={service.ownerId}
+          />
         </div>
 
         {/* ─── Description ─── */}
@@ -301,6 +343,15 @@ export default function ServiceDetailPage() {
           <span>Contact is handled privately through WhatsApp</span>
         </div>
       </div>
+
+      {/* Lightbox */}
+      <ImageLightbox
+        images={images}
+        initialIndex={lightboxIndex ?? 0}
+        isOpen={lightboxIndex !== null}
+        onClose={() => setLightboxIndex(null)}
+        alt={service.title}
+      />
 
       <Footer />
     </main>

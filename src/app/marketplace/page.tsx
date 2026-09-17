@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { getAllProducts } from "@/services/productService";
-import { Product } from "@/types/product";
+import { Product, isProductBoosted } from "@/types/product";
 import { ProductCard } from "@/components/products/ProductCard";
 import { UniversityFilter } from "@/components/shared/UniversityFilter";
 import { ListingSearchBar } from "@/components/shared/ListingSearchBar";
@@ -16,7 +16,6 @@ export default function MarketplacePage() {
   const [keyword, setKeyword] = useState("");
   const [universityId, setUniversityId] = useState<string | null>(null);
 
-  // ─── Read ?q= from URL (for Explore Peza search routing) ───
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -40,7 +39,7 @@ export default function MarketplacePage() {
 
   const filtered = useMemo(() => {
     const q = keyword.toLowerCase().trim();
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       if (universityId && p.universityId !== universityId) return false;
       if (!q) return true;
       return (
@@ -48,6 +47,15 @@ export default function MarketplacePage() {
         p.location.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q)
       );
+    });
+
+    // Sort: boosted first, then newest
+    return list.sort((a, b) => {
+      const aBoost = isProductBoosted(a) ? 1 : 0;
+      const bBoost = isProductBoosted(b) ? 1 : 0;
+      if (aBoost !== bBoost) return bBoost - aBoost;
+      if (aBoost) return (b.boostedAt || 0) - (a.boostedAt || 0);
+      return (b.createdAt || 0) - (a.createdAt || 0);
     });
   }, [products, keyword, universityId]);
 

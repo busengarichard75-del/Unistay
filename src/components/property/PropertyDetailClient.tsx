@@ -13,6 +13,7 @@ import { getBookingsByStudent } from "@/services/bookingService";
 import { addBooking } from "@/services/bookingService";
 import { BookingAuthPrompt } from "@/components/property/BookingAuthPrompt";
 import { BookingConfirmationModal } from "@/components/property/BookingConfirmationModal";
+import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { useAuth } from "@/lib/AuthContext";
 import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
@@ -45,6 +46,9 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
   // ✅ Confirmation modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingBed, setPendingBed] = useState<{ id: string; type: string } | null>(null);
+
+  // ✅ Image lightbox state
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -153,7 +157,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         }
       }
 
-      // ✅ Capture the newly-created booking ID
       const newBookingId = await addBooking({
         studentId: user.uid,
         studentName,
@@ -173,7 +176,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         "Request sent! The landlord will review and approve your booking. The bed remains available until approved."
       );
 
-      // Push notification (non-critical)
       try {
         await sendPushNotification({
           userId: property.ownerId,
@@ -185,7 +187,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         console.warn("Push notification failed (non-critical):", pushErr);
       }
 
-      // In-app notification (non-critical)
       try {
         await createNotification(property.ownerId, {
           title: "New Booking Request",
@@ -197,7 +198,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         console.warn("In-app notification failed (non-critical):", notifErr);
       }
 
-      // ─── Fire-and-forget email to landlord ───
       if (newBookingId) {
         fetch("/api/send-email", {
           method: "POST",
@@ -211,7 +211,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
 
       toast.success("Booking request sent successfully!");
 
-      // Close modal
       setShowConfirmModal(false);
       setPendingBed(null);
 
@@ -275,16 +274,21 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           Back to Home
         </Link>
 
+        {/* ─── Images (click any to open lightbox) ─── */}
         {images.length > 0 && (
           <div className="mb-6">
             {images.length === 1 ? (
-              <div className="overflow-hidden rounded-xl">
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(0)}
+                className="block w-full overflow-hidden rounded-xl"
+              >
                 <img
                   src={images[0]}
                   alt={property.title}
-                  className="h-40 w-full object-cover"
+                  className="h-40 w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
                 />
-              </div>
+              </button>
             ) : (
               <div
                 className={`grid gap-2 ${
@@ -292,23 +296,28 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
                 }`}
               >
                 {images.map((url, index) => (
-                  <div key={index} className="relative overflow-hidden rounded-xl">
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setLightboxIndex(index)}
+                    className="relative overflow-hidden rounded-xl"
+                  >
                     <img
                       src={url}
                       alt={`${property.title} - ${index + 1}`}
-                      className="h-40 w-full object-cover"
+                      className="h-40 w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
                     />
                     {index === 0 && (
-                      <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+                      <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
                         Main
                       </span>
                     )}
                     {index === images.length - 1 && images.length > 1 && (
-                      <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+                      <span className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
                         +{images.length - 1}
                       </span>
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -550,6 +559,15 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
         }
         bedType={pendingBed?.type || "Standard Bed"}
         isSubmitting={isSubmitting}
+      />
+
+      {/* ─── IMAGE LIGHTBOX ─── */}
+      <ImageLightbox
+        images={images}
+        initialIndex={lightboxIndex ?? 0}
+        isOpen={lightboxIndex !== null}
+        onClose={() => setLightboxIndex(null)}
+        alt={property.title}
       />
 
       {showAuthPrompt && (
