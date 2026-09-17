@@ -10,6 +10,7 @@ import {
   getServiceDiscountedPrice,
 } from "@/types/service";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
+import { timeAgo } from "@/lib/timeUtils";
 
 interface ServiceCardProps {
   service: Service;
@@ -25,7 +26,6 @@ export function ServiceCard({ service }: ServiceCardProps) {
   const discountedPrice = getServiceDiscountedPrice(service);
   const originalPrice = service.priceFrom || null;
 
-  // ─── Price display ───
   const showPrice = service.priceType === "from" && originalPrice;
   const priceLabel =
     service.priceType === "from" && originalPrice
@@ -122,6 +122,13 @@ export function ServiceCard({ service }: ServiceCardProps) {
         <p className="mt-1 text-[11px] text-[var(--nexora-primary)]">
           {getUniversityShortLabel(service.universityId)}
         </p>
+
+        {/* Listed time */}
+        {service.createdAt && (
+          <p className="mt-1 text-[10px] text-gray-400">
+            Listed {timeAgo(service.createdAt)}
+          </p>
+        )}
       </div>
     </Link>
   );

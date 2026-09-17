@@ -9,6 +9,7 @@ import {
   getProductDiscountedPrice,
 } from "@/types/product";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
+import { timeAgo } from "@/lib/timeUtils";
 
 interface ProductCardProps {
   product: Product;
@@ -97,6 +98,13 @@ export function ProductCard({ product }: ProductCardProps) {
         <p className="mt-1 text-[11px] text-[var(--nexora-primary)]">
           {getUniversityShortLabel(product.universityId)}
         </p>
+
+        {/* Listed time */}
+        {product.createdAt && (
+          <p className="mt-1 text-[10px] text-gray-400">
+            Listed {timeAgo(product.createdAt)}
+          </p>
+        )}
       </div>
     </Link>
   );

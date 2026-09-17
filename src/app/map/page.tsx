@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
-import { PezaMap, MapMarker, MapFilter } from "@/components/map/PezaMap";
+import type { MapMarker, MapFilter } from "@/components/map/PezaMap";
 import { getAllProperties } from "@/services/propertyService";
 import { getAllServices } from "@/services/serviceService";
 import { getAllProducts } from "@/services/productService";
@@ -11,6 +12,19 @@ import type { Property } from "@/types/property";
 import type { Service } from "@/types/service";
 import type { Product } from "@/types/product";
 import { Home, Wrench, ShoppingBag, Layers, Navigation } from "lucide-react";
+
+const PezaMap = dynamic(
+  () => import("@/components/map/PezaMap").then((mod) => mod.PezaMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="animate-pulse rounded-2xl bg-gray-200"
+        style={{ height: "min(70vh, 700px)" }}
+      />
+    ),
+  }
+);
 
 const FILTERS: { id: MapFilter; label: string; icon: typeof Layers }[] = [
   { id: "all", label: "All", icon: Layers },
