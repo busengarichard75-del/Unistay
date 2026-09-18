@@ -9,10 +9,11 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import {
-  updatePassword,
   sendPasswordResetEmail,
   deleteUser,
   signOut,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
@@ -31,7 +32,6 @@ import {
   Shield,
   AlertTriangle,
   X,
-  Check,
   IdCard,
 } from "lucide-react";
 
@@ -46,6 +46,12 @@ export default function ProfilePage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // 🔐 Re-auth modal
+  const [showReauthModal, setShowReauthModal] = useState(false);
+  const [reauthPassword, setReauthPassword] = useState("");
+  const [reauthError, setReauthError] = useState("");
+  const [isReauthing, setIsReauthing] = useState(false);
 
   // Editable fields
   const [fullName, setFullName] = useState("");
@@ -205,24 +211,72 @@ export default function ProfilePage() {
       // 1. Delete Firestore user doc
       await deleteDoc(doc(db, "users", user.uid));
 
-      // 2. Delete Firebase Auth user
+      // 2. Try to delete Firebase Auth user
       if (auth.currentUser) {
-        await deleteUser(auth.currentUser);
+        try {
+          await deleteUser(auth.currentUser);
+          // Success
+          toast.success("Account deleted. Goodbye 👋");
+          router.push("/");
+          return;
+        } catch (authErr: any) {
+          if (authErr?.code === "auth/requires-recent-login") {
+            // Firestore doc already gone.
+            // Ask for password to re-authenticate, then delete auth user.
+            setShowDeleteModal(false);
+            setShowReauthModal(true);
+            return;
+          }
+          throw authErr;
+        }
       }
 
       toast.success("Account deleted. Goodbye 👋");
       router.push("/");
     } catch (err: any) {
       console.error("Delete failed:", err);
-      if (err?.code === "auth/requires-recent-login") {
-        toast.error(
-          "For security, please log out and log back in, then try deleting again."
-        );
-      } else {
-        toast.error("Failed to delete account. Contact support.");
-      }
+      const message =
+        err?.code === "permission-denied"
+          ? "Couldn't delete. Please refresh and try again."
+          : "Failed to delete account. Contact support.";
+      toast.error(message);
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  // ─── Re-authenticate and complete delete ────────────────────
+  async function handleReauthAndDelete() {
+    if (!user?.email || !auth.currentUser) return;
+    if (!reauthPassword.trim()) {
+      setReauthError("Please enter your password.");
+      return;
+    }
+
+    setIsReauthing(true);
+    setReauthError("");
+    try {
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        reauthPassword
+      );
+      await reauthenticateWithCredential(auth.currentUser, credential);
+
+      // Now delete should succeed
+      await deleteUser(auth.currentUser);
+      toast.success("Account deleted. Goodbye 👋");
+      router.push("/");
+    } catch (err: any) {
+      console.error("Reauth/delete failed:", err);
+      if (err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
+        setReauthError("Incorrect password. Please try again.");
+      } else if (err?.code === "auth/too-many-requests") {
+        setReauthError("Too many attempts. Please wait a minute and try again.");
+      } else {
+        setReauthError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setIsReauthing(false);
     }
   }
 
@@ -468,8 +522,8 @@ export default function ProfilePage() {
               <AlertTriangle size={16} /> Danger Zone
             </h2>
             <p className="mb-4 text-xs text-red-800/80 leading-relaxed">
-              Deleting your account is permanent. All your bookings, listings, and
-              data will be removed. This cannot be undone.
+              Deleting your account is permanent. All your bookings, listings,
+              and data will be removed. This cannot be undone.
             </p>
             <button
               onClick={() => setShowDeleteModal(true)}
@@ -572,6 +626,113 @@ export default function ProfilePage() {
                       <Trash2 size={14} className="inline mr-1" />
                       Delete Forever
                     </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── RE-AUTH MODAL ─── */}
+      {showReauthModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm px-3 py-3 sm:items-center sm:px-4"
+          onClick={() => {
+            if (isReauthing) return;
+            setShowReauthModal(false);
+            setReauthPassword("");
+            setReauthError("");
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                  <Shield size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">
+                    Confirm your password
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    For security, we need to verify it&apos;s you
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (isReauthing) return;
+                  setShowReauthModal(false);
+                  setReauthPassword("");
+                  setReauthError("");
+                }}
+                className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Your data has been removed. Enter your password to finish
+                  deleting the account.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-600">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={reauthPassword}
+                  onChange={(e) => {
+                    setReauthPassword(e.target.value);
+                    setReauthError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleReauthAndDelete();
+                  }}
+                  placeholder="Enter your password"
+                  disabled={isReauthing}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/15 disabled:bg-gray-50"
+                  autoFocus
+                />
+                {reauthError && (
+                  <p className="mt-2 text-xs text-red-600">{reauthError}</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    setShowReauthModal(false);
+                    setReauthPassword("");
+                    setReauthError("");
+                  }}
+                  disabled={isReauthing}
+                  className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReauthAndDelete}
+                  disabled={isReauthing || !reauthPassword.trim()}
+                  className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isReauthing ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                      Deleting...
+                    </span>
+                  ) : (
+                    "Confirm & Delete"
                   )}
                 </button>
               </div>
