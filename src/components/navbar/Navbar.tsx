@@ -13,6 +13,7 @@ import {
   Settings,
   LayoutDashboard,
   ChevronDown,
+  ChevronRight,
   Menu,
   X,
   Bell,
@@ -20,6 +21,7 @@ import {
   ShoppingBag,
   Store,
   Map as MapIcon,
+  User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
@@ -37,7 +39,6 @@ export function Navbar() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { counts, unreadCount } = useNotifications();
 
   const effectiveRole = user?.role || null;
@@ -46,18 +47,42 @@ export function Navbar() {
     return null;
   }
 
+  // Close desktop dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
       }
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
-        setIsMobileMenuOpen(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Body scroll lock when side drawer is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isMobileMenuOpen]);
+
+  // Escape to close drawer
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isMobileMenuOpen]);
+
+  // Auto-close drawer on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     if (!window.confirm("Are you sure you want to log out?")) return;
@@ -77,10 +102,12 @@ export function Navbar() {
     setIsMobileMenuOpen(false);
   };
 
-  const displayName = user?.fullName || user?.businessName || user?.email?.split("@")[0] || "User";
+  const displayName =
+    user?.fullName || user?.businessName || user?.email?.split("@")[0] || "User";
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .join("")
     .toUpperCase()
     .slice(0, 2);
@@ -105,6 +132,7 @@ export function Navbar() {
         <nav className="flex items-center gap-2 sm:gap-4">
           {isLoading ? null : user ? (
             <>
+              {/* Quick actions (desktop) */}
               <div className="hidden items-center gap-4 md:flex">
                 <Link
                   href="/services"
@@ -187,6 +215,7 @@ export function Navbar() {
                 )}
               </div>
 
+              {/* Notification Bell */}
               <div className="relative">
                 <button
                   onClick={toggleNotification}
@@ -209,14 +238,16 @@ export function Navbar() {
                 />
               </div>
 
+              {/* Hamburger (mobile) */}
               <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                onClick={() => setIsMobileMenuOpen(true)}
                 className="flex items-center justify-center rounded-full p-1.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors sm:p-2 md:hidden"
-                aria-label="Toggle menu"
+                aria-label="Open menu"
               >
-                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                <Menu size={20} />
               </button>
 
+              {/* User Menu Dropdown (desktop) */}
               <div className="relative hidden md:block" ref={menuRef}>
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -381,120 +412,211 @@ export function Navbar() {
         </nav>
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* MOBILE SIDE DRAWER                                          */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       {isMobileMenuOpen && user && (
-        <div ref={mobileMenuRef} className="md:hidden navbar-animated border-t border-white/10 px-4 py-4">
-          <div className="flex flex-col space-y-3">
-            <p className="text-sm text-gray-300 border-b border-white/10 pb-2">
-              <span className="font-semibold text-white">{displayName}</span>
-              <span className="ml-2 text-xs text-gray-400">{user.email}</span>
-            </p>
+        <div className="md:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
 
-            <Link
-              href="/services"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-            >
-              <Wrench size={16} />
-              Services
-            </Link>
-            <Link
-              href="/marketplace"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-            >
-              <ShoppingBag size={16} />
-              Marketplace
-            </Link>
-            <Link
-              href="/map"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-            >
-              <MapIcon size={16} />
-              Peza Map
-            </Link>
-
-            {effectiveRole === "landlord" && (
-              <>
-                <Link
-                  href="/dashboard/landlord/add-listing"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-                >
-                  <Plus size={16} />
-                  Add Listing
-                </Link>
-                <Link
-                  href="/dashboard/landlord"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-                >
-                  <ClipboardList size={16} />
-                  Manage Listings
-                </Link>
-              </>
-            )}
-            {effectiveRole === "service_provider" && (
-              <>
-                <Link
-                  href="/dashboard/provider/add-listing"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-                >
-                  <Plus size={16} />
-                  Add Listing
-                </Link>
-                <Link
-                  href="/dashboard/provider"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-                >
-                  <Store size={16} />
-                  My Listings
-                </Link>
-              </>
-            )}
-            {effectiveRole === "student" && (
-              <Link
-                href="/dashboard/student"
+          {/* Drawer */}
+          <aside
+            className="fixed right-0 top-0 z-[101] flex h-screen w-72 max-w-[85vw] flex-col bg-[var(--nexora-navy)] shadow-2xl animate-in slide-in-from-right duration-300"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mobile menu"
+          >
+            {/* Drawer header */}
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-primary)] text-sm font-bold text-white">
+                  {initials}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">
+                    {displayName}
+                  </p>
+                  <p className="truncate text-[11px] text-gray-400">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+              <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-gray-300 transition-colors hover:bg-white/20 hover:text-white"
+                aria-label="Close menu"
               >
-                <Calendar size={16} />
-                My Bookings
-              </Link>
-            )}
+                <X size={18} />
+              </button>
+            </div>
 
-            {isAdminEmail(user.email) && (
-              <Link
-                href="/admin"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-              >
-                <ShieldCheck size={16} />
-                Admin
-              </Link>
-            )}
+            {/* Drawer content */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {/* Role badge */}
+              <span className="mb-4 inline-block rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80">
+                {effectiveRole === "service_provider"
+                  ? "Service Provider"
+                  : effectiveRole || "User"}
+              </span>
 
-            <Link
-              href="/dashboard/profile"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
-            >
-              <Settings size={16} />
-              Profile
-            </Link>
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 text-left disabled:opacity-50"
-            >
-              <LogOut size={16} />
-              {isLoggingOut ? "Logging out..." : "Log Out"}
-            </button>
-          </div>
+              {/* Primary links (card style) */}
+              <nav className="space-y-1.5">
+                {/* Dashboard — role-aware */}
+                {effectiveRole === "landlord" && (
+                  <DrawerLink
+                    href="/dashboard/landlord"
+                    icon={<LayoutDashboard size={16} />}
+                    label="Dashboard"
+                  />
+                )}
+                {effectiveRole === "student" && (
+                  <DrawerLink
+                    href="/dashboard/student"
+                    icon={<LayoutDashboard size={16} />}
+                    label="Dashboard"
+                  />
+                )}
+                {effectiveRole === "service_provider" && (
+                  <DrawerLink
+                    href="/dashboard/provider"
+                    icon={<LayoutDashboard size={16} />}
+                    label="Dashboard"
+                  />
+                )}
+
+                {/* Role-specific actions */}
+                {effectiveRole === "landlord" && (
+                  <>
+                    <DrawerLink
+                      href="/dashboard/landlord/add-listing"
+                      icon={<Plus size={16} />}
+                      label="Add Listing"
+                    />
+                    <DrawerLink
+                      href="/dashboard/landlord"
+                      icon={<ClipboardList size={16} />}
+                      label="Manage Listings"
+                    />
+                  </>
+                )}
+
+                {effectiveRole === "service_provider" && (
+                  <>
+                    <DrawerLink
+                      href="/dashboard/provider/add-listing"
+                      icon={<Plus size={16} />}
+                      label="Add Listing"
+                    />
+                    <DrawerLink
+                      href="/dashboard/provider"
+                      icon={<Store size={16} />}
+                      label="My Listings"
+                    />
+                  </>
+                )}
+
+                {effectiveRole === "student" && (
+                  <DrawerLink
+                    href="/dashboard/student"
+                    icon={<Calendar size={16} />}
+                    label="My Bookings"
+                  />
+                )}
+
+                {/* Divider */}
+                <div className="my-3 border-t border-white/10" />
+
+                {/* Universal links */}
+                <DrawerLink
+                  href="/services"
+                  icon={<Wrench size={16} />}
+                  label="Services"
+                />
+                <DrawerLink
+                  href="/marketplace"
+                  icon={<ShoppingBag size={16} />}
+                  label="Marketplace"
+                />
+                <DrawerLink
+                  href="/map"
+                  icon={<MapIcon size={16} />}
+                  label="Peza Map"
+                />
+
+                {/* Divider */}
+                <div className="my-3 border-t border-white/10" />
+
+                {/* Account */}
+                <DrawerLink
+                  href="/dashboard/profile"
+                  icon={<UserIcon size={16} />}
+                  label="Profile & Settings"
+                />
+
+                {isAdminEmail(user.email) && (
+                  <DrawerLink
+                    href="/admin"
+                    icon={<ShieldCheck size={16} />}
+                    label="Admin Panel"
+                  />
+                )}
+
+                {/* Logout */}
+                <button
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="mt-1.5 flex w-full items-center gap-3 rounded-xl bg-red-500/10 px-4 py-3 text-left text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                >
+                  <LogOut size={16} />
+                  <span className="flex-1">
+                    {isLoggingOut ? "Logging out..." : "Log Out"}
+                  </span>
+                </button>
+              </nav>
+            </div>
+
+            {/* Drawer footer */}
+            <div className="border-t border-white/10 px-4 py-3">
+              <p className="text-center text-[10px] text-white/40">
+                Peza ZM · Find what you need
+              </p>
+            </div>
+          </aside>
         </div>
       )}
     </header>
+  );
+}
+
+/* ──────────────────────────────────────────────── */
+/* Drawer Link (card style)                        */
+/* ──────────────────────────────────────────────── */
+
+function DrawerLink({
+  href,
+  icon,
+  label,
+  onClick,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="flex items-center gap-3 rounded-xl bg-white/[0.06] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-white/10"
+    >
+      <span className="text-white/70">{icon}</span>
+      <span className="flex-1">{label}</span>
+      <ChevronRight size={14} className="text-white/30" />
+    </Link>
   );
 }
