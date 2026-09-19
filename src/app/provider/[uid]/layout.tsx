@@ -1,0 +1,165 @@
+import type { Metadata } from "next";
+import { getFirestoreDb } from "@/lib/firebase-admin";
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
+
+interface ProviderDoc {
+  fullName?: string;
+  businessName?: string;
+  role?: "student" | "landlord" | "service_provider";
+  university?: string;
+  providerType?: "service" | "product";
+  verificationStatus?: "pending" | "approved" | "rejected";
+  photoURL?: string;
+  suspended?: boolean;
+  createdAt?: number;
+}
+
+async function fetchProvider(uid: string): Promise<ProviderDoc | null> {
+  try {
+    const db = getFirestoreDb();
+    const snap = await db.collection("users").doc(uid).get();
+    if (!snap.exists) return null;
+    const data = snap.data() as ProviderDoc;
+    if (data.suspended) return null;
+    if (data.role !== "service_provider") return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function displayName(p: ProviderDoc | null): string {
+  if (!p) return "Peza Provider";
+  return p.businessName?.trim() || p.fullName?.trim() || "Peza Provider";
+}
+
+function ogImageFor(p: ProviderDoc | null): string {
+  if (p?.photoURL) return p.photoURL;
+  return "/og-providers.png";
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ uid: string }>;
+}): Promise<Metadata> {
+  const { uid } = await params;
+  const provider = await fetchProvider(uid);
+
+  if (!provider) {
+    return {
+      title: "Provider not found",
+      description:
+        "This provider profile is unavailable. Browse trusted student services and products on Peza.",
+      alternates: { canonical: `/provider/${uid}` },
+      robots: { index: false, follow: true },
+    };
+  }
+
+  const name = displayName(provider);
+  const isVerified = provider.verificationStatus === "approved";
+  const typeLabel =
+    provider.providerType === "product"
+      ? "Student products"
+      : provider.providerType === "service"
+      ? "Student services"
+      : "Student services & products";
+
+  const titleParts = [name];
+  if (isVerified) titleParts.push("Verified");
+  const title = titleParts.join(" · ");
+
+  const description = `${
+    isVerified ? "Verified provider on Peza. " : ""
+  }Browse ${typeLabel.toLowerCase()} from ${name}${
+    provider.university ? ` near ${provider.university}` : ""
+  }. Contact directly on WhatsApp.`;
+
+  const image = ogImageFor(provider);
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/provider/${uid}` },
+    openGraph: {
+      type: "profile",
+      siteName: "Peza",
+      title: `${title} | Peza`,
+      description,
+      url: `/provider/${uid}`,
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Peza`,
+      description,
+      images: [image],
+    },
+    robots: {
+      index: isVerified,
+      follow: true,
+    },
+  };
+}
+
+function providerJsonLd(uid: string, p: ProviderDoc) {
+  const name = displayName(p);
+  const isStore = p.providerType === "product";
+
+  return {
+    "@context": "https://schema.org",
+    "@type": isStore ? "Store" : "LocalBusiness",
+    name,
+    image: p.photoURL || undefined,
+    url: `${SITE_URL}/provider/${uid}`,
+    areaServed: p.university || "Zambia",
+    address: p.university
+      ? {
+          "@type": "PostalAddress",
+          addressLocality: p.university,
+          addressCountry: "ZM",
+        }
+      : undefined,
+    founder: p.fullName
+      ? {
+          "@type": "Person",
+          name: p.fullName,
+        }
+      : undefined,
+  };
+}
+
+export default async function ProviderLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ uid: string }>;
+}) {
+  const { uid } = await params;
+  const provider = await fetchProvider(uid);
+
+  return (
+    <>
+      {provider && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(providerJsonLd(uid, provider)),
+          }}
+        />
+      )}
+      {children}
+    </>
+  );
+}

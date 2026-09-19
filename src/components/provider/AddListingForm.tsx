@@ -20,6 +20,7 @@ import {
   PAYMENT_METHOD_LABELS,
 } from "@/types/service";
 import {
+  PRODUCT_CATEGORIES,
   PRODUCT_CONDITIONS,
   ProductCondition,
 } from "@/types/product";
@@ -93,7 +94,7 @@ export function AddListingForm() {
 
   // Product-specific
   const [price, setPrice] = useState("");
-  const [productCategory, setProductCategory] = useState("");
+  const [productCategory, setProductCategory] = useState<string>("");   // picked from PRODUCT_CATEGORIES
   const [condition, setCondition] = useState<ProductCondition>("used");
 
   // Flash deal
@@ -165,7 +166,7 @@ export function AddListingForm() {
         return;
       }
       if (!productCategory.trim()) {
-        setError("Please enter a product category.");
+        setError("Please pick a product category.");
         return;
       }
     }
@@ -424,14 +425,23 @@ export function AddListingForm() {
             </Field>
 
             <Field label="Product category">
-              <input
-                type="text"
-                value={productCategory}
-                onChange={(e) => setProductCategory(e.target.value)}
-                placeholder="e.g., Phones, Books, Furniture"
-                disabled={isSubmitting}
-                className={inputClass}
-              />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {PRODUCT_CATEGORIES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setProductCategory(c.id)}
+                    className={`rounded-xl border-2 p-3 text-left text-xs font-medium transition-all ${
+                      productCategory === c.id
+                        ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                        : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                    }`}
+                  >
+                    <div className="text-base">{c.icon}</div>
+                    <div className="mt-1">{c.label}</div>
+                  </button>
+                ))}
+              </div>
             </Field>
 
             <Field label="Condition">
@@ -812,7 +822,7 @@ export function AddListingForm() {
 }
 
 /* ──────────────────────────────────────────────── */
-/* Sub-components                                  */
+/* Sub-components (unchanged)                      */
 /* ──────────────────────────────────────────────── */
 
 const inputClass =

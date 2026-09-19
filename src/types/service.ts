@@ -6,7 +6,13 @@ export type ServiceCategory =
   | "photography"
   | "tech"
   | "food"
+  | "restaurant"
+  | "groceries"
   | "transport"
+  | "delivery"
+  | "gym"
+  | "laundry"
+  | "tutoring"
   | "other";
 
 export type ServiceStatus = "available" | "inactive";
@@ -77,14 +83,24 @@ export interface Service {
   discountExpiresAt?: number;
 }
 
+// ─────────────────────────────────────────────────────────
+// CATEGORIES — order here = order of tabs on /services
+// Only categories with ≥1 listing show as tabs.
+// ─────────────────────────────────────────────────────────
 export const SERVICE_CATEGORIES: { id: ServiceCategory; label: string; icon: string }[] = [
-  { id: "barber", label: "Barber / Beauty", icon: "💈" },
-  { id: "printing", label: "Printing", icon: "🖨️" },
-  { id: "photography", label: "Photography", icon: "📸" },
-  { id: "tech", label: "Tech / Repairs", icon: "🔧" },
-  { id: "food", label: "Food", icon: "🍲" },
-  { id: "transport", label: "Transport", icon: "🚌" },
-  { id: "other", label: "Other", icon: "✨" },
+  { id: "food",        label: "Food",          icon: "🍲" },
+  { id: "restaurant",  label: "Restaurants",   icon: "🍽️" },
+  { id: "groceries",   label: "Groceries",     icon: "🛒" },
+  { id: "transport",   label: "Transport",     icon: "🚌" },
+  { id: "delivery",    label: "Delivery",      icon: "🛵" },
+  { id: "gym",         label: "Gym & Fitness", icon: "💪" },
+  { id: "barber",      label: "Barber / Beauty", icon: "💈" },
+  { id: "laundry",     label: "Laundry",       icon: "🧺" },
+  { id: "printing",    label: "Printing",      icon: "🖨️" },
+  { id: "photography", label: "Photography",   icon: "📸" },
+  { id: "tech",        label: "Tech / Repairs", icon: "🔧" },
+  { id: "tutoring",    label: "Tutoring",      icon: "📚" },
+  { id: "other",       label: "Other",         icon: "✨" },
 ];
 
 export const AVAILABILITY_DAY_LABELS: Record<AvailabilityDay, string> = {

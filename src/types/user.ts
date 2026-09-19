@@ -1,10 +1,12 @@
+// Line 1 — import
 import { Preferences } from "@/lib/recommendation/types";
 
+// Lines 3-5 — type aliases
 export type UserRole = "student" | "landlord" | "service_provider";
 export type ProviderType = "service" | "product";
-
 export type VerificationStatus = "pending" | "approved" | "rejected";
 
+// Lines 7-31 — the User interface
 export interface User {
   uid: string;
   fullName: string;
@@ -18,12 +20,12 @@ export interface User {
   university?: string;
   preferences?: Preferences;
 
-  // ─── Service provider fields ───
   whatsapp?: string;
   businessName?: string;
   providerType?: ProviderType;
 
-  // ─── Provider verification ───
+  photoURL?: string;                    // ← the ONE new line
+
   verificationStatus?: VerificationStatus;
   verificationReviewedAt?: number;
   verificationReviewedBy?: string;

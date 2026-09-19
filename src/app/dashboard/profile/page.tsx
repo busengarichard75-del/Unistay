@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   doc,
@@ -33,6 +33,8 @@ import {
   AlertTriangle,
   X,
   IdCard,
+  Camera,
+  Loader2,
 } from "lucide-react";
 
 const ADMIN_EMAILS = ["admin@unistay.com", "busengarichard75@gmail.com"];
@@ -60,6 +62,11 @@ export default function ProfilePage() {
   const [studentNumber, setStudentNumber] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+
+  // ── Avatar (service_provider only) ──
+  const [photoURL, setPhotoURL] = useState<string | undefined>(undefined);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   const [original, setOriginal] = useState({
     fullName: "",
@@ -93,6 +100,7 @@ export default function ProfilePage() {
         setStudentNumber(initial.studentNumber);
         setBusinessName(initial.businessName);
         setWhatsapp(initial.whatsapp);
+        setPhotoURL(data?.photoURL || undefined);
         setOriginal(initial);
       } catch {
         // silent
@@ -118,6 +126,80 @@ export default function ProfilePage() {
     studentNumber.trim() !== original.studentNumber ||
     businessName.trim() !== original.businessName ||
     whatsapp.trim() !== original.whatsapp;
+
+  // ─── Avatar upload (auto-saves) ─────────────────────────────
+  async function handleAvatarPick(file: File) {
+    if (!user) return;
+
+    // Validate
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please pick an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB.");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      // 1. Upload to Cloudinary via /api/upload
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const data = await res.json();
+      // Defensive — accept common response shapes
+      const url: string | undefined =
+        data?.url || data?.secure_url || data?.data?.url;
+
+      if (!url) throw new Error("No URL returned");
+
+      // 2. Save to Firestore
+      await updateDoc(doc(db, "users", user.uid), { photoURL: url });
+      setPhotoURL(url);
+
+      // 3. Refresh auth context (in case provider page reads from it)
+      if (refreshUser) await refreshUser();
+
+      toast.success("Profile picture updated!");
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+      toast.error("Failed to upload profile picture. Please try again.");
+    } finally {
+      setIsUploadingAvatar(false);
+      // Reset input so picking the same file again still triggers onChange
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleAvatarPick(file);
+  }
+
+  async function handleRemoveAvatar() {
+    if (!user) return;
+    if (!window.confirm("Remove your profile picture?")) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      await updateDoc(doc(db, "users", user.uid), { photoURL: null });
+      setPhotoURL(undefined);
+      if (refreshUser) await refreshUser();
+      toast.success("Profile picture removed.");
+    } catch {
+      toast.error("Failed to remove profile picture.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }
 
   // ─── Save profile ───────────────────────────────────────────
   async function handleSave() {
@@ -208,21 +290,16 @@ export default function ProfilePage() {
 
     setIsDeleting(true);
     try {
-      // 1. Delete Firestore user doc
       await deleteDoc(doc(db, "users", user.uid));
 
-      // 2. Try to delete Firebase Auth user
       if (auth.currentUser) {
         try {
           await deleteUser(auth.currentUser);
-          // Success
           toast.success("Account deleted. Goodbye 👋");
           router.push("/");
           return;
         } catch (authErr: any) {
           if (authErr?.code === "auth/requires-recent-login") {
-            // Firestore doc already gone.
-            // Ask for password to re-authenticate, then delete auth user.
             setShowDeleteModal(false);
             setShowReauthModal(true);
             return;
@@ -261,8 +338,6 @@ export default function ProfilePage() {
         reauthPassword
       );
       await reauthenticateWithCredential(auth.currentUser, credential);
-
-      // Now delete should succeed
       await deleteUser(auth.currentUser);
       toast.success("Account deleted. Goodbye 👋");
       router.push("/");
@@ -319,9 +394,49 @@ export default function ProfilePage() {
         {/* Header */}
         <div className="card-premium bg-[var(--nexora-navy)] p-6 text-white">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-primary)] text-lg font-bold">
-              {initials}
-            </div>
+            {/* ── Avatar (providers: clickable upload / others: initials) ── */}
+            {isProvider ? (
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--nexora-primary)] text-lg font-bold disabled:opacity-70"
+                aria-label="Change profile picture"
+                title="Change profile picture"
+              >
+                {photoURL ? (
+                  <img
+                    src={photoURL}
+                    alt={fullName || "Profile picture"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
+
+                {/* Camera overlay */}
+                <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                  {isUploadingAvatar ? (
+                    <Loader2 size={16} className="animate-spin text-white" />
+                  ) : (
+                    <Camera size={16} className="text-white" />
+                  )}
+                </span>
+              </button>
+            ) : (
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-primary)] text-lg font-bold">
+                {initials}
+              </div>
+            )}
+
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-lg font-bold">
                 {fullName || "Your Profile"}
@@ -332,6 +447,27 @@ export default function ProfilePage() {
               </span>
             </div>
           </div>
+
+          {/* Provider-only: hint + remove button */}
+          {isProvider && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3 text-xs">
+              <span className="text-gray-300">
+                {photoURL
+                  ? "Tap your picture to change it."
+                  : "Tap the circle to upload a profile picture."}
+              </span>
+              {photoURL && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  disabled={isUploadingAvatar}
+                  className="ml-auto rounded-full bg-white/10 px-3 py-1 font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+                >
+                  Remove picture
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Account details */}

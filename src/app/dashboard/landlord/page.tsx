@@ -161,7 +161,6 @@ export default function LandlordDashboardPage() {
         link: "/dashboard/student",
       });
 
-      // ─── Fire-and-forget email to student ───
       fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -206,7 +205,6 @@ export default function LandlordDashboardPage() {
         link: "/dashboard/student",
       });
 
-      // ─── Fire-and-forget email to student ───
       fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -469,6 +467,8 @@ export default function LandlordDashboardPage() {
                             const totalRequests = propertyBookings.length;
                             const confirmedBookings = propertyBookings.filter((b) => b.status === "confirmed").length;
 
+                            const detailHref = `/dashboard/landlord/listing/${listing.id}`;
+
                             return (
                               <div
                                 key={listing.id}
@@ -494,38 +494,55 @@ export default function LandlordDashboardPage() {
                                   ) : null}
                                 </div>
 
-                                {listing.imageUrl && (
-                                  <div className="h-40 overflow-hidden">
-                                    <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-cover" />
-                                  </div>
-                                )}
-                                <div className="p-4">
-                                  <h3 className="font-semibold text-gray-900 truncate">{listing.title}</h3>
-                                  <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
-                                    <MapPin size={12} />
-                                    {listing.location}
-                                  </div>
-                                  <div className="mt-2 flex items-center justify-between text-sm">
-                                    <span className="font-bold text-gray-900">K{listing.price.toLocaleString()}</span>
-                                    <span className="text-xs text-gray-500">{totalBeds} beds ({availableBeds} available)</span>
-                                  </div>
+                                {/* ── Clickable top section → detail page ── */}
+                                <Link
+                                  href={detailHref}
+                                  className="block cursor-pointer transition-colors hover:bg-gray-50/40"
+                                  aria-label={`View ${listing.title} details`}
+                                >
+                                  {listing.imageUrl && (
+                                    <div className="h-40 overflow-hidden">
+                                      <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                    </div>
+                                  )}
+                                  <div className="p-4 pb-2">
+                                    <div className="flex items-start gap-2">
+                                      <h3 className="min-w-0 flex-1 font-semibold text-gray-900 truncate">{listing.title}</h3>
+                                      <ChevronRight
+                                        size={16}
+                                        className="mt-0.5 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-500"
+                                        aria-hidden="true"
+                                      />
+                                    </div>
+                                    <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                                      <MapPin size={12} />
+                                      {listing.location}
+                                    </div>
+                                    <div className="mt-2 flex items-center justify-between text-sm">
+                                      <span className="font-bold text-gray-900">K{listing.price.toLocaleString()}</span>
+                                      <span className="text-xs text-gray-500">{totalBeds} beds ({availableBeds} available)</span>
+                                    </div>
 
-                                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-400">
-                                    <span className="flex items-center gap-1">
-                                      <EyeIcon size={12} />
-                                      {listing.views || 0}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Users size={12} />
-                                      {totalRequests}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Check size={12} />
-                                      {confirmedBookings}
-                                    </span>
+                                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                                      <span className="flex items-center gap-1">
+                                        <EyeIcon size={12} />
+                                        {listing.views || 0}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Users size={12} />
+                                        {totalRequests}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Check size={12} />
+                                        {confirmedBookings}
+                                      </span>
+                                    </div>
                                   </div>
+                                </Link>
 
-                                  <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-gray-100 pt-3">
+                                {/* ── Action buttons (outside the link) ── */}
+                                <div className="px-4 pb-4">
+                                  <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 pt-3">
                                     <Link
                                       href={`/dashboard/landlord/edit-listing/${listing.id}`}
                                       className="rounded-full p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"

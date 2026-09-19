@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Hero } from "@/components/hero/Hero";
@@ -12,7 +12,6 @@ import PropertyGrid from "@/components/property/PropertyGrid";
 import { Footer } from "@/components/footer/Footer";
 import { getAllProperties } from "@/services/propertyService";
 import { Property } from "@/types/property";
-import { isBoosted } from "@/lib/boostService";
 import { useAuth } from "@/lib/AuthContext";
 import { Sparkles } from "lucide-react";
 import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal";
@@ -21,6 +20,12 @@ import { LandlordOnboardingModal } from "@/components/landlord/LandlordOnboardin
 import { WhyPezaSection } from "@/components/home/WhyPezaSection";
 import { ExplorePezaSection } from "@/components/home/ExplorePezaSection";
 import { ServicesMarketplaceStrip } from "@/components/home/ServicesMarketplaceStrip";
+import { ListingFilters } from "@/components/shared/ListingFilters";
+import {
+  applyPropertyFilters,
+  DEFAULT_PROPERTY_FILTERS,
+  ListingFilterState,
+} from "@/lib/filterListings";
 
 function HomeContent() {
   const { user } = useAuth();
@@ -29,10 +34,18 @@ function HomeContent() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState(false);
+
+  // ─── Existing homepage controls (kept as-is) ───
   const [keyword, setKeyword] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
+
+  // ─── New advanced filters (additive) ───
+  const [filters, setFilters] = useState<ListingFilterState>(
+    DEFAULT_PROPERTY_FILTERS
+  );
+
   const [showFindModal, setShowFindModal] = useState(false);
 
   const effectiveRole = user?.role || null;
@@ -46,9 +59,7 @@ function HomeContent() {
 
   useEffect(() => {
     const handleOpenModal = () => setShowFindModal(true);
-
     window.addEventListener("openFindModal", handleOpenModal);
-
     return () => {
       window.removeEventListener("openFindModal", handleOpenModal);
     };
@@ -69,48 +80,30 @@ function HomeContent() {
     fetchProperties();
   }, []);
 
-  const filteredProperties = properties
-    .filter((property) => {
+  // ─── Existing pre-filters (price range + available-only) ───
+  // Then advanced filters (gender, distance, amenities, boosted, sort) on top.
+  const filteredProperties = useMemo(() => {
+    const min = minPrice ? Number(minPrice) : 0;
+    const max = maxPrice ? Number(maxPrice) : Infinity;
+
+    const prefiltered = properties.filter((property) => {
       if (property.isActive === false) return false;
 
-      const search = keyword.toLowerCase();
+      const price = property.price ?? 0;
+      if (price < min || price > max) return false;
 
-      const matchesKeyword =
-        property.title.toLowerCase().includes(search) ||
-        property.location.toLowerCase().includes(search);
-
-      const min = minPrice ? Number(minPrice) : 0;
-      const max = maxPrice ? Number(maxPrice) : Infinity;
-
-      const matchesPrice =
-        property.price >= min && property.price <= max;
-
-      const availableCount = (property.bedSpaces ?? []).filter(
-        (bed) => bed.isAvailable
-      ).length;
-
-      const matchesAvailability =
-        !showAvailableOnly || availableCount > 0;
-
-      return (
-        matchesKeyword &&
-        matchesPrice &&
-        matchesAvailability
-      );
-    })
-    .sort((a, b) => {
-      const aBoosted = isBoosted(a);
-      const bBoosted = isBoosted(b);
-
-      if (aBoosted && !bBoosted) return -1;
-      if (!aBoosted && bBoosted) return 1;
-
-      if (aBoosted && bBoosted) {
-        return (b.boostedAt || 0) - (a.boostedAt || 0);
+      if (showAvailableOnly) {
+        const availableCount = (property.bedSpaces ?? []).filter(
+          (bed) => bed.isAvailable
+        ).length;
+        if (availableCount === 0) return false;
       }
 
-      return a.title.localeCompare(b.title);
+      return true;
     });
+
+    return applyPropertyFilters(prefiltered, keyword, null, filters);
+  }, [properties, keyword, minPrice, maxPrice, showAvailableOnly, filters]);
 
   if (error) {
     return (
@@ -163,10 +156,7 @@ function HomeContent() {
       )}
 
       <div className="container-wide space-y-4 pt-6">
-        <SearchBar
-          value={keyword}
-          onChange={setKeyword}
-        />
+        <SearchBar value={keyword} onChange={setKeyword} />
 
         <PriceFilter
           minPrice={minPrice}
@@ -182,9 +172,17 @@ function HomeContent() {
             onChange={(e) => setShowAvailableOnly(e.target.checked)}
             className="h-4 w-4 rounded border-gray-300 text-[var(--nexora-primary)] focus:ring-[var(--nexora-primary)]"
           />
-
           Available beds only
         </label>
+
+        {/* ─── NEW: advanced filters (gender · distance · amenities · boosted · sort) ─── */}
+        <ListingFilters
+          mode="properties"
+          filters={filters}
+          onChange={setFilters}
+          resultCount={filteredProperties.length}
+          hidePrice
+        />
       </div>
 
       {isFetching ? (
@@ -196,17 +194,13 @@ function HomeContent() {
                 className="animate-pulse rounded-2xl bg-white p-5 shadow-sm"
               >
                 <div className="mb-3 h-40 w-full rounded-xl bg-gray-200" />
-
                 <div className="mb-2 h-5 w-3/4 rounded bg-gray-200" />
-
                 <div className="mb-3 h-4 w-1/3 rounded bg-gray-200" />
-
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <div className="h-3 w-16 rounded bg-gray-200" />
                   <div className="h-3 w-20 rounded bg-gray-200" />
                   <div className="h-3 w-12 rounded bg-gray-200" />
                 </div>
-
                 <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
                   <div className="h-3 w-14 rounded bg-gray-200" />
                   <div className="h-3 w-14 rounded bg-gray-200" />
@@ -243,7 +237,9 @@ function HomeContent() {
 
       {/* ─── LANDLORD ONBOARDING MODAL ─── */}
       {user && user.role === "landlord" && (
-        <LandlordOnboardingModal landlordName={user.fullName || user.email?.split("@")[0] || "Landlord"} />
+        <LandlordOnboardingModal
+          landlordName={user.fullName || user.email?.split("@")[0] || "Landlord"}
+        />
       )}
     </main>
   );

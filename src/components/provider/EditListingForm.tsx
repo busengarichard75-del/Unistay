@@ -22,10 +22,12 @@ import {
   isServiceDiscountActive,
 } from "@/types/service";
 import {
+  PRODUCT_CATEGORIES,
   PRODUCT_CONDITIONS,
   Product,
   ProductCondition,
   isProductDiscountActive,
+  getProductCategoryLabel,
 } from "@/types/product";
 import {
   Wrench,
@@ -148,7 +150,9 @@ export function EditListingForm(props: EditListingFormProps) {
 
   // ─── Product-specific ───
   const [price, setPrice] = useState(!isService ? String(initialProduct!.price) : "");
-  const [productCategory, setProductCategory] = useState(!isService ? initialProduct!.category : "");
+  const [productCategory, setProductCategory] = useState(
+    !isService ? initialProduct!.category : ""
+  );
   const [condition, setCondition] = useState<ProductCondition>(
     !isService ? initialProduct!.condition : "used"
   );
@@ -172,6 +176,12 @@ export function EditListingForm(props: EditListingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Does the loaded product use a legacy (non-canonical) category?
+  const isLegacyCategory =
+    !isService &&
+    !!productCategory &&
+    !PRODUCT_CATEGORIES.some((c) => c.id === productCategory);
+
   function toggleDay(day: AvailabilityDay) {
     setAvailDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
@@ -186,7 +196,6 @@ export function EditListingForm(props: EditListingFormProps) {
 
   const showDiscountSection = !isService || (isService && priceType === "from");
 
-  // Map is hidden only for online services
   const showMapPicker = !(isService && isOnline);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -227,7 +236,7 @@ export function EditListingForm(props: EditListingFormProps) {
         return;
       }
       if (!productCategory.trim()) {
-        setError("Please enter a product category.");
+        setError("Please pick a product category.");
         return;
       }
     }
@@ -271,12 +280,10 @@ export function EditListingForm(props: EditListingFormProps) {
         ...discountPayload,
       };
 
-      // Attach coordinates only when there's a physical pin
       if (showMapPicker && latitude !== undefined && longitude !== undefined) {
         commonBase.latitude = latitude;
         commonBase.longitude = longitude;
       } else {
-        // Clear coordinates when the listing becomes online
         commonBase.latitude = null;
         commonBase.longitude = null;
       }
@@ -409,9 +416,38 @@ export function EditListingForm(props: EditListingFormProps) {
             <Field label="Price (K)">
               <input type="number" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} disabled={isSubmitting} className={inputClass} />
             </Field>
+
             <Field label="Product category">
-              <input type="text" value={productCategory} onChange={(e) => setProductCategory(e.target.value)} disabled={isSubmitting} className={inputClass} />
+              {/* Legacy free-text category warning */}
+              {isLegacyCategory && (
+                <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+                  <span className="mt-0.5 text-xs">⚠️</span>
+                  <p className="text-[11px] leading-relaxed text-amber-900">
+                    Currently saved as <strong>“{getProductCategoryLabel(productCategory)}”</strong> (legacy).
+                    Pick a category below to update it.
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {PRODUCT_CATEGORIES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setProductCategory(c.id)}
+                    className={`rounded-xl border-2 p-3 text-left text-xs font-medium transition-all ${
+                      productCategory === c.id
+                        ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                        : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                    }`}
+                  >
+                    <div className="text-base">{c.icon}</div>
+                    <div className="mt-1">{c.label}</div>
+                  </button>
+                ))}
+              </div>
             </Field>
+
             <Field label="Condition">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {PRODUCT_CONDITIONS.map((c) => (
@@ -561,7 +597,6 @@ export function EditListingForm(props: EditListingFormProps) {
           </Field>
         )}
 
-        {/* Map picker */}
         {showMapPicker && (
           <Field label="Pin your location on the map">
             <PropertyMap
@@ -635,7 +670,7 @@ export function EditListingForm(props: EditListingFormProps) {
 }
 
 /* ──────────────────────────────────────────────── */
-/* Sub-components                                  */
+/* Sub-components (unchanged)                      */
 /* ──────────────────────────────────────────────── */
 
 const inputClass = "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/15 disabled:bg-gray-50";

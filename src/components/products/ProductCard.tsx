@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, ShoppingBag, Zap, Flame } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MapPin, ShoppingBag, Zap, Flame, Heart, Camera } from "lucide-react";
 import {
   Product,
   isProductBoosted,
@@ -10,17 +11,70 @@ import {
 } from "@/types/product";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
 import { timeAgo } from "@/lib/timeUtils";
+import {
+  isWishlisted,
+  toggleWishlist,
+  subscribeWishlist,
+} from "@/lib/wishlist";
 
 interface ProductCardProps {
   product: Product;
 }
 
+const NEW_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+
+// ─────────────────────────────────────────────────────────
+// Small reusable heart button (safe inside a Link)
+// ─────────────────────────────────────────────────────────
+function WishlistHeart({ id }: { id: string }) {
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setSaved(isWishlisted(id, "product"));
+    const unsub = subscribeWishlist(() =>
+      setSaved(isWishlisted(id, "product"))
+    );
+    return () => unsub();
+  }, [id]);
+
+  const handleToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = toggleWishlist(id, "product");
+    setSaved(next);
+  };
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+      onClick={handleToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") handleToggle(e);
+      }}
+      className="pointer-events-auto inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur-sm transition-transform active:scale-90"
+    >
+      <Heart
+        size={12}
+        className={saved ? "text-red-500" : "text-gray-700"}
+        fill={saved ? "currentColor" : "none"}
+        aria-hidden="true"
+      />
+    </span>
+  );
+}
+
 export function ProductCard({ product }: ProductCardProps) {
   const primaryImage = product.imageUrls?.[0] || null;
+  const photoCount = product.imageUrls?.length ?? 0;
+
   const isSold = product.status === "sold";
   const isBoosted = isProductBoosted(product);
   const hasDiscount = isProductDiscountActive(product);
   const discountedPrice = getProductDiscountedPrice(product);
+  const isNew =
+    !!product.createdAt && Date.now() - product.createdAt < NEW_THRESHOLD_MS;
 
   return (
     <Link
@@ -42,6 +96,11 @@ export function ProductCard({ product }: ProductCardProps) {
             <ShoppingBag size={28} strokeWidth={1.5} />
           </div>
         )}
+
+        {/* ❤️ Wishlist heart (top-left) */}
+        <div className="absolute left-2 top-2">
+          <WishlistHeart id={product.id} />
+        </div>
 
         {/* Boost badge — icon only, stacked top-right */}
         {isBoosted && (
@@ -68,12 +127,28 @@ export function ProductCard({ product }: ProductCardProps) {
             Sold
           </span>
         )}
+
+        {/* 📷 Photo count (bottom-right) */}
+        {photoCount > 1 && (
+          <span className="pointer-events-none absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm backdrop-blur-sm">
+            <Camera size={10} aria-hidden="true" />
+            {photoCount}
+          </span>
+        )}
       </div>
 
       <div className="p-3">
-        <h3 className="truncate text-sm font-semibold text-gray-900">
-          {product.name}
-        </h3>
+        {/* Title row with NEW badge */}
+        <div className="flex items-start gap-1.5">
+          <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+            {product.name}
+          </h3>
+          {isNew && (
+            <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+              New
+            </span>
+          )}
+        </div>
 
         {/* Price row */}
         {hasDiscount && discountedPrice !== null ? (

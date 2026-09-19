@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Wrench, Zap, Flame } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MapPin, Wrench, Zap, Flame, Heart } from "lucide-react";
 import {
   Service,
   SERVICE_CATEGORIES,
@@ -11,9 +12,58 @@ import {
 } from "@/types/service";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
 import { timeAgo } from "@/lib/timeUtils";
+import {
+  isWishlisted,
+  toggleWishlist,
+  subscribeWishlist,
+} from "@/lib/wishlist";
 
 interface ServiceCardProps {
   service: Service;
+}
+
+const NEW_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+
+// ─────────────────────────────────────────────────────────
+// Small reusable heart button (safe inside a Link)
+// ─────────────────────────────────────────────────────────
+function WishlistHeart({ id }: { id: string }) {
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setSaved(isWishlisted(id, "service"));
+    const unsub = subscribeWishlist(() =>
+      setSaved(isWishlisted(id, "service"))
+    );
+    return () => unsub();
+  }, [id]);
+
+  const handleToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = toggleWishlist(id, "service");
+    setSaved(next);
+  };
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+      onClick={handleToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") handleToggle(e);
+      }}
+      className="pointer-events-auto inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur-sm transition-transform active:scale-90"
+    >
+      <Heart
+        size={12}
+        className={saved ? "text-red-500" : "text-gray-700"}
+        fill={saved ? "currentColor" : "none"}
+        aria-hidden="true"
+      />
+    </span>
+  );
 }
 
 export function ServiceCard({ service }: ServiceCardProps) {
@@ -21,6 +71,8 @@ export function ServiceCard({ service }: ServiceCardProps) {
   const cat = SERVICE_CATEGORIES.find((c) => c.id === service.category);
   const isInactive = service.status !== "available";
   const isBoosted = isServiceBoosted(service);
+  const isNew =
+    !!service.createdAt && Date.now() - service.createdAt < NEW_THRESHOLD_MS;
 
   const hasDiscount = isServiceDiscountActive(service);
   const discountedPrice = getServiceDiscountedPrice(service);
@@ -86,12 +138,25 @@ export function ServiceCard({ service }: ServiceCardProps) {
             Unavailable
           </span>
         )}
+
+        {/* ❤️ Wishlist heart (bottom-right) */}
+        <div className="absolute bottom-2 right-2">
+          <WishlistHeart id={service.id} />
+        </div>
       </div>
 
       <div className="p-3">
-        <h3 className="truncate text-sm font-semibold text-gray-900">
-          {service.title}
-        </h3>
+        {/* Title row with NEW badge */}
+        <div className="flex items-start gap-1.5">
+          <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+            {service.title}
+          </h3>
+          {isNew && (
+            <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+              New
+            </span>
+          )}
+        </div>
 
         {/* Price row */}
         {showPrice && discountedPrice !== null ? (

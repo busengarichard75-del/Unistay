@@ -19,6 +19,8 @@ export interface PublicUserProfile {
   isVerified: boolean;
   isSuspended: boolean;
   memberSince?: number;
+  /** Avatar URL — service_provider only. */
+  photoURL?: string;
 }
 
 export async function getPublicUserProfile(
@@ -47,6 +49,7 @@ export async function getPublicUserProfile(
       isVerified: data.verificationStatus === "approved",
       isSuspended: !!data.suspended,
       memberSince: data.createdAt,
+      photoURL: data.photoURL || undefined,
     };
   } catch (error) {
     console.error("Failed to fetch public user profile:", error);

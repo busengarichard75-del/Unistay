@@ -35,6 +35,9 @@ export default function ProviderProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<"services" | "products">("services");
 
+  // ── Avatar fallback if the image URL fails to load ──
+  const [imgError, setImgError] = useState(false);
+
   useEffect(() => {
     if (!uid) return;
     let active = true;
@@ -57,7 +60,6 @@ export default function ProviderProfilePage() {
         setServices(s.filter((x) => !x.adminHidden));
         setProducts(pr.filter((x) => !x.adminHidden));
 
-        // Pick default tab based on what's available
         const hasS = s.filter((x) => !x.adminHidden).length > 0;
         const hasP = pr.filter((x) => !x.adminHidden).length > 0;
         if (!hasS && hasP) setActiveTab("products");
@@ -113,7 +115,6 @@ export default function ProviderProfilePage() {
     );
   }
 
-  // ─── Sort: boosted first, then newest ───
   const sortedServices = [...services].sort((a, b) => {
     const aB = isServiceBoosted(a) ? 1 : 0;
     const bB = isServiceBoosted(b) ? 1 : 0;
@@ -143,6 +144,7 @@ export default function ProviderProfilePage() {
 
   const hasServices = sortedServices.length > 0;
   const hasProducts = sortedProducts.length > 0;
+  const showAvatar = !!profile.photoURL && !imgError;
 
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
@@ -161,9 +163,19 @@ export default function ProviderProfilePage() {
         <div className="card-premium overflow-hidden">
           <div className="bg-gradient-to-r from-[var(--nexora-navy)] to-[var(--nexora-primary)] px-6 py-8 text-white">
             <div className="flex flex-wrap items-center gap-5">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl font-bold text-white shadow-lg backdrop-blur">
-                {initials || "PZ"}
-              </div>
+              {/* ── Avatar: photo if available, initials fallback ── */}
+              {showAvatar ? (
+                <img
+                  src={profile.photoURL!}
+                  alt={displayName}
+                  onError={() => setImgError(true)}
+                  className="h-20 w-20 shrink-0 rounded-2xl object-cover shadow-lg ring-2 ring-white/20"
+                />
+              ) : (
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl font-bold text-white shadow-lg backdrop-blur">
+                  {initials || "PZ"}
+                </div>
+              )}
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

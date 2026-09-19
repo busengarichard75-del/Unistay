@@ -3,6 +3,18 @@
 export type ProductCondition = "new" | "like_new" | "used" | "for_parts";
 export type ProductStatus = "available" | "sold";
 
+// ─── Product categories (curated taxonomy for tabs) ───
+export type ProductCategory =
+  | "phones"
+  | "electronics"
+  | "fashion"
+  | "books"
+  | "gaming"
+  | "kitchen"
+  | "furniture"
+  | "bags"
+  | "other";
+
 // ─── Boost tiers ───
 export type BoostDuration = "daily" | "weekly" | "monthly";
 
@@ -18,7 +30,7 @@ export interface Product {
   name: string;
   price: number;
   description: string;
-  category: string;
+  category: string;             // kept as string for backward compat with old listings
   condition: ProductCondition;
   imageUrls?: string[];
   location: string;
@@ -48,6 +60,22 @@ export interface Product {
   discountExpiresAt?: number;
 }
 
+// ─────────────────────────────────────────────────────────
+// CATEGORIES — order here = order of tabs on /marketplace
+// Only categories with ≥1 listing show as tabs.
+// ─────────────────────────────────────────────────────────
+export const PRODUCT_CATEGORIES: { id: ProductCategory; label: string; icon: string }[] = [
+  { id: "phones",      label: "Phones",       icon: "📱" },
+  { id: "electronics", label: "Electronics",  icon: "💻" },
+  { id: "fashion",     label: "Fashion",      icon: "👕" },
+  { id: "books",       label: "Books",        icon: "📚" },
+  { id: "gaming",      label: "Gaming",       icon: "🎮" },
+  { id: "kitchen",     label: "Kitchen",      icon: "🍳" },
+  { id: "furniture",   label: "Furniture",    icon: "🛋️" },
+  { id: "bags",        label: "Bags",         icon: "🎒" },
+  { id: "other",       label: "Other",        icon: "✨" },
+];
+
 export const PRODUCT_CONDITIONS: { id: ProductCondition; label: string }[] = [
   { id: "new", label: "New" },
   { id: "like_new", label: "Like New" },
@@ -59,6 +87,21 @@ export const PRODUCT_STATUSES: { id: ProductStatus; label: string }[] = [
   { id: "available", label: "Available" },
   { id: "sold", label: "Sold" },
 ];
+
+// ─── Category label lookup (handles legacy/free-text categories) ───
+export function getProductCategoryLabel(id: string): string {
+  const found = PRODUCT_CATEGORIES.find((c) => c.id === id);
+  if (found) return found.label;
+  // Legacy free-text category — title-case it
+  return id
+    .split(/[\s_-]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+export function getProductCategoryIcon(id: string): string {
+  return PRODUCT_CATEGORIES.find((c) => c.id === id)?.icon || "🏷️";
+}
 
 // ─── Boost helpers ───
 export function isProductBoosted(p: Product): boolean {

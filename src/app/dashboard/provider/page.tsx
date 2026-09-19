@@ -42,6 +42,7 @@ import {
   Flame,
   Pencil,
   Zap,
+  ChevronRight,
 } from "lucide-react";
 
 // ─── Small time formatter for discount countdown ───
@@ -503,6 +504,7 @@ function ListingRow({
       : "Mark available";
 
   const editHref = `/dashboard/provider/edit-listing/${kind}/${id}`;
+  const detailHref = `/dashboard/provider/listing/${kind}/${id}`;
 
   const discountRemaining =
     discountActive && discountExpiresAt
@@ -510,67 +512,82 @@ function ListingRow({
       : null;
 
   return (
-    <div className={`rounded-2xl border bg-white p-4 shadow-sm ${isBoosted ? "border-amber-200" : "border-gray-100"}`}>
-      <div className="flex items-start gap-3">
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-            isBoosted ? "bg-amber-100 text-amber-600" : "bg-blue-50 text-[var(--nexora-primary)]"
-          }`}
-        >
-          <KindIcon size={16} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900">
-            <span className="truncate">{title}</span>
+    <div className={`rounded-2xl border bg-white shadow-sm ${isBoosted ? "border-amber-200" : "border-gray-100"}`}>
+      {/* ── Clickable top section → detail page ── */}
+      <Link
+        href={detailHref}
+        className="group block cursor-pointer p-4 transition-colors hover:bg-gray-50/50"
+        aria-label={`View ${title} details`}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+              isBoosted ? "bg-amber-100 text-amber-600" : "bg-blue-50 text-[var(--nexora-primary)]"
+            }`}
+          >
+            <KindIcon size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900">
+              <span className="truncate">{title}</span>
 
-            {isBoosted && (
+              {isBoosted && (
+                <span
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-sm"
+                  title="Boosted"
+                >
+                  <Zap size={11} fill="currentColor" />
+                </span>
+              )}
+
+              {boostRequested && !isBoosted && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                  BOOST PENDING
+                </span>
+              )}
+            </p>
+
+            <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>
+
+            {discountRemaining && (
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-medium text-red-700 border border-red-100">
+                <Flame size={11} fill="currentColor" />
+                <span>
+                  {discountPercent}% OFF · {discountRemaining}
+                </span>
+              </div>
+            )}
+
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-gray-500">
+              <span className="inline-flex items-center gap-1">
+                <Eye size={11} />
+                {views}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <MessageCircle size={11} />
+                {contacts}
+              </span>
               <span
-                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-sm"
-                title="Boosted"
+                className={`rounded-full px-2 py-0.5 font-medium ${
+                  isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                }`}
               >
-                <Zap size={11} fill="currentColor" />
-              </span>
-            )}
-
-            {boostRequested && !isBoosted && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                BOOST PENDING
-              </span>
-            )}
-          </p>
-
-          <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>
-
-          {discountRemaining && (
-            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-medium text-red-700 border border-red-100">
-              <Flame size={11} fill="currentColor" />
-              <span>
-                {discountPercent}% OFF · {discountRemaining}
+                {status}
               </span>
             </div>
-          )}
-
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-gray-500">
-            <span className="inline-flex items-center gap-1">
-              <Eye size={11} />
-              {views}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <MessageCircle size={11} />
-              {contacts}
-            </span>
-            <span
-              className={`rounded-full px-2 py-0.5 font-medium ${
-                isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {status}
-            </span>
           </div>
-        </div>
-      </div>
 
-      <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+          {/* Chevron indicator */}
+          <ChevronRight
+            size={18}
+            className="mt-1 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-500"
+            aria-hidden="true"
+          />
+        </div>
+      </Link>
+
+      {/* ── Action buttons (outside the link) ── */}
+      <div className="flex flex-wrap gap-2 border-t border-gray-100 px-4 py-3">
         {!isBoosted && !boostRequested && (
           <button
             type="button"
