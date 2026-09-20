@@ -22,6 +22,7 @@ import {
   Store,
   Map as MapIcon,
   User as UserIcon,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
@@ -154,6 +155,13 @@ export function Navbar() {
                 >
                   <MapIcon size={16} />
                   Map
+                </Link>
+                <Link
+                  href="/library"
+                  className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                >
+                  <BookOpen size={16} />
+                  Library
                 </Link>
 
                 {isAdminEmail(user.email) && (
@@ -334,6 +342,14 @@ export function Navbar() {
                         <MapIcon size={16} />
                         Peza Map
                       </Link>
+                      <Link
+                        href="/library"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <BookOpen size={16} />
+                        Library
+                      </Link>
 
                       {isAdminEmail(user.email) && (
                         <Link
@@ -394,6 +410,14 @@ export function Navbar() {
                 <MapIcon size={14} className="sm:hidden" />
                 <MapIcon size={16} className="hidden sm:block" />
                 <span className="hidden xs:inline sm:inline">Map</span>
+              </Link>
+              <Link
+                href="/library"
+                className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
+              >
+                <BookOpen size={14} className="sm:hidden" />
+                <BookOpen size={16} className="hidden sm:block" />
+                <span className="hidden xs:inline sm:inline">Library</span>
               </Link>
               <Link
                 href="/login"
@@ -546,6 +570,11 @@ export function Navbar() {
                   href="/map"
                   icon={<MapIcon size={16} />}
                   label="Peza Map"
+                />
+                <DrawerLink
+                  href="/library"
+                  icon={<BookOpen size={16} />}
+                  label="Library"
                 />
 
                 {/* Divider */}

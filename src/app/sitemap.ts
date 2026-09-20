@@ -14,6 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}`,                  priority: 1.0, changeFrequency: "daily" },
     { url: `${baseUrl}/services`,         priority: 0.9, changeFrequency: "daily" },
     { url: `${baseUrl}/marketplace`,      priority: 0.9, changeFrequency: "daily" },
+    { url: `${baseUrl}/library`,          priority: 0.9, changeFrequency: "daily" },
     { url: `${baseUrl}/map`,              priority: 0.8, changeFrequency: "weekly" },
     { url: `${baseUrl}/help`,             priority: 0.5, changeFrequency: "monthly" },
     { url: `${baseUrl}/legal`,            priority: 0.3, changeFrequency: "yearly" },
@@ -96,6 +97,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Sitemap: failed to fetch products:", error);
   }
 
+  // ─── Library entries (approved + not hidden) ───
+  let libraryPages: MetadataRoute.Sitemap = [];
+  try {
+    const snap = await db.collection("library").get();
+    libraryPages = snap.docs
+      .filter((doc) => {
+        const d = doc.data();
+        return !d.adminHidden && d.status === "approved";
+      })
+      .map((doc) => {
+        const d = doc.data();
+        return {
+          url: `${baseUrl}/library/${doc.id}`,
+          lastModified: d.updatedAt
+            ? new Date(d.updatedAt)
+            : d.createdAt
+            ? new Date(d.createdAt)
+            : new Date(),
+          changeFrequency: "monthly" as const,
+          priority: 0.6,
+        };
+      });
+  } catch (error) {
+    console.error("Sitemap: failed to fetch library entries:", error);
+  }
+
   // ─── Provider profiles (approved only) ───
   let providerPages: MetadataRoute.Sitemap = [];
   try {
@@ -143,6 +170,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...propertyPages,
     ...servicePages,
     ...productPages,
+    ...libraryPages,
     ...providerPages,
     ...bookingPages,
   ];

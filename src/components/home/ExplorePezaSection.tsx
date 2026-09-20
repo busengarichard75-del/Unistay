@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Wrench, ShoppingBag, Map as MapIcon, ArrowRight } from "lucide-react";
+import { Search, Wrench, ShoppingBag, Map as MapIcon, ArrowRight, BookOpen } from "lucide-react";
 
 interface ExplorePezaSectionProps {
   onAccommodationSearch?: (query: string) => void;
@@ -55,7 +55,7 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
             🎯 Find what you need
           </h2>
           <p className="mx-auto mt-1 max-w-xl text-xs text-gray-600 sm:mt-1.5 sm:text-sm">
-            Services, products, and everything on the map — near your campus.
+            Rooms, services, products, study materials — everything you need on campus.
           </p>
         </div>
 
@@ -90,8 +90,8 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
           </p>
         </div>
 
-        {/* 3 compact tiles — Services · Peza Map · Marketplace */}
-        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+        {/* 4 compact tiles — mobile shows 3, desktop shows 4 */}
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
           <CompactTile
             href="/services"
             icon={Wrench}
@@ -113,6 +113,17 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
             line="Buy & sell with students"
             accent="from-orange-500 to-pink-600"
           />
+
+          {/* Library — hidden on mobile (accessed via nav menu instead) */}
+          <div className="hidden sm:block">
+            <CompactTile
+              href="/library"
+              icon={BookOpen}
+              title="Library"
+              line="Notes, past papers & guides"
+              accent="from-indigo-500 to-purple-600"
+            />
+          </div>
         </div>
       </div>
     </section>
