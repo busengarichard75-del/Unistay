@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { Phone, Mail, MapPin, Home, HelpCircle, Shield, Heart } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Home,
+  HelpCircle,
+  Shield,
+  Heart,
+  Info,
+  MessageCircle,
+} from "lucide-react";
 
 export function Footer() {
   return (
@@ -9,11 +19,11 @@ export function Footer() {
           {/* About */}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-900">
-              About Peza Accommodation
+              About Peza
             </h3>
             <p className="text-sm leading-relaxed text-gray-600">
-              Helping students find verified accommodation close to their campus.
-              Built for trust, safety, and convenience.
+              Accommodation, services, marketplace, and a free study library —
+              built for Zambian students, from students.
             </p>
             <div className="mt-4 flex items-center gap-2 text-sm text-gray-500">
               <Heart size={16} className="text-red-400" fill="currentColor" />
@@ -29,15 +39,15 @@ export function Footer() {
             <div className="space-y-2 text-sm text-gray-600">
               <p className="flex items-center gap-2">
                 <Phone size={16} className="text-gray-400" />
-                <span> +260 0771319817 (General)</span>
+                <span>+260 0771319817 (General)</span>
               </p>
               <p className="flex items-center gap-2">
                 <Phone size={16} className="text-gray-400" />
-                <span> +260 971652675(Student Support)</span>
+                <span>+260 971652675 (Student Support)</span>
               </p>
               <p className="flex items-center gap-2">
                 <Phone size={16} className="text-gray-400" />
-                <span> +260 971652675(Landlord Support)</span>
+                <span>+260 971652675 (Landlord Support)</span>
               </p>
               <p className="flex items-center gap-2">
                 <Mail size={16} className="text-gray-400" />
@@ -64,20 +74,29 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  href="/about"
+                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
+                >
+                  <Info size={16} />
+                  About Peza
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
+                >
+                  <MessageCircle size={16} />
+                  Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/help"
                   className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
                 >
                   <HelpCircle size={16} />
                   Help & How It Works
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/legal"
-                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
-                  <Shield size={16} />
-                  Trust & Legal
                 </Link>
               </li>
             </ul>
@@ -105,6 +124,15 @@ export function Footer() {
                   Terms of Service
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/legal"
+                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
+                >
+                  <Shield size={16} />
+                  All Policies
+                </Link>
+              </li>
               <li className="text-gray-500">
                 <span className="flex items-center gap-1">
                   <MapPin size={14} />
@@ -118,7 +146,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
           <p>
-            &copy; {new Date().getFullYear()} Peza Accommodation. All rights reserved.
+            &copy; {new Date().getFullYear()} Peza. All rights reserved.
           </p>
         </div>
       </div>

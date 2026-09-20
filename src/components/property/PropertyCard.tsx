@@ -6,6 +6,7 @@ import { BedDouble, MapPin, Star, Heart, Camera } from "lucide-react";
 import { Property } from "@/types/property";
 import { isBoosted } from "@/lib/boostService";
 import { timeAgo } from "@/lib/timeUtils";
+import { optimizeCardImage } from "@/lib/imageUrl";
 import {
   isWishlisted,
   toggleWishlist,
@@ -44,9 +45,6 @@ function getAvailabilityStatus(availableCount: number) {
   };
 }
 
-// ─────────────────────────────────────────────────────────
-// Small reusable heart button (safe inside a Link)
-// ─────────────────────────────────────────────────────────
 function WishlistHeart({
   id,
   type = "property",
@@ -112,7 +110,8 @@ export function PropertyCard({
     createdAt,
   } = property;
 
-  const primaryImage = imageUrls?.[0] || imageUrl || null;
+  const rawImage = imageUrls?.[0] || imageUrl || null;
+  const primaryImage = rawImage ? optimizeCardImage(rawImage) : null;
   const photoCount = imageUrls?.length ?? (imageUrl ? 1 : 0);
 
   const availableCount = (bedSpaces ?? []).filter(
@@ -129,13 +128,13 @@ export function PropertyCard({
   if (compact) {
     const cardContent = (
       <>
-        {/* Image */}
         <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
           {primaryImage ? (
             <img
               src={primaryImage}
               alt={title}
               loading="lazy"
+              decoding="async"
               draggable={false}
               className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
             />
@@ -145,18 +144,15 @@ export function PropertyCard({
             </div>
           )}
 
-          {/* Image bottom gradient */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent opacity-70"
           />
 
-          {/* ❤️ Wishlist heart (top-left) */}
           <div className="absolute left-1.5 top-1.5">
             <WishlistHeart id={id} size="sm" />
           </div>
 
-          {/* ⭐ Boosted badge (top-right) — unchanged */}
           {boosted && (
             <span
               className="pointer-events-none absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400/95 text-black shadow-lg shadow-yellow-400/40 backdrop-blur-sm"
@@ -167,7 +163,6 @@ export function PropertyCard({
             </span>
           )}
 
-          {/* ✓ Verified badge (bottom-left) — unchanged */}
           {isVerified && (
             <span className="pointer-events-none absolute bottom-1.5 left-1.5 inline-flex items-center gap-0.5 rounded-full bg-blue-600/90 px-1.5 py-1 text-[9px] font-semibold text-white shadow-sm backdrop-blur-sm">
               <svg
@@ -189,7 +184,6 @@ export function PropertyCard({
             </span>
           )}
 
-          {/* NEW + 📷 photo count (bottom-right) */}
           {(isNew || photoCount > 1) && (
             <div className="pointer-events-none absolute bottom-1.5 right-1.5 flex items-center gap-1">
               {isNew && (
@@ -207,9 +201,7 @@ export function PropertyCard({
           )}
         </div>
 
-        {/* Card information */}
         <div className="mt-2 min-w-0">
-          {/* Title */}
           <h3
             title={title}
             className="truncate text-[13px] font-semibold leading-tight text-gray-900"
@@ -217,7 +209,6 @@ export function PropertyCard({
             {title}
           </h3>
 
-          {/* Location */}
           <p
             title={location}
             className="mt-1 flex min-w-0 items-center gap-0.5 truncate text-[11px] leading-tight text-gray-500"
@@ -228,7 +219,6 @@ export function PropertyCard({
             </span>
           </p>
 
-          {/* Price + availability */}
           <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1">
             <span className="min-w-0 truncate text-[13px] font-bold leading-tight text-gray-900">
               K{price.toLocaleString()}
@@ -249,7 +239,6 @@ export function PropertyCard({
             </span>
           </div>
 
-          {/* Date Display */}
           {createdAt && (
             <div className="mt-1 text-[9px] text-gray-400">
               Listed {timeAgo(createdAt)}
@@ -293,16 +282,15 @@ export function PropertyCard({
             src={primaryImage}
             alt={title}
             loading="lazy"
+            decoding="async"
             draggable={false}
             className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
 
-          {/* ❤️ Wishlist heart (top-left) */}
           <div className="absolute left-2 top-2">
             <WishlistHeart id={id} size="md" />
           </div>
 
-          {/* ⭐ Boosted badge (top-right) — unchanged */}
           {boosted && (
             <span
               className="pointer-events-none absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400/95 text-black shadow-lg shadow-yellow-400/40 backdrop-blur-sm"
@@ -313,14 +301,12 @@ export function PropertyCard({
             </span>
           )}
 
-          {/* ✓ Verified badge (bottom-left) — unchanged */}
           {isVerified && (
             <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-blue-600/90 px-2 py-1 text-xs font-medium text-white shadow-sm">
               ✓ Verified
             </span>
           )}
 
-          {/* NEW + 📷 photo count (bottom-right) */}
           {(isNew || photoCount > 1) && (
             <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1.5">
               {isNew && (
@@ -343,16 +329,13 @@ export function PropertyCard({
         </div>
       )}
 
-      {/* Title */}
       <h3 className="truncate text-base font-semibold text-gray-900">{title}</h3>
 
-      {/* Location */}
       <p className="mt-1 flex items-center gap-1 truncate text-sm text-gray-500">
         <MapPin size={13} className="shrink-0" />
         <span className="truncate">{location}</span>
       </p>
 
-      {/* Price + availability */}
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-base font-bold text-gray-900">
           K{price.toLocaleString()}
@@ -371,7 +354,6 @@ export function PropertyCard({
         </span>
       </div>
 
-      {/* Date Display */}
       {createdAt && (
         <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
           <span>📅 Listed {new Date(createdAt).toLocaleDateString()}</span>

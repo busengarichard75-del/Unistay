@@ -38,6 +38,7 @@ import {
   Flame,
   Timer,
   Globe,
+  Package,
 } from "lucide-react";
 
 const PropertyMap = dynamic(
@@ -94,8 +95,11 @@ export function AddListingForm() {
 
   // Product-specific
   const [price, setPrice] = useState("");
-  const [productCategory, setProductCategory] = useState<string>("");   // picked from PRODUCT_CATEGORIES
+  const [productCategory, setProductCategory] = useState<string>("");
   const [condition, setCondition] = useState<ProductCondition>("used");
+
+  // 📦 Stock count (product only)
+  const [quantity, setQuantity] = useState("");
 
   // Flash deal
   const [hasDiscount, setHasDiscount] = useState(false);
@@ -125,7 +129,6 @@ export function AddListingForm() {
   const showDiscountSection =
     type === "product" || (type === "service" && priceType === "from");
 
-  // Map is hidden only for online services
   const showMapPicker = !(type === "service" && isOnline);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -169,6 +172,13 @@ export function AddListingForm() {
         setError("Please pick a product category.");
         return;
       }
+      if (quantity.trim() !== "") {
+        const q = Number(quantity);
+        if (isNaN(q) || q < 0 || !Number.isInteger(q)) {
+          setError("Stock quantity must be a whole number (0 or more), or leave it empty.");
+          return;
+        }
+      }
     }
 
     let discountPayload: { discountPercent?: number; discountExpiresAt?: number } = {};
@@ -206,7 +216,6 @@ export function AddListingForm() {
         ...discountPayload,
       };
 
-      // Only attach coordinates when there's a physical pin
       if (showMapPicker && latitude !== undefined && longitude !== undefined) {
         commonBase.latitude = latitude;
         commonBase.longitude = longitude;
@@ -232,6 +241,9 @@ export function AddListingForm() {
           serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
         });
       } else {
+        // ── Product: attach quantity + seller snapshot ──
+        const qty = quantity.trim() === "" ? undefined : Number(quantity);
+
         await addProduct({
           ...commonBase,
           name: title.trim(),
@@ -239,6 +251,10 @@ export function AddListingForm() {
           category: productCategory.trim(),
           condition,
           status: "available",
+          quantity: qty,
+          sellerName: user.fullName || undefined,
+          sellerBusinessName: user.businessName || undefined,
+          sellerPhotoURL: user.photoURL || undefined,
         });
       }
 
@@ -462,6 +478,29 @@ export function AddListingForm() {
                 ))}
               </div>
             </Field>
+
+            {/* 📦 Stock quantity */}
+            <Field label="How many do you have? (optional)">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Package size={16} />
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="e.g., 10"
+                  min={0}
+                  disabled={isSubmitting}
+                  className={`${inputClass} pl-10`}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-gray-400">
+                Leave empty if you only have one. Students see this on the card
+                — low stock (≤3) shows urgency.
+              </p>
+            </Field>
           </>
         )}
       </Section>
@@ -474,7 +513,8 @@ export function AddListingForm() {
               <Flame size={16} fill="currentColor" />
             </span>
             <h2 className="text-base font-semibold text-gray-900">
-              Flash Deal <span className="text-xs font-normal text-gray-500">(optional)</span>
+              Flash Deal{" "}
+              <span className="text-xs font-normal text-gray-500">(optional)</span>
             </h2>
             <label className="ml-auto flex cursor-pointer items-center gap-2">
               <input
@@ -616,7 +656,11 @@ export function AddListingForm() {
                       : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
                   }`}
                 >
-                  {m === "walk_in" ? "🚶 Walk-in" : m === "appointment" ? "📅 By appointment" : "🤝 Both"}
+                  {m === "walk_in"
+                    ? "🚶 Walk-in"
+                    : m === "appointment"
+                    ? "📅 By appointment"
+                    : "🤝 Both"}
                 </button>
               ))}
             </div>
@@ -660,7 +704,10 @@ export function AddListingForm() {
             />
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                <Globe size={14} className={isOnline ? "text-cyan-600" : "text-gray-400"} />
+                <Globe
+                  size={14}
+                  className={isOnline ? "text-cyan-600" : "text-gray-400"}
+                />
                 Online service
               </p>
               <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
@@ -718,7 +765,6 @@ export function AddListingForm() {
           </Field>
         )}
 
-        {/* Map picker */}
         {showMapPicker && (
           <Field label="Pin your location on the map">
             <PropertyMap
@@ -746,7 +792,8 @@ export function AddListingForm() {
               </p>
             ) : (
               <p className="mt-2 text-xs text-gray-400">
-                Tap the map to pin your exact location, or use &quot;My Location&quot;. Buyers will see this pin on the Peza Map.
+                Tap the map to pin your exact location, or use &quot;My Location&quot;.
+                Buyers will see this pin on the Peza Map.
               </p>
             )}
           </Field>
@@ -756,7 +803,8 @@ export function AddListingForm() {
           <div className="flex items-start gap-2 rounded-lg bg-cyan-50 border border-cyan-200 p-3">
             <Globe size={14} className="mt-0.5 shrink-0 text-cyan-600" />
             <p className="text-xs text-cyan-900 leading-relaxed">
-              Your listing will show a <strong>🌐 Online</strong> badge and won&apos;t appear on the map.
+              Your listing will show a <strong>🌐 Online</strong> badge and won&apos;t
+              appear on the map.
             </p>
           </div>
         )}
@@ -822,7 +870,7 @@ export function AddListingForm() {
 }
 
 /* ──────────────────────────────────────────────── */
-/* Sub-components (unchanged)                      */
+/* Sub-components                                  */
 /* ──────────────────────────────────────────────── */
 
 const inputClass =

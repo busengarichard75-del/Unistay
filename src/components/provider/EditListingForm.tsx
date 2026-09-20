@@ -42,6 +42,7 @@ import {
   Flame,
   Timer,
   Globe,
+  Package,
 } from "lucide-react";
 
 const PropertyMap = dynamic(
@@ -104,7 +105,7 @@ export function EditListingForm(props: EditListingFormProps) {
     isService ? !!initialService!.isOnline : false
   );
 
-  // 📍 Map coordinates (pre-filled from existing)
+  // 📍 Map coordinates
   const [latitude, setLatitude] = useState<number | undefined>(
     isService ? initialService!.latitude : initialProduct!.latitude
   );
@@ -157,6 +158,13 @@ export function EditListingForm(props: EditListingFormProps) {
     !isService ? initialProduct!.condition : "used"
   );
 
+  // 📦 Stock count (product only)
+  const [quantity, setQuantity] = useState(
+    !isService && initialProduct!.quantity !== undefined && initialProduct!.quantity !== null
+      ? String(initialProduct!.quantity)
+      : ""
+  );
+
   // ─── Flash deal ───
   const initialHasDiscount = isService
     ? isServiceDiscountActive(initialService!) ||
@@ -176,7 +184,6 @@ export function EditListingForm(props: EditListingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Does the loaded product use a legacy (non-canonical) category?
   const isLegacyCategory =
     !isService &&
     !!productCategory &&
@@ -238,6 +245,13 @@ export function EditListingForm(props: EditListingFormProps) {
       if (!productCategory.trim()) {
         setError("Please pick a product category.");
         return;
+      }
+      if (quantity.trim() !== "") {
+        const q = Number(quantity);
+        if (isNaN(q) || q < 0 || !Number.isInteger(q)) {
+          setError("Stock quantity must be a whole number (0 or more), or leave it empty.");
+          return;
+        }
       }
     }
 
@@ -307,12 +321,19 @@ export function EditListingForm(props: EditListingFormProps) {
           serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
         });
       } else if (!isService && initialProduct) {
+        // ── Product: refresh quantity + seller snapshot ──
+        const qty = quantity.trim() === "" ? undefined : Number(quantity);
+
         await updateProduct(initialProduct.id, {
           ...commonBase,
           name: title.trim(),
           price: Number(price),
           category: productCategory.trim(),
           condition,
+          quantity: qty,
+          sellerName: user.fullName || undefined,
+          sellerBusinessName: user.businessName || undefined,
+          sellerPhotoURL: user.photoURL || undefined,
         });
       }
 
@@ -340,7 +361,9 @@ export function EditListingForm(props: EditListingFormProps) {
       <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
         <span
           className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm ${
-            isService ? "bg-gradient-to-br from-cyan-500 to-teal-600" : "bg-gradient-to-br from-orange-500 to-pink-600"
+            isService
+              ? "bg-gradient-to-br from-cyan-500 to-teal-600"
+              : "bg-gradient-to-br from-orange-500 to-pink-600"
           }`}
         >
           {isService ? <Wrench size={18} /> : <ShoppingBag size={18} />}
@@ -355,10 +378,22 @@ export function EditListingForm(props: EditListingFormProps) {
 
       <Section icon={<FileText size={16} />} title="Basic information">
         <Field label={isService ? "Service name" : "Product name"}>
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} disabled={isSubmitting} className={inputClass} />
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={isSubmitting}
+            className={inputClass}
+          />
         </Field>
         <Field label="Description">
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} disabled={isSubmitting} className={inputClass} />
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            disabled={isSubmitting}
+            className={inputClass}
+          />
         </Field>
       </Section>
 
@@ -368,10 +403,16 @@ export function EditListingForm(props: EditListingFormProps) {
             <Field label="Service category">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {SERVICE_CATEGORIES.map((c) => (
-                  <button key={c.id} type="button" onClick={() => setServiceCategory(c.id)}
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setServiceCategory(c.id)}
                     className={`rounded-xl border-2 p-3 text-left text-xs font-medium transition-all ${
-                      serviceCategory === c.id ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                    }`}>
+                      serviceCategory === c.id
+                        ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                        : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                    }`}
+                  >
                     <div className="text-base">{c.icon}</div>
                     <div className="mt-1">{c.label}</div>
                   </button>
@@ -381,20 +422,44 @@ export function EditListingForm(props: EditListingFormProps) {
 
             <Field label="Pricing">
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setPriceType("from")}
+                <button
+                  type="button"
+                  onClick={() => setPriceType("from")}
                   className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
-                    priceType === "from" ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                  }`}>💰 Starting from</button>
-                <button type="button" onClick={() => setPriceType("contact")}
+                    priceType === "from"
+                      ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                      : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                  }`}
+                >
+                  💰 Starting from
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriceType("contact")}
                   className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
-                    priceType === "contact" ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                  }`}>💬 Contact for price</button>
+                    priceType === "contact"
+                      ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                      : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                  }`}
+                >
+                  💬 Contact for price
+                </button>
               </div>
               {priceType === "from" && (
                 <div className="mt-3">
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">K</span>
-                    <input type="number" inputMode="numeric" value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)} placeholder="50" disabled={isSubmitting} className={`${inputClass} pl-8`} />
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">
+                      K
+                    </span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={priceFrom}
+                      onChange={(e) => setPriceFrom(e.target.value)}
+                      placeholder="50"
+                      disabled={isSubmitting}
+                      className={`${inputClass} pl-8`}
+                    />
                   </div>
                 </div>
               )}
@@ -403,10 +468,18 @@ export function EditListingForm(props: EditListingFormProps) {
             <Field label="Payment methods accepted">
               <div className="grid grid-cols-3 gap-2">
                 {(["cash", "mobile_money", "bank_transfer"] as PaymentMethod[]).map((m) => (
-                  <button key={m} type="button" onClick={() => togglePayment(m)}
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => togglePayment(m)}
                     className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
-                      paymentMethods.includes(m) ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                    }`}>{PAYMENT_METHOD_LABELS[m]}</button>
+                      paymentMethods.includes(m)
+                        ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                        : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                    }`}
+                  >
+                    {PAYMENT_METHOD_LABELS[m]}
+                  </button>
                 ))}
               </div>
             </Field>
@@ -414,17 +487,24 @@ export function EditListingForm(props: EditListingFormProps) {
         ) : (
           <>
             <Field label="Price (K)">
-              <input type="number" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} disabled={isSubmitting} className={inputClass} />
+              <input
+                type="number"
+                inputMode="numeric"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                disabled={isSubmitting}
+                className={inputClass}
+              />
             </Field>
 
             <Field label="Product category">
-              {/* Legacy free-text category warning */}
               {isLegacyCategory && (
                 <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
                   <span className="mt-0.5 text-xs">⚠️</span>
                   <p className="text-[11px] leading-relaxed text-amber-900">
-                    Currently saved as <strong>“{getProductCategoryLabel(productCategory)}”</strong> (legacy).
-                    Pick a category below to update it.
+                    Currently saved as{" "}
+                    <strong>“{getProductCategoryLabel(productCategory)}”</strong>{" "}
+                    (legacy). Pick a category below to update it.
                   </p>
                 </div>
               )}
@@ -451,12 +531,43 @@ export function EditListingForm(props: EditListingFormProps) {
             <Field label="Condition">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {PRODUCT_CONDITIONS.map((c) => (
-                  <button key={c.id} type="button" onClick={() => setCondition(c.id)}
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCondition(c.id)}
                     className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
-                      condition === c.id ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                    }`}>{c.label}</button>
+                      condition === c.id
+                        ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                        : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
                 ))}
               </div>
+            </Field>
+
+            {/* 📦 Stock quantity */}
+            <Field label="How many do you have? (optional)">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Package size={16} />
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="e.g., 10"
+                  min={0}
+                  disabled={isSubmitting}
+                  className={`${inputClass} pl-10`}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-gray-400">
+                Leave empty if you only have one. Students see this on the card
+                — low stock (≤3) shows urgency.
+              </p>
             </Field>
           </>
         )}
@@ -465,11 +576,23 @@ export function EditListingForm(props: EditListingFormProps) {
       {showDiscountSection && (
         <section className="space-y-4 rounded-2xl border border-red-100 bg-gradient-to-br from-red-50/40 to-white p-6 shadow-sm">
           <div className="flex items-center gap-2 border-b border-red-100 pb-3">
-            <span className="text-red-500"><Flame size={16} fill="currentColor" /></span>
-            <h2 className="text-base font-semibold text-gray-900">Flash Deal <span className="text-xs font-normal text-gray-500">(optional)</span></h2>
+            <span className="text-red-500">
+              <Flame size={16} fill="currentColor" />
+            </span>
+            <h2 className="text-base font-semibold text-gray-900">
+              Flash Deal <span className="text-xs font-normal text-gray-500">(optional)</span>
+            </h2>
             <label className="ml-auto flex cursor-pointer items-center gap-2">
-              <input type="checkbox" checked={hasDiscount} onChange={(e) => setHasDiscount(e.target.checked)} disabled={isSubmitting} className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500" />
-              <span className="text-xs font-medium text-gray-700">{initialHasDiscount ? "Active" : "Add discount"}</span>
+              <input
+                type="checkbox"
+                checked={hasDiscount}
+                onChange={(e) => setHasDiscount(e.target.checked)}
+                disabled={isSubmitting}
+                className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+              />
+              <span className="text-xs font-medium text-gray-700">
+                {initialHasDiscount ? "Active" : "Add discount"}
+              </span>
             </label>
           </div>
 
@@ -477,13 +600,35 @@ export function EditListingForm(props: EditListingFormProps) {
             <div className="space-y-4">
               <Field label="Discount percentage">
                 <div className="relative">
-                  <input type="number" inputMode="numeric" value={discountPercent} onChange={(e) => setDiscountPercent(e.target.value)} min={5} max={90} placeholder="20" disabled={isSubmitting} className={`${inputClass} pr-12`} />
-                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">% OFF</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(e.target.value)}
+                    min={5}
+                    max={90}
+                    placeholder="20"
+                    disabled={isSubmitting}
+                    className={`${inputClass} pr-12`}
+                  />
+                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                    % OFF
+                  </span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {[10, 20, 30, 50].map((p) => (
-                    <button key={p} type="button" onClick={() => setDiscountPercent(String(p))}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${discountPercent === String(p) ? "bg-red-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{p}%</button>
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setDiscountPercent(String(p))}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        discountPercent === String(p)
+                          ? "bg-red-500 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {p}%
+                    </button>
                   ))}
                 </div>
               </Field>
@@ -491,10 +636,19 @@ export function EditListingForm(props: EditListingFormProps) {
               <Field label="Duration">
                 <div className="grid grid-cols-3 gap-2">
                   {DISCOUNT_DURATIONS.map((d) => (
-                    <button key={d.id} type="button" onClick={() => setDiscountDuration(d.id)}
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setDiscountDuration(d.id)}
                       className={`flex items-center justify-center gap-1.5 rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
-                        discountDuration === d.id ? "border-red-500 bg-red-50 text-red-700" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                      }`}><Timer size={12} />{d.label}</button>
+                        discountDuration === d.id
+                          ? "border-red-500 bg-red-50 text-red-700"
+                          : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                      }`}
+                    >
+                      <Timer size={12} />
+                      {d.label}
+                    </button>
                   ))}
                 </div>
               </Field>
@@ -504,7 +658,9 @@ export function EditListingForm(props: EditListingFormProps) {
           {initialHasDiscount && !hasDiscount && (
             <div className="flex items-start gap-2 rounded-lg bg-gray-50 border border-gray-200 p-3">
               <Flame size={14} className="mt-0.5 shrink-0 text-gray-400" />
-              <p className="text-xs text-gray-600 leading-relaxed">Saving will <strong>remove the discount</strong> from this listing.</p>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Saving will <strong>remove the discount</strong> from this listing.
+              </p>
             </div>
           )}
         </section>
@@ -514,44 +670,100 @@ export function EditListingForm(props: EditListingFormProps) {
         <Section icon={<Clock size={16} />} title="Availability">
           <Field label="Which days?">
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setAvailDays(availDays.length === 7 ? [] : ALL_DAYS)}
+              <button
+                type="button"
+                onClick={() => setAvailDays(availDays.length === 7 ? [] : ALL_DAYS)}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all ${
-                  availDays.length === 7 ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                }`}>Every day</button>
+                  availDays.length === 7
+                    ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                    : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                }`}
+              >
+                Every day
+              </button>
               {ALL_DAYS.map((d) => (
-                <button key={d} type="button" onClick={() => toggleDay(d)}
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => toggleDay(d)}
                   className={`rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all ${
-                    availDays.includes(d) ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                  }`}>{AVAILABILITY_DAY_LABELS[d]}</button>
+                    availDays.includes(d)
+                      ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                      : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                  }`}
+                >
+                  {AVAILABILITY_DAY_LABELS[d]}
+                </button>
               ))}
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="From"><input type="time" value={availFrom} onChange={(e) => setAvailFrom(e.target.value)} disabled={isSubmitting} className={inputClass} /></Field>
-            <Field label="To"><input type="time" value={availTo} onChange={(e) => setAvailTo(e.target.value)} disabled={isSubmitting} className={inputClass} /></Field>
+            <Field label="From">
+              <input
+                type="time"
+                value={availFrom}
+                onChange={(e) => setAvailFrom(e.target.value)}
+                disabled={isSubmitting}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="To">
+              <input
+                type="time"
+                value={availTo}
+                onChange={(e) => setAvailTo(e.target.value)}
+                disabled={isSubmitting}
+                className={inputClass}
+              />
+            </Field>
           </div>
           <Field label="How do students reach you?">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {(["walk_in", "appointment", "both"] as AvailabilityMode[]).map((m) => (
-                <button key={m} type="button" onClick={() => setAvailMode(m)}
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setAvailMode(m)}
                   className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
-                    availMode === m ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]" : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                  }`}>{m === "walk_in" ? "🚶 Walk-in" : m === "appointment" ? "📅 By appointment" : "🤝 Both"}</button>
+                    availMode === m
+                      ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                      : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                  }`}
+                >
+                  {m === "walk_in"
+                    ? "🚶 Walk-in"
+                    : m === "appointment"
+                    ? "📅 By appointment"
+                    : "🤝 Both"}
+                </button>
               ))}
             </div>
           </Field>
           <Field label="Notes (optional)">
-            <input type="text" value={availNote} onChange={(e) => setAvailNote(e.target.value)} placeholder="e.g., Closed on public holidays" disabled={isSubmitting} className={inputClass} />
+            <input
+              type="text"
+              value={availNote}
+              onChange={(e) => setAvailNote(e.target.value)}
+              placeholder="e.g., Closed on public holidays"
+              disabled={isSubmitting}
+              className={inputClass}
+            />
           </Field>
         </Section>
       )}
 
       <Section icon={<MapPin size={16} />} title="Location">
         {isService && (
-          <label className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3.5 transition-all ${
-            isOnline ? "border-cyan-500 bg-cyan-50/60" : "border-gray-100 bg-white hover:border-gray-200"
-          }`}>
-            <input type="checkbox" checked={isOnline}
+          <label
+            className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3.5 transition-all ${
+              isOnline
+                ? "border-cyan-500 bg-cyan-50/60"
+                : "border-gray-100 bg-white hover:border-gray-200"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={isOnline}
               onChange={(e) => {
                 setIsOnline(e.target.checked);
                 if (e.target.checked) {
@@ -560,10 +772,14 @@ export function EditListingForm(props: EditListingFormProps) {
                 }
               }}
               disabled={isSubmitting}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500" />
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+            />
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                <Globe size={14} className={isOnline ? "text-cyan-600" : "text-gray-400"} />
+                <Globe
+                  size={14}
+                  className={isOnline ? "text-cyan-600" : "text-gray-400"}
+                />
                 Online service
               </p>
               <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
@@ -575,25 +791,48 @@ export function EditListingForm(props: EditListingFormProps) {
 
         {!isOnline && (
           <Field label="Area / address">
-            <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} disabled={isSubmitting} className={inputClass} />
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              disabled={isSubmitting}
+              className={inputClass}
+            />
           </Field>
         )}
 
         <Field label="University / primary area">
           <div className="relative">
-            <select value={universityId} onChange={(e) => setUniversityId(e.target.value)} disabled={isSubmitting} className={`${inputClass} appearance-none pr-10`}>
+            <select
+              value={universityId}
+              onChange={(e) => setUniversityId(e.target.value)}
+              disabled={isSubmitting}
+              className={`${inputClass} appearance-none pr-10`}
+            >
               <option value="">Select a university</option>
               {universities.map((u) => (
-                <option key={u.id} value={u.id} disabled={!u.isAvailable}>{u.name}{!u.isAvailable ? " (coming soon)" : ""}</option>
+                <option key={u.id} value={u.id} disabled={!u.isAvailable}>
+                  {u.name}
+                  {!u.isAvailable ? " (coming soon)" : ""}
+                </option>
               ))}
             </select>
-            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">▾</span>
+            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              ▾
+            </span>
           </div>
         </Field>
 
         {isService && !isOnline && (
           <Field label="Also serves (optional)">
-            <input type="text" value={serviceArea} onChange={(e) => setServiceArea(e.target.value)} placeholder="e.g., Nkana East, CBD, Buchi" disabled={isSubmitting} className={inputClass} />
+            <input
+              type="text"
+              value={serviceArea}
+              onChange={(e) => setServiceArea(e.target.value)}
+              placeholder="e.g., Nkana East, CBD, Buchi"
+              disabled={isSubmitting}
+              className={inputClass}
+            />
           </Field>
         )}
 
@@ -624,7 +863,8 @@ export function EditListingForm(props: EditListingFormProps) {
               </p>
             ) : (
               <p className="mt-2 text-xs text-gray-400">
-                Tap the map to pin your exact location, or use &quot;My Location&quot;. Buyers will see this pin on the Peza Map.
+                Tap the map to pin your exact location, or use &quot;My Location&quot;.
+                Buyers will see this pin on the Peza Map.
               </p>
             )}
           </Field>
@@ -634,7 +874,8 @@ export function EditListingForm(props: EditListingFormProps) {
           <div className="flex items-start gap-2 rounded-lg bg-cyan-50 border border-cyan-200 p-3">
             <Globe size={14} className="mt-0.5 shrink-0 text-cyan-600" />
             <p className="text-xs text-cyan-900 leading-relaxed">
-              Your listing will show a <strong>🌐 Online</strong> badge and won&apos;t appear on the map.
+              Your listing will show a <strong>🌐 Online</strong> badge and won&apos;t
+              appear on the map.
             </p>
           </div>
         )}
@@ -642,23 +883,44 @@ export function EditListingForm(props: EditListingFormProps) {
 
       <Section icon={<Phone size={16} />} title="Contact">
         <Field label="WhatsApp number">
-          <input type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} disabled={isSubmitting} className={inputClass} />
+          <input
+            type="tel"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            disabled={isSubmitting}
+            className={inputClass}
+          />
         </Field>
       </Section>
 
       <Section icon={<ImageIcon size={16} />} title="Photos">
-        <MultiImageUploader onUpload={(urls) => setImageUrls(urls)} initialImages={imageUrls} maxImages={2} />
+        <MultiImageUploader
+          onUpload={(urls) => setImageUrls(urls)}
+          initialImages={imageUrls}
+          maxImages={2}
+        />
       </Section>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600">{error}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600">
+          {error}
+        </div>
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <button type="button" onClick={() => router.back()} disabled={isSubmitting}
-          className="w-full rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto">Cancel</button>
-        <button type="submit" disabled={isSubmitting}
-          className="w-full rounded-lg bg-[var(--nexora-primary)] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)] disabled:opacity-50 sm:w-auto">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          disabled={isSubmitting}
+          className="w-full rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full rounded-lg bg-[var(--nexora-primary)] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)] disabled:opacity-50 sm:w-auto"
+        >
           <span className="inline-flex items-center gap-2">
             {isSubmitting ? "Saving..." : "Save Changes"}
             {!isSubmitting && <ArrowRight size={14} />}
@@ -670,12 +932,21 @@ export function EditListingForm(props: EditListingFormProps) {
 }
 
 /* ──────────────────────────────────────────────── */
-/* Sub-components (unchanged)                      */
+/* Sub-components                                  */
 /* ──────────────────────────────────────────────── */
 
-const inputClass = "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/15 disabled:bg-gray-50";
+const inputClass =
+  "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/15 disabled:bg-gray-50";
 
-function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+function Section({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -687,10 +958,18 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-medium text-gray-600">{label}</label>
+      <label className="mb-1.5 block text-xs font-medium text-gray-600">
+        {label}
+      </label>
       {children}
     </div>
   );

@@ -12,6 +12,7 @@ import {
 } from "@/types/service";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
 import { timeAgo } from "@/lib/timeUtils";
+import { optimizeCardImage } from "@/lib/imageUrl";
 import {
   isWishlisted,
   toggleWishlist,
@@ -24,9 +25,6 @@ interface ServiceCardProps {
 
 const NEW_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 
-// ─────────────────────────────────────────────────────────
-// Small reusable heart button (safe inside a Link)
-// ─────────────────────────────────────────────────────────
 function WishlistHeart({ id }: { id: string }) {
   const [saved, setSaved] = useState(false);
 
@@ -67,7 +65,9 @@ function WishlistHeart({ id }: { id: string }) {
 }
 
 export function ServiceCard({ service }: ServiceCardProps) {
-  const primaryImage = service.imageUrls?.[0] || null;
+  const rawImage = service.imageUrls?.[0] || null;
+  const primaryImage = rawImage ? optimizeCardImage(rawImage) : null;
+
   const cat = SERVICE_CATEGORIES.find((c) => c.id === service.category);
   const isInactive = service.status !== "available";
   const isBoosted = isServiceBoosted(service);
@@ -99,6 +99,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
             src={primaryImage}
             alt={service.title}
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
@@ -113,7 +114,6 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
-        {/* Boost badge — icon only, stacked top-right */}
         {isBoosted && (
           <span
             className={`absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-md ${
@@ -125,7 +125,6 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
-        {/* Discount badge */}
         {hasDiscount && !isInactive && (
           <span className="absolute right-2 top-2 inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-red-500 to-pink-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
             <Flame size={10} fill="currentColor" />
@@ -139,14 +138,12 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
-        {/* ❤️ Wishlist heart (bottom-right) */}
         <div className="absolute bottom-2 right-2">
           <WishlistHeart id={service.id} />
         </div>
       </div>
 
       <div className="p-3">
-        {/* Title row with NEW badge */}
         <div className="flex items-start gap-1.5">
           <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
             {service.title}
@@ -158,7 +155,6 @@ export function ServiceCard({ service }: ServiceCardProps) {
           )}
         </div>
 
-        {/* Price row */}
         {showPrice && discountedPrice !== null ? (
           <div className="mt-1 flex flex-wrap items-baseline gap-1.5">
             <p className="text-[13px] font-bold text-red-600">
@@ -188,7 +184,6 @@ export function ServiceCard({ service }: ServiceCardProps) {
           {getUniversityShortLabel(service.universityId)}
         </p>
 
-        {/* Listed time */}
         {service.createdAt && (
           <p className="mt-1 text-[10px] text-gray-400">
             Listed {timeAgo(service.createdAt)}

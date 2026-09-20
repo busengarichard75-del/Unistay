@@ -2,15 +2,26 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MapPin, ShoppingBag, Zap, Flame, Heart, Camera } from "lucide-react";
+import {
+  MapPin,
+  ShoppingBag,
+  Zap,
+  Flame,
+  Heart,
+  Camera,
+  Package,
+} from "lucide-react";
 import {
   Product,
   isProductBoosted,
   isProductDiscountActive,
   getProductDiscountedPrice,
+  getQuantityLabel,
+  getProductSellerName,
 } from "@/types/product";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
 import { timeAgo } from "@/lib/timeUtils";
+import { optimizeCardImage, optimizeAvatar } from "@/lib/imageUrl";
 import {
   isWishlisted,
   toggleWishlist,
@@ -66,7 +77,11 @@ function WishlistHeart({ id }: { id: string }) {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const primaryImage = product.imageUrls?.[0] || null;
+  const rawImage = product.imageUrls?.[0] || null;
+  const primaryImage = rawImage ? optimizeCardImage(rawImage) : null;
+  const optimizedSellerAvatar = product.sellerPhotoURL
+    ? optimizeAvatar(product.sellerPhotoURL)
+    : null;
   const photoCount = product.imageUrls?.length ?? 0;
 
   const isSold = product.status === "sold";
@@ -75,6 +90,29 @@ export function ProductCard({ product }: ProductCardProps) {
   const discountedPrice = getProductDiscountedPrice(product);
   const isNew =
     !!product.createdAt && Date.now() - product.createdAt < NEW_THRESHOLD_MS;
+
+  // ─── 📦 Quantity badge ───
+  const qtyInfo = getQuantityLabel(product);
+  const qtyToneClass = qtyInfo
+    ? qtyInfo.tone === "green"
+      ? "text-green-700 bg-green-50 border-green-100"
+      : qtyInfo.tone === "amber"
+      ? "text-amber-700 bg-amber-50 border-amber-100"
+      : "text-red-700 bg-red-50 border-red-100"
+    : "";
+
+  // ─── 👤 Seller pill ───
+  const sellerName = getProductSellerName(product);
+  const sellerInitials = sellerName
+    ? sellerName
+        .split(" ")
+        .map((n) => n[0])
+        .filter(Boolean)
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "";
+  const showSellerPill = !!sellerName;
 
   return (
     <Link
@@ -89,6 +127,7 @@ export function ProductCard({ product }: ProductCardProps) {
             src={primaryImage}
             alt={product.name}
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
@@ -128,6 +167,26 @@ export function ProductCard({ product }: ProductCardProps) {
           </span>
         )}
 
+        {/* 👤 Small seller pill (bottom-left) */}
+        {showSellerPill && (
+          <span className="pointer-events-none absolute bottom-2 left-2 inline-flex max-w-[calc(100%-4rem)] items-center gap-1 rounded-full bg-black/55 py-0.5 pl-0.5 pr-2 text-[10px] font-medium text-white shadow-sm backdrop-blur-sm">
+            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-gray-700">
+              {optimizedSellerAvatar ? (
+                <img
+                  src={optimizedSellerAvatar}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-[8px] font-bold">{sellerInitials}</span>
+              )}
+            </span>
+            <span className="truncate">{sellerName}</span>
+          </span>
+        )}
+
         {/* 📷 Photo count (bottom-right) */}
         {photoCount > 1 && (
           <span className="pointer-events-none absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm backdrop-blur-sm">
@@ -164,6 +223,16 @@ export function ProductCard({ product }: ProductCardProps) {
           <p className="mt-1 text-sm font-bold text-[var(--nexora-navy)]">
             K{product.price.toLocaleString()}
           </p>
+        )}
+
+        {/* 📦 Quantity badge (only when set) */}
+        {qtyInfo && (
+          <span
+            className={`mt-1.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${qtyToneClass}`}
+          >
+            <Package size={9} aria-hidden="true" />
+            {qtyInfo.label}
+          </span>
         )}
 
         <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-gray-500">

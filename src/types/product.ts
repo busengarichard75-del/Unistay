@@ -46,6 +46,19 @@ export interface Product {
   adminHidden?: boolean;
   adminHiddenReason?: string | null;
 
+  // ─── Stock count (optional) ───
+  // If unset → card shows no quantity badge (one-off sellers stay clean).
+  // If 0 → card shows "Out of stock".
+  // If > 0 → card shows "📦 N available" (amber if ≤3).
+  quantity?: number;
+
+  // ─── Seller snapshot (denormalized for instant card rendering) ───
+  // Copied from the seller's user doc at listing time. Avoids an extra
+  // Firestore read per card on browse pages.
+  sellerName?: string;
+  sellerBusinessName?: string;
+  sellerPhotoURL?: string;
+
   // ─── Boost ───
   isBoosted?: boolean;
   boostedAt?: number | null;
@@ -62,7 +75,6 @@ export interface Product {
 
 // ─────────────────────────────────────────────────────────
 // CATEGORIES — order here = order of tabs on /marketplace
-// Only categories with ≥1 listing show as tabs.
 // ─────────────────────────────────────────────────────────
 export const PRODUCT_CATEGORIES: { id: ProductCategory; label: string; icon: string }[] = [
   { id: "phones",      label: "Phones",       icon: "📱" },
@@ -92,7 +104,6 @@ export const PRODUCT_STATUSES: { id: ProductStatus; label: string }[] = [
 export function getProductCategoryLabel(id: string): string {
   const found = PRODUCT_CATEGORIES.find((c) => c.id === id);
   if (found) return found.label;
-  // Legacy free-text category — title-case it
   return id
     .split(/[\s_-]+/)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -101,6 +112,30 @@ export function getProductCategoryLabel(id: string): string {
 
 export function getProductCategoryIcon(id: string): string {
   return PRODUCT_CATEGORIES.find((c) => c.id === id)?.icon || "🏷️";
+}
+
+// ─── Quantity helpers ───
+export function getQuantityLabel(p: Product): {
+  label: string;
+  tone: "green" | "amber" | "red";
+} | null {
+  if (p.quantity === undefined || p.quantity === null) return null;
+  if (p.quantity <= 0) {
+    return { label: "Out of stock", tone: "red" };
+  }
+  if (p.quantity <= 3) {
+    return { label: `Only ${p.quantity} left`, tone: "amber" };
+  }
+  return { label: `${p.quantity} available`, tone: "green" };
+}
+
+// ─── Seller display name helper ───
+export function getProductSellerName(p: Product): string {
+  return (
+    p.sellerBusinessName?.trim() ||
+    p.sellerName?.trim() ||
+    ""
+  );
 }
 
 // ─── Boost helpers ───
