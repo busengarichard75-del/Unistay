@@ -37,9 +37,9 @@ export interface ListingFilterState {
   hideSold: boolean;              // products only
 
   // Properties only
-  gender: string | null;          // "male" | "female"
-  distance: string | null;        // "under5" | "5to15" | "15to30" | "over30"
-  amenities: string[];            // multi-select (base + additional)
+  gender: string | null;
+  distance: string | null;
+  amenities: string[];
 
   sort: SortOption;
 }
@@ -71,7 +71,9 @@ export const DEFAULT_PROPERTY_FILTERS: ListingFilterState = {
 // ─────────────────────────────────────────────────────────
 // PRICE BUCKETS
 // ─────────────────────────────────────────────────────────
+// "Free" is at the top — a category of its own, not merged with "Under K50".
 export const SERVICE_PRICE_BUCKETS: { id: string; label: string; icon: string }[] = [
+  { id: "free",      label: "Free",              icon: "🎁" },
   { id: "under_50",  label: "Under K50",         icon: "💸" },
   { id: "50_150",    label: "K50 – K150",        icon: "💰" },
   { id: "150_500",   label: "K150 – K500",       icon: "💎" },
@@ -99,7 +101,6 @@ export const GENDER_OPTIONS: { id: string; label: string }[] = [
   { id: "female", label: "Female only" },
 ];
 
-// Real enum values from types/property.ts
 export const DISTANCE_OPTIONS: { id: string; label: string }[] = [
   { id: "under5",  label: "Within 5 min" },
   { id: "5to15",   label: "5 – 15 min" },
@@ -107,9 +108,6 @@ export const DISTANCE_OPTIONS: { id: string; label: string }[] = [
   { id: "over30",  label: "30+ min" },
 ];
 
-// Base amenities always available as filters.
-// Additional amenities from `additionalAmenities` are ALSO filterable —
-// anything a landlord typed will show up if the user has typed it before.
 export const BASE_AMENITY_KEYS = ["electricity", "water", "security"] as const;
 
 export const COMMON_AMENITIES: string[] = [
@@ -132,9 +130,12 @@ export const SORT_OPTIONS: { id: SortOption; label: string }[] = [
 ];
 
 // ─────────────────────────────────────────────────────────
-// INTERNAL — effective price (respects discounts)
+// INTERNAL — effective price (respects discounts + free)
+// Free items return 0 so they sort to the top of "cheapest".
 // ─────────────────────────────────────────────────────────
 function serviceEffectivePrice(s: Service): number | null {
+  // 🎁 Free services rank as 0 → cheapest first shows them at the top
+  if (s.priceType === "free") return 0;
   if (s.priceType !== "from" || !s.priceFrom) return null;
   const d = getServiceDiscountedPrice(s);
   return d !== null ? d : s.priceFrom;
@@ -146,11 +147,17 @@ function productEffectivePrice(p: Product): number {
 }
 
 // ─────────────────────────────────────────────────────────
-// MATCH — service price
+// MATCH — service price bucket
 // ─────────────────────────────────────────────────────────
 function matchesServicePrice(s: Service, bucket: string | null): boolean {
   if (!bucket) return true;
+
+  if (bucket === "free") return s.priceType === "free";
   if (bucket === "contact") return s.priceType === "contact";
+
+  // If a service is free and user filtered by a paid bucket → exclude it
+  if (s.priceType === "free") return false;
+
   if (s.priceType !== "from" || !s.priceFrom) return false;
   const price = serviceEffectivePrice(s) ?? s.priceFrom;
 
@@ -164,7 +171,7 @@ function matchesServicePrice(s: Service, bucket: string | null): boolean {
 }
 
 // ─────────────────────────────────────────────────────────
-// MATCH — product price
+// MATCH — product price bucket
 // ─────────────────────────────────────────────────────────
 function matchesProductPrice(p: Product, bucket: string | null): boolean {
   if (!bucket) return true;
@@ -278,22 +285,14 @@ interface PropertyLike {
   location?: string;
 }
 
-// ─────────────────────────────────────────────────────────
-// HELPER — does the property have this amenity?
-// Handles both the base amenity object AND additionalAmenities[].
-// ─────────────────────────────────────────────────────────
 function propertyHasAmenity(p: PropertyLike, amenity: string): boolean {
   const key = amenity.toLowerCase().trim();
-
-  // Base amenities (object)
   const base = p.amenities;
   if (base) {
     if (key === "electricity" && base.electricity) return true;
     if (key === "water" && base.water) return true;
     if (key === "security" && base.security) return true;
   }
-
-  // Additional (free-text) amenities
   const extras = p.additionalAmenities || [];
   return extras.some((e) => e.toLowerCase().trim().includes(key));
 }
@@ -315,35 +314,29 @@ export function applyPropertyFilters<T extends PropertyLike>(
     if (p.isActive === false) return false;
     if (universityId && p.universityId !== universityId) return false;
 
-    // Price
     if (filters.priceBucket && !matchesPropertyPrice(p.price ?? 0, filters.priceBucket)) {
       return false;
     }
 
-    // Gender — "mixed" matches BOTH male and female filters
     if (filters.gender) {
       const g = (p.genderPreference || "mixed").toLowerCase();
       if (g !== "mixed" && g !== filters.gender) return false;
     }
 
-    // Distance — exact enum match
     if (filters.distance) {
       if ((p.distanceBucket || "") !== filters.distance) return false;
     }
 
-    // Amenities — every selected amenity must be present
     if (filters.amenities.length > 0) {
       const ok = filters.amenities.every((a) => propertyHasAmenity(p, a));
       if (!ok) return false;
     }
 
-    // Boosted only
     if (filters.boostedOnly) {
       const isB = !!p.isBoosted && (!p.boostExpiry || p.boostExpiry > now);
       if (!isB) return false;
     }
 
-    // Keyword
     if (q) {
       const hay = `${p.title || ""} ${p.location || ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -368,6 +361,8 @@ function sortServices(list: Service[], sort: SortOption): Service[] {
       return copy.sort((a, b) => {
         const pa = serviceEffectivePrice(a);
         const pb = serviceEffectivePrice(b);
+        // Contact-for-price items (null) sink to bottom.
+        // Free items (0) surface to top.
         if (pa === null && pb === null) return 0;
         if (pa === null) return 1;
         if (pb === null) return -1;
@@ -480,7 +475,6 @@ function sortProperties<T extends PropertyLike>(
 
     case "featured":
     default:
-      // Preserve existing homepage behavior: boosted → then title A–Z
       return copy.sort((a, b) => {
         const aB = isB(a) ? 1 : 0;
         const bB = isB(b) ? 1 : 0;

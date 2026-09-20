@@ -39,6 +39,7 @@ import {
   Timer,
   Globe,
   Package,
+  Gift,
 } from "lucide-react";
 
 const PropertyMap = dynamic(
@@ -48,6 +49,7 @@ const PropertyMap = dynamic(
 
 type ListingType = "service" | "product";
 type DiscountDuration = "daily" | "weekly" | "monthly";
+type PriceType = "free" | "from" | "contact";
 
 const ALL_DAYS: AvailabilityDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
@@ -81,7 +83,7 @@ export function AddListingForm() {
 
   // Service-specific
   const [serviceCategory, setServiceCategory] = useState<ServiceCategory>("barber");
-  const [priceType, setPriceType] = useState<"from" | "contact">("from");
+  const [priceType, setPriceType] = useState<PriceType>("from");
   const [priceFrom, setPriceFrom] = useState("");
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(["cash"]);
   const [serviceArea, setServiceArea] = useState("");
@@ -97,8 +99,6 @@ export function AddListingForm() {
   const [price, setPrice] = useState("");
   const [productCategory, setProductCategory] = useState<string>("");
   const [condition, setCondition] = useState<ProductCondition>("used");
-
-  // 📦 Stock count (product only)
   const [quantity, setQuantity] = useState("");
 
   // Flash deal
@@ -114,6 +114,16 @@ export function AddListingForm() {
     if (user?.university && !universityId) setUniversityId(user.university);
   }, [user, whatsapp, universityId]);
 
+  // 🎁 When service is free → auto-remove payment methods + reset discount
+  useEffect(() => {
+    if (type === "service" && priceType === "free") {
+      setPaymentMethods([]);
+      setHasDiscount(false);
+    } else if (type === "service" && priceType === "from" && paymentMethods.length === 0) {
+      setPaymentMethods(["cash"]);
+    }
+  }, [type, priceType, paymentMethods.length]);
+
   function toggleDay(day: AvailabilityDay) {
     setAvailDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
@@ -126,8 +136,11 @@ export function AddListingForm() {
     );
   }
 
+  // 🎁 Free services don't need a flash deal
+  const isFreeService = type === "service" && priceType === "free";
   const showDiscountSection =
-    type === "product" || (type === "service" && priceType === "from");
+    !isFreeService &&
+    (type === "product" || (type === "service" && priceType === "from"));
 
   const showMapPicker = !(type === "service" && isOnline);
 
@@ -159,7 +172,7 @@ export function AddListingForm() {
     }
     if (type === "service" && priceType === "from") {
       if (!priceFrom || Number(priceFrom) <= 0) {
-        setError("Please enter a starting price, or choose 'Contact for price'.");
+        setError("Please enter a starting price, or choose another pricing option.");
         return;
       }
     }
@@ -236,12 +249,18 @@ export function AddListingForm() {
             note: availNote.trim() || undefined,
           },
           priceType,
-          priceFrom: priceType === "from" ? Number(priceFrom) : undefined,
-          paymentMethods,
+          // Free = 0 explicitly; From = priceFrom; Contact = undefined
+          priceFrom:
+            priceType === "from"
+              ? Number(priceFrom)
+              : priceType === "free"
+              ? 0
+              : undefined,
+          // Free services auto-clear payment methods
+          paymentMethods: priceType === "free" ? [] : paymentMethods,
           serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
         });
       } else {
-        // ── Product: attach quantity + seller snapshot ──
         const qty = quantity.trim() === "" ? undefined : Number(quantity);
 
         await addProduct({
@@ -360,7 +379,18 @@ export function AddListingForm() {
             </Field>
 
             <Field label="Pricing">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPriceType("free")}
+                  className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
+                    priceType === "free"
+                      ? "border-emerald-500 bg-emerald-50/60 text-emerald-800"
+                      : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                  }`}
+                >
+                  🎁 Free
+                </button>
                 <button
                   type="button"
                   onClick={() => setPriceType("from")}
@@ -381,9 +411,20 @@ export function AddListingForm() {
                       : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
                   }`}
                 >
-                  💬 Contact for price
+                  💬 Contact
                 </button>
               </div>
+
+              {priceType === "free" && (
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                  <Gift size={14} className="mt-0.5 shrink-0 text-emerald-600" />
+                  <p className="text-xs leading-relaxed text-emerald-900">
+                    <strong>This service will show as 🎁 FREE</strong> — no payment
+                    required. Great for community drives, volunteer work, or free
+                    trials.
+                  </p>
+                </div>
+              )}
 
               {priceType === "from" && (
                 <div className="mt-3">
@@ -405,26 +446,29 @@ export function AddListingForm() {
               )}
             </Field>
 
-            <Field label="Payment methods accepted">
-              <div className="grid grid-cols-3 gap-2">
-                {(["cash", "mobile_money", "bank_transfer"] as PaymentMethod[]).map(
-                  (m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => togglePayment(m)}
-                      className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
-                        paymentMethods.includes(m)
-                          ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
-                          : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                      }`}
-                    >
-                      {PAYMENT_METHOD_LABELS[m]}
-                    </button>
-                  )
-                )}
-              </div>
-            </Field>
+            {/* Payment methods — hidden when free */}
+            {priceType !== "free" && (
+              <Field label="Payment methods accepted">
+                <div className="grid grid-cols-3 gap-2">
+                  {(["cash", "mobile_money", "bank_transfer"] as PaymentMethod[]).map(
+                    (m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => togglePayment(m)}
+                        className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
+                          paymentMethods.includes(m)
+                            ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                            : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                        }`}
+                      >
+                        {PAYMENT_METHOD_LABELS[m]}
+                      </button>
+                    )
+                  )}
+                </div>
+              </Field>
+            )}
           </>
         ) : (
           <>
@@ -479,7 +523,6 @@ export function AddListingForm() {
               </div>
             </Field>
 
-            {/* 📦 Stock quantity */}
             <Field label="How many do you have? (optional)">
               <div className="relative">
                 <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
@@ -505,7 +548,7 @@ export function AddListingForm() {
         )}
       </Section>
 
-      {/* ─── Flash deal ─── */}
+      {/* ─── Flash deal (auto-hidden for free services) ─── */}
       {showDiscountSection && (
         <section className="space-y-4 rounded-2xl border border-red-100 bg-gradient-to-br from-red-50/40 to-white p-6 shadow-sm">
           <div className="flex items-center gap-2 border-b border-red-100 pb-3">

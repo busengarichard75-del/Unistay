@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ import {
   Timer,
   Globe,
   Package,
+  Gift,
 } from "lucide-react";
 
 const PropertyMap = dynamic(
@@ -55,6 +56,7 @@ type EditListingFormProps =
   | { type: "product"; initialProduct: Product };
 
 type DiscountDuration = "daily" | "weekly" | "monthly";
+type PriceType = "free" | "from" | "contact";
 
 const ALL_DAYS: AvailabilityDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
@@ -117,8 +119,11 @@ export function EditListingForm(props: EditListingFormProps) {
   const [serviceCategory, setServiceCategory] = useState<ServiceCategory>(
     isService ? initialService!.category : "barber"
   );
-  const [priceType, setPriceType] = useState<"from" | "contact">(
-    isService ? initialService!.priceType || "from" : "from"
+  // Legacy safe: old services may have undefined priceType → treat as "from"
+  const [priceType, setPriceType] = useState<PriceType>(
+    isService
+      ? (initialService!.priceType as PriceType) || "from"
+      : "from"
   );
   const [priceFrom, setPriceFrom] = useState(
     isService && initialService!.priceFrom ? String(initialService!.priceFrom) : ""
@@ -157,8 +162,6 @@ export function EditListingForm(props: EditListingFormProps) {
   const [condition, setCondition] = useState<ProductCondition>(
     !isService ? initialProduct!.condition : "used"
   );
-
-  // 📦 Stock count (product only)
   const [quantity, setQuantity] = useState(
     !isService && initialProduct!.quantity !== undefined && initialProduct!.quantity !== null
       ? String(initialProduct!.quantity)
@@ -189,6 +192,32 @@ export function EditListingForm(props: EditListingFormProps) {
     !!productCategory &&
     !PRODUCT_CATEGORIES.some((c) => c.id === productCategory);
 
+  // 🎁 Track mount so the auto-cleanup effect only runs on user-initiated changes
+  const hasMounted = useRef(false);
+
+  /**
+   * Auto-cleanup when the provider toggles to Free:
+   *  - clears payment methods
+   *  - disables flash deal (a free service can't be discounted)
+   * When switching back to "from" and no methods are set, default to cash.
+   * Only runs AFTER the first render so we don't wipe loaded state on mount.
+   */
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
+    if (!isService) return;
+
+    if (priceType === "free") {
+      setPaymentMethods([]);
+      setHasDiscount(false);
+    } else if (priceType === "from" && paymentMethods.length === 0) {
+      setPaymentMethods(["cash"]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceType]);
+
   function toggleDay(day: AvailabilityDay) {
     setAvailDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
@@ -201,7 +230,11 @@ export function EditListingForm(props: EditListingFormProps) {
     );
   }
 
-  const showDiscountSection = !isService || (isService && priceType === "from");
+  // 🎁 Free services don't need a flash deal
+  const isFreeService = isService && priceType === "free";
+  const showDiscountSection =
+    !isFreeService &&
+    (!isService || (isService && priceType === "from"));
 
   const showMapPicker = !(isService && isOnline);
 
@@ -233,7 +266,7 @@ export function EditListingForm(props: EditListingFormProps) {
     }
     if (isService && priceType === "from") {
       if (!priceFrom || Number(priceFrom) <= 0) {
-        setError("Please enter a starting price, or choose 'Contact for price'.");
+        setError("Please enter a starting price, or choose another pricing option.");
         return;
       }
     }
@@ -316,12 +349,18 @@ export function EditListingForm(props: EditListingFormProps) {
             note: availNote.trim() || undefined,
           },
           priceType,
-          priceFrom: priceType === "from" ? Number(priceFrom) : undefined,
-          paymentMethods,
+          // Free = 0; From = priceFrom; Contact = undefined
+          priceFrom:
+            priceType === "from"
+              ? Number(priceFrom)
+              : priceType === "free"
+              ? 0
+              : undefined,
+          // Free services auto-clear payment methods
+          paymentMethods: priceType === "free" ? [] : paymentMethods,
           serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
         });
       } else if (!isService && initialProduct) {
-        // ── Product: refresh quantity + seller snapshot ──
         const qty = quantity.trim() === "" ? undefined : Number(quantity);
 
         await updateProduct(initialProduct.id, {
@@ -421,7 +460,18 @@ export function EditListingForm(props: EditListingFormProps) {
             </Field>
 
             <Field label="Pricing">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPriceType("free")}
+                  className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
+                    priceType === "free"
+                      ? "border-emerald-500 bg-emerald-50/60 text-emerald-800"
+                      : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                  }`}
+                >
+                  🎁 Free
+                </button>
                 <button
                   type="button"
                   onClick={() => setPriceType("from")}
@@ -442,9 +492,20 @@ export function EditListingForm(props: EditListingFormProps) {
                       : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
                   }`}
                 >
-                  💬 Contact for price
+                  💬 Contact
                 </button>
               </div>
+
+              {priceType === "free" && (
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                  <Gift size={14} className="mt-0.5 shrink-0 text-emerald-600" />
+                  <p className="text-xs leading-relaxed text-emerald-900">
+                    <strong>This service will show as 🎁 FREE</strong> — no payment
+                    required. Payment methods and flash deals are hidden when free.
+                  </p>
+                </div>
+              )}
+
               {priceType === "from" && (
                 <div className="mt-3">
                   <div className="relative">
@@ -465,24 +526,27 @@ export function EditListingForm(props: EditListingFormProps) {
               )}
             </Field>
 
-            <Field label="Payment methods accepted">
-              <div className="grid grid-cols-3 gap-2">
-                {(["cash", "mobile_money", "bank_transfer"] as PaymentMethod[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => togglePayment(m)}
-                    className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
-                      paymentMethods.includes(m)
-                        ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
-                        : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
-                    }`}
-                  >
-                    {PAYMENT_METHOD_LABELS[m]}
-                  </button>
-                ))}
-              </div>
-            </Field>
+            {/* Payment methods — hidden when free */}
+            {priceType !== "free" && (
+              <Field label="Payment methods accepted">
+                <div className="grid grid-cols-3 gap-2">
+                  {(["cash", "mobile_money", "bank_transfer"] as PaymentMethod[]).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => togglePayment(m)}
+                      className={`rounded-xl border-2 py-2.5 text-xs font-medium transition-all ${
+                        paymentMethods.includes(m)
+                          ? "border-[var(--nexora-primary)] bg-blue-50/50 text-[var(--nexora-navy)]"
+                          : "border-gray-100 bg-white text-gray-700 hover:border-gray-200"
+                      }`}
+                    >
+                      {PAYMENT_METHOD_LABELS[m]}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            )}
           </>
         ) : (
           <>
@@ -547,7 +611,6 @@ export function EditListingForm(props: EditListingFormProps) {
               </div>
             </Field>
 
-            {/* 📦 Stock quantity */}
             <Field label="How many do you have? (optional)">
               <div className="relative">
                 <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
@@ -573,6 +636,7 @@ export function EditListingForm(props: EditListingFormProps) {
         )}
       </Section>
 
+      {/* ─── Flash deal (auto-hidden for free services) ─── */}
       {showDiscountSection && (
         <section className="space-y-4 rounded-2xl border border-red-100 bg-gradient-to-br from-red-50/40 to-white p-6 shadow-sm">
           <div className="flex items-center gap-2 border-b border-red-100 pb-3">

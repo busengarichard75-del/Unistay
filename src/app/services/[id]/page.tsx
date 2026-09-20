@@ -12,10 +12,12 @@ import {
   AVAILABILITY_DAY_LABELS,
   PAYMENT_METHOD_LABELS,
   AvailabilityDay,
+  isServiceFree,
 } from "@/types/service";
 import { getUniversityFullName } from "@/lib/universityLabels";
 import { trackListing } from "@/lib/trackListing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { optimizeCardImage } from "@/lib/imageUrl";
 import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
 import { ReportButton } from "@/components/shared/ReportButton";
 import { ShareButton } from "@/components/shared/ShareButton";
@@ -32,6 +34,7 @@ import {
   Globe,
   Store,
   ChevronRight,
+  Gift,
 } from "lucide-react";
 
 export default function ServiceDetailPage() {
@@ -102,8 +105,10 @@ export default function ServiceDetailPage() {
   }
 
   const cat = SERVICE_CATEGORIES.find((c) => c.id === service.category);
-  const images = service.imageUrls || [];
+  const rawImages = service.imageUrls || [];
+  const images = rawImages.map((u) => optimizeCardImage(u));
   const isInactive = service.status !== "available";
+  const isFree = isServiceFree(service);
 
   const avail = service.availability;
   const availDaysLabel = avail?.days?.length
@@ -129,12 +134,18 @@ export default function ServiceDetailPage() {
       ? "Contact for price"
       : null;
 
-  const prefillMessage = `Hi, I found your "${service.title}" service listed on Peza. I'm interested — is it available?`;
+  // 🎁 Free services get a different prefill message
+  const prefillMessage = isFree
+    ? `Hi, I found your "${service.title}" service listed as FREE on Peza. I'm interested — is it still available?`
+    : `Hi, I found your "${service.title}" service listed on Peza. I'm interested — is it available?`;
 
   const viewMorePhotosHref = buildWhatsAppLink(
     service.whatsapp,
     `Hi, I saw your "${service.title}" on Peza. Can you share more photos?`
   );
+
+  // Payment methods section is irrelevant when free
+  const showPaymentMethods = !isFree && (service.paymentMethods?.length ?? 0) > 0;
 
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
@@ -160,6 +171,8 @@ export default function ServiceDetailPage() {
               <img
                 src={images[0]}
                 alt={service.title}
+                loading="eager"
+                decoding="async"
                 className="h-56 w-full object-cover transition-transform duration-300 hover:scale-[1.02] sm:h-72"
               />
             </button>
@@ -176,6 +189,8 @@ export default function ServiceDetailPage() {
                     <img
                       src={url}
                       alt={`${service.title} ${i + 2}`}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
                     />
                   </button>
@@ -212,15 +227,29 @@ export default function ServiceDetailPage() {
                   <Globe size={11} /> Online
                 </span>
               )}
+              {isFree && !isInactive && (
+                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+                  <Gift size={11} /> FREE
+                </span>
+              )}
               <h1 className="mt-2 text-xl font-bold text-[var(--nexora-navy)] sm:text-2xl">
                 {service.title}
               </h1>
 
-              {priceLabel && (
+              {isFree ? (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-2xl font-bold text-emerald-600">
+                    🎁 FREE
+                  </span>
+                  <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                    No payment required
+                  </span>
+                </div>
+              ) : priceLabel ? (
                 <p className="mt-2 text-lg font-bold text-[var(--nexora-primary)]">
                   {priceLabel}
                 </p>
-              )}
+              ) : null}
 
               <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
                 <MapPin size={14} className="shrink-0" />
@@ -243,7 +272,7 @@ export default function ServiceDetailPage() {
             )}
           </div>
 
-          {(availDaysLabel || availHoursLabel || availModeLabel || service.paymentMethods?.length) && (
+          {(availDaysLabel || availHoursLabel || availModeLabel || showPaymentMethods) && (
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
               {(availDaysLabel || availHoursLabel) && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700">
@@ -256,15 +285,16 @@ export default function ServiceDetailPage() {
                   {availModeLabel}
                 </span>
               )}
-              {service.paymentMethods?.map((m) => (
-                <span
-                  key={m}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700"
-                >
-                  <CreditCard size={12} />
-                  {PAYMENT_METHOD_LABELS[m]}
-                </span>
-              ))}
+              {showPaymentMethods &&
+                service.paymentMethods?.map((m) => (
+                  <span
+                    key={m}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700"
+                  >
+                    <CreditCard size={12} />
+                    {PAYMENT_METHOD_LABELS[m]}
+                  </span>
+                ))}
             </div>
           )}
 
@@ -310,7 +340,7 @@ export default function ServiceDetailPage() {
                 onTrack={() => trackListing("service", service.id, "whatsappClicks")}
                 size="lg"
                 fullWidth
-                label="Chat on WhatsApp"
+                label={isFree ? "Claim this free service" : "Chat on WhatsApp"}
               />
             </div>
           )}

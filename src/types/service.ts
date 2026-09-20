@@ -28,7 +28,11 @@ export interface ServiceAvailability {
   note?: string;
 }
 
-export type ServicePriceType = "from" | "contact";
+// ─── Pricing ───
+// "free"    → no payment, community/volunteer service
+// "from"    → starting price (requires priceFrom)
+// "contact" → contact provider for pricing
+export type ServicePriceType = "free" | "from" | "contact";
 export type PaymentMethod = "cash" | "mobile_money" | "bank_transfer";
 
 // ─── Boost tiers ───
@@ -85,7 +89,6 @@ export interface Service {
 
 // ─────────────────────────────────────────────────────────
 // CATEGORIES — order here = order of tabs on /services
-// Only categories with ≥1 listing show as tabs.
 // ─────────────────────────────────────────────────────────
 export const SERVICE_CATEGORIES: { id: ServiceCategory; label: string; icon: string }[] = [
   { id: "food",        label: "Food",          icon: "🍲" },
@@ -119,6 +122,26 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   bank_transfer: "Bank Transfer",
 };
 
+// ─── Pricing helpers ───
+
+/** Is this service free? */
+export function isServiceFree(s: Service): boolean {
+  return s.priceType === "free";
+}
+
+/**
+ * Human-readable price label for a service.
+ * Used by cards and detail pages.
+ */
+export function getServicePriceLabel(s: Service): string | null {
+  if (s.priceType === "free") return "FREE";
+  if (s.priceType === "contact") return "Contact for price";
+  if (s.priceType === "from" && s.priceFrom) {
+    return `From K${s.priceFrom.toLocaleString()}`;
+  }
+  return null;
+}
+
 // ─── Boost helpers ───
 export function isServiceBoosted(s: Service): boolean {
   if (!s.isBoosted) return false;
@@ -133,7 +156,9 @@ export function getServiceBoostDaysRemaining(s: Service): number {
 }
 
 // ─── Discount helpers ───
+// Free services cannot be discounted — isServiceDiscountActive returns false.
 export function isServiceDiscountActive(s: Service): boolean {
+  if (s.priceType === "free") return false;
   if (!s.discountPercent || s.discountPercent <= 0) return false;
   if (!s.discountExpiresAt) return false;
   return s.discountExpiresAt > Date.now();

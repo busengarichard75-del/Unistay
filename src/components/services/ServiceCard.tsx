@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MapPin, Wrench, Zap, Flame, Heart } from "lucide-react";
+import { MapPin, Wrench, Zap, Flame, Heart, Gift } from "lucide-react";
 import {
   Service,
   SERVICE_CATEGORIES,
   isServiceBoosted,
   isServiceDiscountActive,
   getServiceDiscountedPrice,
+  isServiceFree,
 } from "@/types/service";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
 import { timeAgo } from "@/lib/timeUtils";
@@ -71,6 +72,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
   const cat = SERVICE_CATEGORIES.find((c) => c.id === service.category);
   const isInactive = service.status !== "available";
   const isBoosted = isServiceBoosted(service);
+  const isFree = isServiceFree(service);
   const isNew =
     !!service.createdAt && Date.now() - service.createdAt < NEW_THRESHOLD_MS;
 
@@ -78,13 +80,17 @@ export function ServiceCard({ service }: ServiceCardProps) {
   const discountedPrice = getServiceDiscountedPrice(service);
   const originalPrice = service.priceFrom || null;
 
-  const showPrice = service.priceType === "from" && originalPrice;
+  const showFromPrice = service.priceType === "from" && originalPrice;
   const priceLabel =
     service.priceType === "from" && originalPrice
       ? `From K${originalPrice.toLocaleString()}`
       : service.priceType === "contact"
       ? "Contact for price"
       : null;
+
+  // Both free + discount are impossible (discount deactivates for free),
+  // but boost + free can coexist → stack the boost badge.
+  const hasTopBadge = isFree || hasDiscount;
 
   return (
     <Link
@@ -114,10 +120,11 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
+        {/* ⚡ Boost badge — stacked top-right */}
         {isBoosted && (
           <span
             className={`absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-md ${
-              hasDiscount ? "top-9" : "top-2"
+              hasTopBadge ? "top-9" : "top-2"
             }`}
             title="Boosted"
           >
@@ -125,6 +132,15 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
+        {/* 🎁 FREE badge — primary, top-right */}
+        {isFree && !isInactive && (
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
+            <Gift size={10} />
+            FREE
+          </span>
+        )}
+
+        {/* 🔥 Discount badge */}
         {hasDiscount && !isInactive && (
           <span className="absolute right-2 top-2 inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-red-500 to-pink-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
             <Flame size={10} fill="currentColor" />
@@ -155,7 +171,13 @@ export function ServiceCard({ service }: ServiceCardProps) {
           )}
         </div>
 
-        {showPrice && discountedPrice !== null ? (
+        {/* Price row */}
+        {isFree ? (
+          /* 🎁 Free — bold green, no numbers */
+          <p className="mt-1 text-[13px] font-bold text-emerald-600">
+            🎁 FREE
+          </p>
+        ) : showFromPrice && discountedPrice !== null ? (
           <div className="mt-1 flex flex-wrap items-baseline gap-1.5">
             <p className="text-[13px] font-bold text-red-600">
               From K{discountedPrice.toLocaleString()}
