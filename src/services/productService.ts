@@ -118,3 +118,58 @@ export async function deleteProduct(id: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Get products in the same category, for "related listings" sidebars.
+ *
+ * - Excludes a specific ID (the current listing being viewed).
+ * - Skips sold items unless nothing else is available.
+ * - Optional universityId — when provided, prioritizes same-university items.
+ * - ⚡ Network-resilient: 3 attempts × 15s timeout.
+ *
+ * @param category      Category to fetch (e.g., "phones")
+ * @param excludeId     The current listing's ID (won't be returned)
+ * @param universityId  Optional — when set, prioritizes that campus
+ * @param limit         Max items to return (default 8)
+ */
+export async function getProductsByCategory(
+  category: string,
+  excludeId: string,
+  universityId?: string,
+  limit = 8
+): Promise<Product[]> {
+  try {
+    const q = query(
+      productsRef,
+      where("category", "==", category),
+      orderBy("createdAt", "desc")
+    );
+    const snap = await withRetry(
+      () => getDocs(q),
+      { shouldRetry: shouldRetryRead }
+    );
+
+    const all = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as Product))
+      .filter((p) => !p.adminHidden && p.id !== excludeId);
+
+    // Prefer available items; only fall back to sold if we don't have enough
+    const available = all.filter((p) => p.status === "available");
+    const sold = all.filter((p) => p.status !== "available");
+    let items = [...available, ...sold];
+
+    // If we have a university, prioritize same-campus items
+    if (universityId) {
+      items = items.sort((a, b) => {
+        const aMatch = a.universityId === universityId ? 0 : 1;
+        const bMatch = b.universityId === universityId ? 0 : 1;
+        return aMatch - bMatch;
+      });
+    }
+
+    return items.slice(0, limit);
+  } catch (error) {
+    console.error("Failed to fetch products by category (after retries):", error);
+    return [];
+  }
+}

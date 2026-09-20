@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
-import { getServiceById } from "@/services/serviceService";
+import { getServiceById, getServicesByCategory } from "@/services/serviceService";
 import {
   Service,
   SERVICE_CATEGORIES,
@@ -14,7 +14,7 @@ import {
   AvailabilityDay,
   isServiceFree,
 } from "@/types/service";
-import { getUniversityFullName } from "@/lib/universityLabels";
+import { getUniversityFullName, getUniversityShortLabel } from "@/lib/universityLabels";
 import { trackListing } from "@/lib/trackListing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { optimizeCardImage } from "@/lib/imageUrl";
@@ -22,6 +22,8 @@ import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButt
 import { ReportButton } from "@/components/shared/ReportButton";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
+import { RelatedListings } from "@/components/shared/RelatedListings";
+import { ServiceCard } from "@/components/services/ServiceCard";
 import {
   ArrowLeft,
   MapPin,
@@ -35,6 +37,7 @@ import {
   Store,
   ChevronRight,
   Gift,
+  Sparkles,
 } from "lucide-react";
 
 export default function ServiceDetailPage() {
@@ -47,6 +50,9 @@ export default function ServiceDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const tracked = useRef(false);
+
+  // ─── Related listings (Pinterest sidebar) ───
+  const [related, setRelated] = useState<Service[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -69,6 +75,29 @@ export default function ServiceDetailPage() {
     tracked.current = true;
     trackListing("service", id, "views");
   }, [id, service]);
+
+  // Fetch related once the main service is loaded
+  useEffect(() => {
+    if (!service) return;
+    let active = true;
+    const loadRelated = async () => {
+      try {
+        const items = await getServicesByCategory(
+          service.category,
+          service.id,
+          service.universityId,
+          8
+        );
+        if (active) setRelated(items);
+      } catch {
+        // silent
+      }
+    };
+    loadRelated();
+    return () => {
+      active = false;
+    };
+  }, [service]);
 
   if (isFetching) {
     return (
@@ -134,7 +163,6 @@ export default function ServiceDetailPage() {
       ? "Contact for price"
       : null;
 
-  // 🎁 Free services get a different prefill message
   const prefillMessage = isFree
     ? `Hi, I found your "${service.title}" service listed as FREE on Peza. I'm interested — is it still available?`
     : `Hi, I found your "${service.title}" service listed on Peza. I'm interested — is it available?`;
@@ -144,8 +172,14 @@ export default function ServiceDetailPage() {
     `Hi, I saw your "${service.title}" on Peza. Can you share more photos?`
   );
 
-  // Payment methods section is irrelevant when free
   const showPaymentMethods = !isFree && (service.paymentMethods?.length ?? 0) > 0;
+
+  // Sidebar subtitle + see-all link
+  const relatedTitle = cat?.label ? `More ${cat.label}` : "More services";
+  const relatedSubtitle = service.universityId
+    ? `near ${getUniversityShortLabel(service.universityId)}`
+    : undefined;
+  const relatedSeeAllHref = `/services?cat=${service.category}`;
 
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
@@ -160,217 +194,244 @@ export default function ServiceDetailPage() {
           Back
         </button>
 
-        {/* ─── Images ─── */}
-        {images.length > 0 && (
-          <>
-            <button
-              type="button"
-              onClick={() => setLightboxIndex(0)}
-              className="mb-3 block w-full overflow-hidden rounded-2xl"
-            >
-              <img
-                src={images[0]}
-                alt={service.title}
-                loading="eager"
-                decoding="async"
-                className="h-56 w-full object-cover transition-transform duration-300 hover:scale-[1.02] sm:h-72"
-              />
-            </button>
+        {/* ═══ Pinterest 2-column layout ═══ */}
+        <div
+          className={
+            related.length > 0
+              ? "grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]"
+              : "grid grid-cols-1 gap-6"
+          }
+        >
+          {/* ─── MAIN COLUMN ─── */}
+          <div className="min-w-0">
+            {/* ─── Images ─── */}
+            {images.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(0)}
+                  className="mb-3 block w-full overflow-hidden rounded-2xl"
+                >
+                  <img
+                    src={images[0]}
+                    alt={service.title}
+                    loading="eager"
+                    decoding="async"
+                    className="h-56 w-full object-cover transition-transform duration-300 hover:scale-[1.02] sm:h-72"
+                  />
+                </button>
 
-            {images.length > 1 && (
-              <div className="mb-3 grid grid-cols-2 gap-3">
-                {images.slice(1, 3).map((url, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setLightboxIndex(i + 1)}
-                    className="aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
+                {images.length > 1 && (
+                  <div className="mb-3 grid grid-cols-2 gap-3">
+                    {images.slice(1, 3).map((url, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setLightboxIndex(i + 1)}
+                        className="aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
+                      >
+                        <img
+                          src={url}
+                          alt={`${service.title} ${i + 2}`}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {viewMorePhotosHref && !isInactive && (
+                  <a
+                    href={viewMorePhotosHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trackListing("service", service.id, "whatsappClicks")}
+                    className="mb-4 flex w-full items-center justify-center gap-2 rounded-full border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[var(--nexora-primary)] hover:text-[var(--nexora-primary)]"
                   >
-                    <img
-                      src={url}
-                      alt={`${service.title} ${i + 2}`}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
-                    />
-                  </button>
-                ))}
-              </div>
+                    <ImagePlus size={14} />
+                    View more photos on WhatsApp
+                  </a>
+                )}
+              </>
             )}
 
-            {viewMorePhotosHref && !isInactive && (
-              <a
-                href={viewMorePhotosHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackListing("service", service.id, "whatsappClicks")}
-                className="mb-4 flex w-full items-center justify-center gap-2 rounded-full border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[var(--nexora-primary)] hover:text-[var(--nexora-primary)]"
-              >
-                <ImagePlus size={14} />
-                View more photos on WhatsApp
-              </a>
-            )}
-          </>
-        )}
+            {/* ─── Main info ─── */}
+            <div className="card-premium p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  {cat && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-[var(--nexora-primary)]">
+                      {cat.icon} {cat.label}
+                    </span>
+                  )}
+                  {service.isOnline && (
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+                      <Globe size={11} /> Online
+                    </span>
+                  )}
+                  {isFree && !isInactive && (
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+                      <Gift size={11} /> FREE
+                    </span>
+                  )}
+                  <h1 className="mt-2 text-xl font-bold text-[var(--nexora-navy)] sm:text-2xl">
+                    {service.title}
+                  </h1>
 
-        {/* ─── Main info ─── */}
-        <div className="card-premium p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              {cat && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-[var(--nexora-primary)]">
-                  {cat.icon} {cat.label}
-                </span>
-              )}
-              {service.isOnline && (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
-                  <Globe size={11} /> Online
-                </span>
-              )}
-              {isFree && !isInactive && (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
-                  <Gift size={11} /> FREE
-                </span>
-              )}
-              <h1 className="mt-2 text-xl font-bold text-[var(--nexora-navy)] sm:text-2xl">
-                {service.title}
-              </h1>
+                  {isFree ? (
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="text-2xl font-bold text-emerald-600">
+                        🎁 FREE
+                      </span>
+                      <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                        No payment required
+                      </span>
+                    </div>
+                  ) : priceLabel ? (
+                    <p className="mt-2 text-lg font-bold text-[var(--nexora-primary)]">
+                      {priceLabel}
+                    </p>
+                  ) : null}
 
-              {isFree ? (
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="text-2xl font-bold text-emerald-600">
-                    🎁 FREE
-                  </span>
-                  <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-                    No payment required
-                  </span>
+                  <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
+                    <MapPin size={14} className="shrink-0" />
+                    {service.location}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {getUniversityFullName(service.universityId)}
+                  </p>
+                  {service.serviceArea && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Also serves: {service.serviceArea}
+                    </p>
+                  )}
                 </div>
-              ) : priceLabel ? (
-                <p className="mt-2 text-lg font-bold text-[var(--nexora-primary)]">
-                  {priceLabel}
-                </p>
-              ) : null}
 
-              <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
-                <MapPin size={14} className="shrink-0" />
-                {service.location}
-              </p>
-              <p className="mt-1 text-xs text-gray-400">
-                {getUniversityFullName(service.universityId)}
-              </p>
-              {service.serviceArea && (
-                <p className="mt-1 text-xs text-gray-400">
-                  Also serves: {service.serviceArea}
-                </p>
-              )}
-            </div>
-
-            {isInactive && (
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-                Currently unavailable
-              </span>
-            )}
-          </div>
-
-          {(availDaysLabel || availHoursLabel || availModeLabel || showPaymentMethods) && (
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
-              {(availDaysLabel || availHoursLabel) && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700">
-                  <Clock size={12} />
-                  {[availDaysLabel, availHoursLabel].filter(Boolean).join(" · ")}
-                </span>
-              )}
-              {availModeLabel && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700">
-                  {availModeLabel}
-                </span>
-              )}
-              {showPaymentMethods &&
-                service.paymentMethods?.map((m) => (
-                  <span
-                    key={m}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700"
-                  >
-                    <CreditCard size={12} />
-                    {PAYMENT_METHOD_LABELS[m]}
+                {isInactive && (
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                    Currently unavailable
                   </span>
-                ))}
-            </div>
-          )}
-
-          {avail?.note && (
-            <p className="mt-2 text-xs text-gray-500 italic">📌 {avail.note}</p>
-          )}
-
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
-              <Eye size={12} />
-              {service.views || 0} views
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs text-green-700">
-              <ShieldCheck size={12} />
-              Verified Provider
-            </span>
-          </div>
-
-          {/* ─── View provider link ─── */}
-          <Link
-            href={`/provider/${service.ownerId}`}
-            className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
-                <Store size={14} />
+                )}
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-gray-500">Sold by</p>
-                <p className="truncate text-sm font-semibold text-[var(--nexora-navy)]">
-                  View provider profile
-                </p>
-              </div>
-            </div>
-            <ChevronRight size={16} className="shrink-0 text-gray-400" />
-          </Link>
 
-          {!isInactive && (
-            <div className="mt-4">
-              <WhatsAppContactButton
-                whatsapp={service.whatsapp}
-                message={prefillMessage}
-                onTrack={() => trackListing("service", service.id, "whatsappClicks")}
-                size="lg"
-                fullWidth
-                label={isFree ? "Claim this free service" : "Chat on WhatsApp"}
+              {(availDaysLabel || availHoursLabel || availModeLabel || showPaymentMethods) && (
+                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+                  {(availDaysLabel || availHoursLabel) && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700">
+                      <Clock size={12} />
+                      {[availDaysLabel, availHoursLabel].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                  {availModeLabel && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700">
+                      {availModeLabel}
+                    </span>
+                  )}
+                  {showPaymentMethods &&
+                    service.paymentMethods?.map((m) => (
+                      <span
+                        key={m}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700"
+                      >
+                        <CreditCard size={12} />
+                        {PAYMENT_METHOD_LABELS[m]}
+                      </span>
+                    ))}
+                </div>
+              )}
+
+              {avail?.note && (
+                <p className="mt-2 text-xs text-gray-500 italic">📌 {avail.note}</p>
+              )}
+
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
+                  <Eye size={12} />
+                  {service.views || 0} views
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs text-green-700">
+                  <ShieldCheck size={12} />
+                  Verified Provider
+                </span>
+              </div>
+
+              <Link
+                href={`/provider/${service.ownerId}`}
+                className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
+                    <Store size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500">Sold by</p>
+                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)]">
+                      View provider profile
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="shrink-0 text-gray-400" />
+              </Link>
+
+              {!isInactive && (
+                <div className="mt-4">
+                  <WhatsAppContactButton
+                    whatsapp={service.whatsapp}
+                    message={prefillMessage}
+                    onTrack={() => trackListing("service", service.id, "whatsappClicks")}
+                    size="lg"
+                    fullWidth
+                    label={isFree ? "Claim this free service" : "Chat on WhatsApp"}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* ─── Share + Report ─── */}
+            <div className="mt-3 flex items-center justify-center gap-4">
+              <ShareButton targetType="service" targetTitle={service.title} />
+              <span className="text-gray-300">·</span>
+              <ReportButton
+                targetType="service"
+                targetId={service.id}
+                targetTitle={service.title}
+                targetOwnerId={service.ownerId}
               />
             </div>
+
+            {/* ─── Description ─── */}
+            <div className="card-premium mt-4 p-5">
+              <h2 className="mb-2 text-sm font-semibold text-[var(--nexora-navy)]">
+                About this service
+              </h2>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+                {service.description}
+              </p>
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-gray-400">
+              <MessageCircle size={12} />
+              <span>Contact is handled privately through WhatsApp</span>
+            </div>
+          </div>
+
+          {/* ─── SIDEBAR (Pinterest-style) ─── */}
+          {related.length > 0 && (
+            <RelatedListings
+              title={relatedTitle}
+              subtitle={relatedSubtitle}
+              count={related.length}
+              seeAllHref={relatedSeeAllHref}
+              seeAllLabel="See all"
+              icon={<Sparkles size={16} />}
+            >
+              {related.map((s) => (
+                <ServiceCard key={s.id} service={s} />
+              ))}
+            </RelatedListings>
           )}
-        </div>
-
-        {/* ─── Share + Report ─── */}
-        <div className="mt-3 flex items-center justify-center gap-4">
-          <ShareButton targetType="service" targetTitle={service.title} />
-          <span className="text-gray-300">·</span>
-          <ReportButton
-            targetType="service"
-            targetId={service.id}
-            targetTitle={service.title}
-            targetOwnerId={service.ownerId}
-          />
-        </div>
-
-        {/* ─── Description ─── */}
-        <div className="card-premium mt-4 p-5">
-          <h2 className="mb-2 text-sm font-semibold text-[var(--nexora-navy)]">
-            About this service
-          </h2>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
-            {service.description}
-          </p>
-        </div>
-
-        <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-gray-400">
-          <MessageCircle size={12} />
-          <span>Contact is handled privately through WhatsApp</span>
         </div>
       </div>
 

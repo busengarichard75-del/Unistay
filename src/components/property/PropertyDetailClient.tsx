@@ -6,20 +6,37 @@ import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { ArrowLeft, Bed, Home, Clock, MapPin, Tag, DoorOpen, Star } from "lucide-react";
+import {
+  ArrowLeft,
+  Bed,
+  Home,
+  Clock,
+  MapPin,
+  Tag,
+  DoorOpen,
+  Star,
+  Sparkles,
+} from "lucide-react";
 import { db } from "@/lib/firebase";
-import { getPropertyById, updateProperty } from "@/services/propertyService";
+import {
+  getPropertyById,
+  updateProperty,
+  getPropertiesByUniversity,
+} from "@/services/propertyService";
 import { getBookingsByStudent } from "@/services/bookingService";
 import { addBooking } from "@/services/bookingService";
 import { BookingAuthPrompt } from "@/components/property/BookingAuthPrompt";
 import { BookingConfirmationModal } from "@/components/property/BookingConfirmationModal";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
+import { RelatedListings } from "@/components/shared/RelatedListings";
+import { PropertyCard } from "@/components/property/PropertyCard";
 import { useAuth } from "@/lib/AuthContext";
 import { Property } from "@/types/property";
 import { Booking } from "@/types/booking";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { sendPushNotification } from "@/lib/sendPushNotification";
 import { createNotification } from "@/services/notificationService";
+import { getUniversityShortLabel } from "@/lib/universityLabels";
 
 const PropertyMap = dynamic(
   () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
@@ -43,12 +60,13 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
   const [submittedBedId, setSubmittedBedId] = useState<string | null>(null);
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
 
-  // ✅ Confirmation modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingBed, setPendingBed] = useState<{ id: string; type: string } | null>(null);
 
-  // ✅ Image lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // ─── Related listings (Pinterest sidebar) ───
+  const [related, setRelated] = useState<Property[]>([]);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -63,6 +81,28 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     };
     fetchProperty();
   }, [id]);
+
+  // Fetch related properties once the main property is loaded
+  useEffect(() => {
+    if (!property || !property.universityId) return;
+    let active = true;
+    const loadRelated = async () => {
+      try {
+        const items = await getPropertiesByUniversity(
+          property.universityId,
+          property.id,
+          8
+        );
+        if (active) setRelated(items);
+      } catch {
+        // silent
+      }
+    };
+    loadRelated();
+    return () => {
+      active = false;
+    };
+  }, [property]);
 
   useEffect(() => {
     if (property && !isFetching) {
@@ -122,7 +162,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     return "Standard Bed";
   }
 
-  // ✅ Step 1: Open the confirmation modal
   function handleBookClick(bedId: string, bedType: string) {
     if (!user || !property) {
       setShowAuthPrompt(true);
@@ -132,7 +171,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
     setShowConfirmModal(true);
   }
 
-  // ✅ Step 2: Confirm – send the booking
   async function handleConfirmBooking() {
     if (!pendingBed || !user || !property) return;
 
@@ -213,7 +251,6 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
 
       setShowConfirmModal(false);
       setPendingBed(null);
-
     } catch (err) {
       console.error("Booking error:", err);
       toast.error(
@@ -263,6 +300,17 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
   const hasRooms = property.rooms && property.rooms.length > 0;
   const isVerified = property.verificationStatus === "approved";
 
+  // Sidebar title / subtitle
+  const uniLabel = property.universityId
+    ? getUniversityShortLabel(property.universityId)
+    : undefined;
+  const relatedTitle = uniLabel
+    ? `More near ${uniLabel}`
+    : "More nearby";
+  const relatedSeeAllHref = property.universityId
+    ? `/?uni=${property.universityId}`
+    : "/";
+
   return (
     <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
       <div className="container-medium">
@@ -274,271 +322,302 @@ export function PropertyDetailClient({ id }: PropertyDetailClientProps) {
           Back to Home
         </Link>
 
-        {/* ─── Images (click any to open lightbox) ─── */}
-        {images.length > 0 && (
-          <div className="mb-6">
-            {images.length === 1 ? (
-              <button
-                type="button"
-                onClick={() => setLightboxIndex(0)}
-                className="block w-full overflow-hidden rounded-xl"
-              >
-                <img
-                  src={images[0]}
-                  alt={property.title}
-                  className="h-40 w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
-                />
-              </button>
-            ) : (
-              <div
-                className={`grid gap-2 ${
-                  images.length === 2 ? "grid-cols-2" : "grid-cols-3"
-                }`}
-              >
-                {images.map((url, index) => (
+        {/* ═══ Pinterest 2-column layout ═══ */}
+        <div
+          className={
+            related.length > 0
+              ? "grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]"
+              : "grid grid-cols-1 gap-6"
+          }
+        >
+          {/* ─── MAIN COLUMN ─── */}
+          <div className="min-w-0">
+            {/* ─── Images (click any to open lightbox) ─── */}
+            {images.length > 0 && (
+              <div className="mb-6">
+                {images.length === 1 ? (
                   <button
-                    key={index}
                     type="button"
-                    onClick={() => setLightboxIndex(index)}
-                    className="relative overflow-hidden rounded-xl"
+                    onClick={() => setLightboxIndex(0)}
+                    className="block w-full overflow-hidden rounded-xl"
                   >
                     <img
-                      src={url}
-                      alt={`${property.title} - ${index + 1}`}
-                      className="h-40 w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
+                      src={images[0]}
+                      alt={property.title}
+                      className="h-40 w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
                     />
-                    {index === 0 && (
-                      <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
-                        Main
-                      </span>
-                    )}
-                    {index === images.length - 1 && images.length > 1 && (
-                      <span className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
-                        +{images.length - 1}
-                      </span>
-                    )}
                   </button>
-                ))}
+                ) : (
+                  <div
+                    className={`grid gap-2 ${
+                      images.length === 2 ? "grid-cols-2" : "grid-cols-3"
+                    }`}
+                  >
+                    {images.map((url, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setLightboxIndex(index)}
+                        className="relative overflow-hidden rounded-xl"
+                      >
+                        <img
+                          src={url}
+                          alt={`${property.title} - ${index + 1}`}
+                          className="h-40 w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
+                        />
+                        {index === 0 && (
+                          <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+                            Main
+                          </span>
+                        )}
+                        {index === images.length - 1 && images.length > 1 && (
+                          <span className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+                            +{images.length - 1}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        <div className="card-premium p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-[var(--nexora-text-primary)]">
-                {property.title}
-              </h1>
-              <p className="mt-1 text-sm text-[var(--nexora-text-secondary)]">
-                {property.location}
-              </p>
-              <p className="mt-2 text-xl font-bold text-[var(--nexora-text-primary)]">
-                K{property.price.toLocaleString()}
-                <span className="text-sm font-normal text-[var(--nexora-text-secondary)]">
-                  {property.paymentPeriod === "termly" ? " / term" : " / month"}
-                </span>
-              </p>
-            </div>
-            {isVerified && (
-              <div className="shrink-0 ml-4 flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 border border-blue-200">
-                <Star size={16} className="fill-blue-600 text-blue-600" />
-                <span className="text-xs font-medium text-blue-700">
-                  Peza Verified
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {customAmenities.length > 0 && (
-          <div className="mt-4 card-premium p-4 bg-blue-50/30 border border-blue-100">
-            <div className="flex items-center gap-2 mb-2">
-              <Tag size={16} className="text-[var(--nexora-primary)]" />
-              <h3 className="text-sm font-semibold text-[var(--nexora-text-primary)]">
-                Additional Amenities
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {customAmenities.map((amenity, index) => (
-                <span
-                  key={index}
-                  className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm border border-gray-200"
-                >
-                  {amenity}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {showMap ? (
-          <div className="mt-6 card-premium p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-[var(--nexora-text-primary)] flex items-center gap-2">
-                <MapPin size={16} className="text-[var(--nexora-primary)]" />
-                Property Location
-              </h3>
-              <a
-                href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-medium text-[var(--nexora-primary)] hover:underline flex items-center gap-1"
-              >
-                Open Directions
-                <span className="text-xs">↗</span>
-              </a>
-            </div>
-            <PropertyMap
-              latitude={property.latitude}
-              longitude={property.longitude}
-              height="200px"
-              selectable={false}
-              defaultCenter={defaultCenter}
-            />
-            <p className="mt-2 text-xs text-gray-400">
-              📍 {property.latitude?.toFixed(6)}, {property.longitude?.toFixed(6)}
-            </p>
-          </div>
-        ) : (
-          hasCoordinates && (
-            <div className="mt-6 rounded-xl bg-gray-50 p-4 text-center text-sm text-gray-500 border border-gray-200">
-              <MapPin size={16} className="inline mr-2 text-gray-400" />
-              Exact location will be available after your booking is confirmed.
-            </div>
-          )
-        )}
-
-        <div className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
-            Bed Spaces
-          </h2>
-
-          {bookingMessage && (
-            <div className="mb-4 flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
-              <Clock size={16} className="shrink-0 mt-0.5" />
-              <span>{bookingMessage}</span>
-            </div>
-          )}
-
-          {hasRooms ? (
-            <div className="space-y-4">
-              {property.rooms!.map((room) => (
-                <div key={room.id} className="rounded-xl bg-white p-4 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <DoorOpen size={16} className="text-[var(--nexora-primary)]" />
-                    <h3 className="text-sm font-semibold text-gray-800">
-                      {room.name}
-                    </h3>
-                    <span className="text-xs text-gray-400 ml-1">
-                      ({room.bedSpaces.length} beds)
+            <div className="card-premium p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-[var(--nexora-text-primary)]">
+                    {property.title}
+                  </h1>
+                  <p className="mt-1 text-sm text-[var(--nexora-text-secondary)]">
+                    {property.location}
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-[var(--nexora-text-primary)]">
+                    K{property.price.toLocaleString()}
+                    <span className="text-sm font-normal text-[var(--nexora-text-secondary)]">
+                      {property.paymentPeriod === "termly" ? " / term" : " / month"}
+                    </span>
+                  </p>
+                </div>
+                {isVerified && (
+                  <div className="shrink-0 ml-4 flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 border border-blue-200">
+                    <Star size={16} className="fill-blue-600 text-blue-600" />
+                    <span className="text-xs font-medium text-blue-700">
+                      Peza Verified
                     </span>
                   </div>
-                  <div className="space-y-2">
-                    {room.bedSpaces.map((bed) => {
-                      const isAvailable = bed.isAvailable;
-                      const isDisabled = !isAvailable || isSubmitting;
-
-                      return (
-                        <div
-                          key={bed.id}
-                          className="flex items-center justify-between rounded-lg border border-gray-100 p-3 hover:bg-gray-50 transition"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--nexora-primary-light)] text-[var(--nexora-navy)]">
-                              <Bed size={14} />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {getBedTypeLabel(bed)}
-                              </p>
-                              <span
-                                className={`text-xs ${
-                                  isAvailable ? "text-green-600" : "text-red-500"
-                                }`}
-                              >
-                                {isAvailable ? "Available" : "Occupied"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <button
-                            disabled={isDisabled}
-                            onClick={() =>
-                              handleBookClick(bed.id, getBedTypeLabel(bed))
-                            }
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium text-white transition-all ${
-                              isAvailable && !isDisabled
-                                ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
-                                : "cursor-not-allowed bg-gray-300"
-                            }`}
-                          >
-                            {isAvailable ? "Request Bed" : "Unavailable"}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {property.bedSpaces?.map((bed) => {
-                const isAvailable = bed.isAvailable;
-                const isDisabled = !isAvailable || isSubmitting;
 
-                return (
-                  <div
-                    key={bed.id}
-                    className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+            {customAmenities.length > 0 && (
+              <div className="mt-4 card-premium p-4 bg-blue-50/30 border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Tag size={16} className="text-[var(--nexora-primary)]" />
+                  <h3 className="text-sm font-semibold text-[var(--nexora-text-primary)]">
+                    Additional Amenities
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {customAmenities.map((amenity, index) => (
+                    <span
+                      key={index}
+                      className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm border border-gray-200"
+                    >
+                      {amenity}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {showMap ? (
+              <div className="mt-6 card-premium p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-[var(--nexora-text-primary)] flex items-center gap-2">
+                    <MapPin size={16} className="text-[var(--nexora-primary)]" />
+                    Property Location
+                  </h3>
+                  <a
+                    href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-medium text-[var(--nexora-primary)] hover:underline flex items-center gap-1"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nexora-primary-light)] text-[var(--nexora-navy)]">
-                        <Bed size={18} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {getBedTypeLabel(bed)}
-                        </p>
-                        <span
-                          className={`text-xs ${
-                            isAvailable ? "text-green-600" : "text-red-500"
-                          }`}
-                        >
-                          {isAvailable ? "Available" : "Occupied"}
+                    Open Directions
+                    <span className="text-xs">↗</span>
+                  </a>
+                </div>
+                <PropertyMap
+                  latitude={property.latitude}
+                  longitude={property.longitude}
+                  height="200px"
+                  selectable={false}
+                  defaultCenter={defaultCenter}
+                />
+                <p className="mt-2 text-xs text-gray-400">
+                  📍 {property.latitude?.toFixed(6)}, {property.longitude?.toFixed(6)}
+                </p>
+              </div>
+            ) : (
+              hasCoordinates && (
+                <div className="mt-6 rounded-xl bg-gray-50 p-4 text-center text-sm text-gray-500 border border-gray-200">
+                  <MapPin size={16} className="inline mr-2 text-gray-400" />
+                  Exact location will be available after your booking is confirmed.
+                </div>
+              )
+            )}
+
+            <div className="mt-6">
+              <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
+                Bed Spaces
+              </h2>
+
+              {bookingMessage && (
+                <div className="mb-4 flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+                  <Clock size={16} className="shrink-0 mt-0.5" />
+                  <span>{bookingMessage}</span>
+                </div>
+              )}
+
+              {hasRooms ? (
+                <div className="space-y-4">
+                  {property.rooms!.map((room) => (
+                    <div key={room.id} className="rounded-xl bg-white p-4 shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DoorOpen size={16} className="text-[var(--nexora-primary)]" />
+                        <h3 className="text-sm font-semibold text-gray-800">
+                          {room.name}
+                        </h3>
+                        <span className="text-xs text-gray-400 ml-1">
+                          ({room.bedSpaces.length} beds)
                         </span>
                       </div>
+                      <div className="space-y-2">
+                        {room.bedSpaces.map((bed) => {
+                          const isAvailable = bed.isAvailable;
+                          const isDisabled = !isAvailable || isSubmitting;
+
+                          return (
+                            <div
+                              key={bed.id}
+                              className="flex items-center justify-between rounded-lg border border-gray-100 p-3 hover:bg-gray-50 transition"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--nexora-primary-light)] text-[var(--nexora-navy)]">
+                                  <Bed size={14} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {getBedTypeLabel(bed)}
+                                  </p>
+                                  <span
+                                    className={`text-xs ${
+                                      isAvailable ? "text-green-600" : "text-red-500"
+                                    }`}
+                                  >
+                                    {isAvailable ? "Available" : "Occupied"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                disabled={isDisabled}
+                                onClick={() =>
+                                  handleBookClick(bed.id, getBedTypeLabel(bed))
+                                }
+                                className={`rounded-full px-4 py-1.5 text-sm font-medium text-white transition-all ${
+                                  isAvailable && !isDisabled
+                                    ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
+                                    : "cursor-not-allowed bg-gray-300"
+                                }`}
+                              >
+                                {isAvailable ? "Request Bed" : "Unavailable"}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {property.bedSpaces?.map((bed) => {
+                    const isAvailable = bed.isAvailable;
+                    const isDisabled = !isAvailable || isSubmitting;
 
-                    <button
-                      disabled={isDisabled}
-                      onClick={() =>
-                        handleBookClick(bed.id, getBedTypeLabel(bed))
-                      }
-                      className={`rounded-full px-5 py-2 text-sm font-medium text-white transition-all ${
-                        isAvailable && !isDisabled
-                          ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
-                          : "cursor-not-allowed bg-gray-300"
-                      }`}
-                    >
-                      {isAvailable ? "Request Bed" : "Unavailable"}
-                    </button>
-                  </div>
-                );
-              })}
+                    return (
+                      <div
+                        key={bed.id}
+                        className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nexora-primary-light)] text-[var(--nexora-navy)]">
+                            <Bed size={18} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {getBedTypeLabel(bed)}
+                            </p>
+                            <span
+                              className={`text-xs ${
+                                isAvailable ? "text-green-600" : "text-red-500"
+                              }`}
+                            >
+                              {isAvailable ? "Available" : "Occupied"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          disabled={isDisabled}
+                          onClick={() =>
+                            handleBookClick(bed.id, getBedTypeLabel(bed))
+                          }
+                          className={`rounded-full px-5 py-2 text-sm font-medium text-white transition-all ${
+                            isAvailable && !isDisabled
+                              ? "bg-[var(--nexora-primary)] hover:bg-[var(--nexora-primary-hover)] hover:shadow-md"
+                              : "cursor-not-allowed bg-gray-300"
+                          }`}
+                        >
+                          {isAvailable ? "Request Bed" : "Unavailable"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <div className="mt-8 text-center">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-[var(--nexora-primary)] hover:underline"
-          >
-            <Home size={16} />
-            Browse more properties
-          </Link>
+            {/* Mobile-only "browse more" link (hidden when sidebar is showing) */}
+            {related.length === 0 && (
+              <div className="mt-8 text-center">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-[var(--nexora-primary)] hover:underline"
+                >
+                  <Home size={16} />
+                  Browse more properties
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* ─── SIDEBAR (Pinterest-style) ─── */}
+          {related.length > 0 && (
+            <RelatedListings
+              title={relatedTitle}
+              subtitle="Similar rooms on Peza"
+              count={related.length}
+              seeAllHref={relatedSeeAllHref}
+              seeAllLabel="Browse all"
+              icon={<Sparkles size={16} />}
+            >
+              {related.map((p) => (
+                <PropertyCard key={p.id} property={p} compact />
+              ))}
+            </RelatedListings>
+          )}
         </div>
       </div>
 
