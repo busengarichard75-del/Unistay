@@ -4,12 +4,32 @@ import { getFirestoreDb } from "@/lib/firebase-admin";
 const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
 
+/**
+ * ⚡ TIMEOUT GUARD
+ * Vercel free tier kills serverless functions at 10s.
+ * Firestore cold starts can eat 5-8s → page never responds → "site can't be reached".
+ * This races every Firestore call against a 2s timeout.
+ * If it times out, we return null → metadata falls back to generic Peza values
+ * → page STILL LOADS. Users never wait more than 2s for the server.
+ */
+const FIRESTORE_TIMEOUT_MS = 2000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number = FIRESTORE_TIMEOUT_MS
+): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]).catch(() => null);
+}
+
 interface ServiceDoc {
   title?: string;
   description?: string;
   category?: string;
   imageUrls?: string[];
-  priceType?: "from" | "contact";
+  priceType?: "free" | "from" | "contact";
   priceFrom?: number;
   location?: string;
   universityId?: string;
@@ -21,8 +41,15 @@ interface ServiceDoc {
 async function fetchService(id: string): Promise<ServiceDoc | null> {
   try {
     const db = getFirestoreDb();
-    const snap = await db.collection("services").doc(id).get();
-    if (!snap.exists) return null;
+
+    // ⚡ Race the Firestore read against a 2s timeout
+    const snap = await withTimeout(
+      db.collection("services").doc(id).get()
+    );
+
+    // Timeout or error → return null → fallback metadata (page still loads)
+    if (!snap || !snap.exists) return null;
+
     const data = snap.data() as ServiceDoc;
     if (data.adminHidden) return null;
     return data;
@@ -32,6 +59,7 @@ async function fetchService(id: string): Promise<ServiceDoc | null> {
 }
 
 function priceFragment(s: ServiceDoc): string {
+  if (s.priceType === "free") return "Free";
   if (s.priceType === "contact") return "Contact for price";
   if (s.priceType === "from" && s.priceFrom) {
     return `From K${s.priceFrom.toLocaleString()}`;
@@ -131,6 +159,14 @@ function serviceJsonLd(id: string, s: ServiceDoc) {
               s.status === "available"
                 ? "https://schema.org/InStock"
                 : "https://schema.org/OutOfStock",
+            url: `${SITE_URL}/services/${id}`,
+          }
+        : s.priceType === "free"
+        ? {
+            "@type": "Offer",
+            price: 0,
+            priceCurrency: "ZMW",
+            availability: "https://schema.org/InStock",
             url: `${SITE_URL}/services/${id}`,
           }
         : undefined,

@@ -4,6 +4,26 @@ import { getFirestoreDb } from "@/lib/firebase-admin";
 const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
 
+/**
+ * ⚡ TIMEOUT GUARD
+ * Vercel free tier kills serverless functions at 10s.
+ * Firestore cold starts can eat 5-8s → page never responds → "site can't be reached".
+ * This races every Firestore call against a 2s timeout.
+ * On timeout we return null → metadata falls back to generic values
+ * → page STILL LOADS. Users never wait more than 2s for the server.
+ */
+const FIRESTORE_TIMEOUT_MS = 2000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number = FIRESTORE_TIMEOUT_MS
+): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]).catch(() => null);
+}
+
 interface ProviderDoc {
   fullName?: string;
   businessName?: string;
@@ -19,8 +39,14 @@ interface ProviderDoc {
 async function fetchProvider(uid: string): Promise<ProviderDoc | null> {
   try {
     const db = getFirestoreDb();
-    const snap = await db.collection("users").doc(uid).get();
-    if (!snap.exists) return null;
+
+    // ⚡ Race the Firestore read against a 2s timeout
+    const snap = await withTimeout(
+      db.collection("users").doc(uid).get()
+    );
+
+    if (!snap || !snap.exists) return null;
+
     const data = snap.data() as ProviderDoc;
     if (data.suspended) return null;
     if (data.role !== "service_provider") return null;

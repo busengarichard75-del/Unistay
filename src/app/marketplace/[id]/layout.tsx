@@ -4,6 +4,26 @@ import { getFirestoreDb } from "@/lib/firebase-admin";
 const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
 
+/**
+ * ⚡ TIMEOUT GUARD
+ * Vercel free tier kills serverless functions at 10s.
+ * Firestore cold starts can eat 5-8s → page never responds → "site can't be reached".
+ * This races every Firestore call against a 2s timeout.
+ * On timeout we return null → metadata falls back to generic values
+ * → page STILL LOADS. Users never wait more than 2s for the server.
+ */
+const FIRESTORE_TIMEOUT_MS = 2000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number = FIRESTORE_TIMEOUT_MS
+): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]).catch(() => null);
+}
+
 interface ProductDoc {
   name?: string;
   description?: string;
@@ -29,8 +49,14 @@ const CONDITION_LABEL: Record<string, string> = {
 async function fetchProduct(id: string): Promise<ProductDoc | null> {
   try {
     const db = getFirestoreDb();
-    const snap = await db.collection("products").doc(id).get();
-    if (!snap.exists) return null;
+
+    // ⚡ Race the Firestore read against a 2s timeout
+    const snap = await withTimeout(
+      db.collection("products").doc(id).get()
+    );
+
+    if (!snap || !snap.exists) return null;
+
     const data = snap.data() as ProductDoc;
     if (data.adminHidden) return null;
     return data;
@@ -56,6 +82,7 @@ function ogImageFor(p: ProductDoc | null): string {
   return "/og-marketplace.png";
 }
 
+// ✅ Next.js 15+: params is a Promise
 export async function generateMetadata({
   params,
 }: {
@@ -160,6 +187,7 @@ function productJsonLd(id: string, p: ProductDoc) {
   };
 }
 
+// ✅ Next.js 15+: params is a Promise
 export default async function ProductDetailLayout({
   children,
   params,

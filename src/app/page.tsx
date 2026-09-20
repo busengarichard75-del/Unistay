@@ -13,7 +13,7 @@ import { Footer } from "@/components/footer/Footer";
 import { getAllProperties } from "@/services/propertyService";
 import { Property } from "@/types/property";
 import { useAuth } from "@/lib/AuthContext";
-import { Sparkles } from "lucide-react";
+import { Sparkles, WifiOff, RefreshCw } from "lucide-react";
 import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal";
 import { NexoraChat } from "@/components/nexora/NexoraChat";
 import { LandlordOnboardingModal } from "@/components/landlord/LandlordOnboardingModal";
@@ -34,6 +34,8 @@ function HomeContent() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState(false);
+  // ⚡ Incrementing this triggers a re-fetch (used by the Retry button)
+  const [retryKey, setRetryKey] = useState(0);
 
   // ─── Existing homepage controls (kept as-is) ───
   const [keyword, setKeyword] = useState("");
@@ -66,19 +68,26 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     const fetchProperties = async () => {
+      setIsFetching(true);
+      setError(false);
       try {
         const data = await getAllProperties();
+        if (!active) return;
         setProperties(data);
       } catch {
-        setError(true);
+        if (active) setError(true);
       } finally {
-        setIsFetching(false);
+        if (active) setIsFetching(false);
       }
     };
 
     fetchProperties();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [retryKey]);
 
   // ─── Existing pre-filters (price range + available-only) ───
   // Then advanced filters (gender, distance, amenities, boosted, sort) on top.
@@ -105,15 +114,39 @@ function HomeContent() {
     return applyPropertyFilters(prefiltered, keyword, null, filters);
   }, [properties, keyword, minPrice, maxPrice, showAvailableOnly, filters]);
 
+  const handleRetry = () => {
+    setRetryKey((k) => k + 1);
+  };
+
   if (error) {
     return (
       <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
         <Navbar />
         <Hero />
 
-        <p className="p-8 text-center text-sm text-red-600">
-          Failed to load properties. Please check your internet connection and try again.
-        </p>
+        <div className="container-wide py-12">
+          <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+              <WifiOff size={28} />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900">
+              Slow or unstable connection
+            </h2>
+            <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">
+              We couldn&apos;t reach our servers. This usually means a weak
+              signal — try again or move to a spot with better coverage.
+            </p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={isFetching}
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)] disabled:opacity-60"
+            >
+              <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
+              {isFetching ? "Retrying…" : "Try again"}
+            </button>
+          </div>
+        </div>
 
         <Footer />
       </main>
@@ -140,7 +173,7 @@ function HomeContent() {
               </h3>
 
               <p className="text-sm text-gray-600">
-                Tell us what matters to you. We'll find your best matches.
+                Tell us what matters to you. We&apos;ll find your best matches.
               </p>
             </div>
 
