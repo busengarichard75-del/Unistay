@@ -119,7 +119,6 @@ export function EditListingForm(props: EditListingFormProps) {
   const [serviceCategory, setServiceCategory] = useState<ServiceCategory>(
     isService ? initialService!.category : "barber"
   );
-  // Legacy safe: old services may have undefined priceType → treat as "from"
   const [priceType, setPriceType] = useState<PriceType>(
     isService
       ? (initialService!.priceType as PriceType) || "from"
@@ -361,19 +360,29 @@ export function EditListingForm(props: EditListingFormProps) {
           serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
         });
       } else if (!isService && initialProduct) {
-        const qty = quantity.trim() === "" ? undefined : Number(quantity);
-
-        await updateProduct(initialProduct.id, {
+        // ── Product: refresh quantity + seller snapshot ──
+        // ⚠️ Firestore rejects `undefined`. Use `null` to actively clear fields
+        //     (so if a provider removes their business name, it disappears from
+        //     the listing too). Otherwise attach only when present.
+        const productData: any = {
           ...commonBase,
           name: title.trim(),
           price: Number(price),
           category: productCategory.trim(),
           condition,
-          quantity: qty,
-          sellerName: user.fullName || undefined,
-          sellerBusinessName: user.businessName || undefined,
-          sellerPhotoURL: user.photoURL || undefined,
-        });
+        };
+
+        if (quantity.trim() !== "") {
+          productData.quantity = Number(quantity);
+        } else {
+          productData.quantity = null;
+        }
+
+        productData.sellerName = user.fullName || null;
+        productData.sellerBusinessName = user.businessName || null;
+        productData.sellerPhotoURL = user.photoURL || null;
+
+        await updateProduct(initialProduct.id, productData);
       }
 
       toast.success(
@@ -567,7 +576,7 @@ export function EditListingForm(props: EditListingFormProps) {
                   <span className="mt-0.5 text-xs">⚠️</span>
                   <p className="text-[11px] leading-relaxed text-amber-900">
                     Currently saved as{" "}
-                    <strong>“{getProductCategoryLabel(productCategory)}”</strong>{" "}
+                    <strong>&ldquo;{getProductCategoryLabel(productCategory)}&rdquo;</strong>{" "}
                     (legacy). Pick a category below to update it.
                   </p>
                 </div>

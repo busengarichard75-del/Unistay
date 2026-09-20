@@ -249,7 +249,7 @@ export function AddListingForm() {
             note: availNote.trim() || undefined,
           },
           priceType,
-          // Free = 0 explicitly; From = priceFrom; Contact = undefined
+          // Free = 0; From = priceFrom; Contact = undefined
           priceFrom:
             priceType === "from"
               ? Number(priceFrom)
@@ -261,20 +261,23 @@ export function AddListingForm() {
           serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
         });
       } else {
-        const qty = quantity.trim() === "" ? undefined : Number(quantity);
-
-        await addProduct({
+        // ── Product: attach quantity + seller snapshot ──
+        // ⚠️ Firestore rejects `undefined` values — build conditionally.
+        const productData: any = {
           ...commonBase,
           name: title.trim(),
           price: Number(price),
           category: productCategory.trim(),
           condition,
           status: "available",
-          quantity: qty,
-          sellerName: user.fullName || undefined,
-          sellerBusinessName: user.businessName || undefined,
-          sellerPhotoURL: user.photoURL || undefined,
-        });
+        };
+
+        if (quantity.trim() !== "") productData.quantity = Number(quantity);
+        if (user.fullName) productData.sellerName = user.fullName;
+        if (user.businessName) productData.sellerBusinessName = user.businessName;
+        if (user.photoURL) productData.sellerPhotoURL = user.photoURL;
+
+        await addProduct(productData);
       }
 
       toast.success(
