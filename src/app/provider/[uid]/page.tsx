@@ -12,6 +12,7 @@ import { Product, isProductBoosted } from "@/types/product";
 import { getUniversityFullName } from "@/lib/universityLabels";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { ProductCard } from "@/components/products/ProductCard";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -21,6 +22,7 @@ import {
   Calendar,
   Store,
   AlertTriangle,
+  Share2,
 } from "lucide-react";
 
 export default function ProviderProfilePage() {
@@ -37,6 +39,9 @@ export default function ProviderProfilePage() {
 
   // ── Avatar fallback if the image URL fails to load ──
   const [imgError, setImgError] = useState(false);
+
+  // ── Share feedback state ──
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -74,6 +79,27 @@ export default function ProviderProfilePage() {
       active = false;
     };
   }, [uid]);
+
+  // ── Share handler (visitor → forwards shop to friends) ──
+  async function handleShareShop() {
+    if (!profile) return;
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const title = `${profile.displayName} on Peza`;
+    const text = `Check out ${profile.displayName} on Peza — services, products, and more. Tap to browse:`;
+
+    try {
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        await (navigator as any).share({ title, text, url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setShared(true);
+      toast.success("Shop link copied — share it anywhere!");
+      setTimeout(() => setShared(false), 2000);
+    } catch {
+      // User cancelled or clipboard failed — silent
+    }
+  }
 
   if (isFetching) {
     return (
@@ -163,7 +189,7 @@ export default function ProviderProfilePage() {
         <div className="card-premium overflow-hidden">
           <div className="bg-gradient-to-r from-[var(--nexora-navy)] to-[var(--nexora-primary)] px-6 py-8 text-white">
             <div className="flex flex-wrap items-center gap-5">
-              {/* ── Avatar: photo if available, initials fallback ── */}
+              {/* ── Avatar ── */}
               {showAvatar ? (
                 <img
                   src={profile.photoURL!}
@@ -212,6 +238,17 @@ export default function ProviderProfilePage() {
                   )}
                 </div>
               </div>
+
+              {/* ── 🔗 Share shop button ── */}
+              <button
+                type="button"
+                onClick={handleShareShop}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-white/25 active:scale-95"
+                aria-label="Share this shop"
+              >
+                <Share2 size={14} />
+                {shared ? "Copied!" : "Share"}
+              </button>
             </div>
           </div>
 

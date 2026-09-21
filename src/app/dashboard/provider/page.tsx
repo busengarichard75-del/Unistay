@@ -28,6 +28,7 @@ import {
 } from "@/types/product";
 import { VerificationBanner } from "@/components/provider/VerificationBanner";
 import { BoostListingModal } from "@/components/provider/BoostListingModal";
+import { ShareMyShopCard } from "@/components/provider/ShareMyShopCard";
 import { toast } from "sonner";
 import {
   Eye,
@@ -45,7 +46,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// ─── Small time formatter for discount countdown ───
 function formatDiscountRemaining(expiresAt: number, now: number): string {
   const ms = expiresAt - now;
   if (ms <= 0) return "Expired";
@@ -72,7 +72,6 @@ export default function ProviderDashboardPage() {
     { kind: "service" | "product"; id: string; title: string } | null
   >(null);
 
-  // Ticking clock for live countdown pills (updates every 60s)
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60000);
@@ -114,7 +113,6 @@ export default function ProviderDashboardPage() {
     0
   );
   const activeCount = allItems.filter((x) => x.data.status === "available").length;
-  const soldOrInactive = allItems.filter((x) => x.data.status !== "available").length;
   const boostedCount = allItems.filter((x) =>
     x.kind === "service"
       ? isServiceBoosted(x.data as Service)
@@ -258,6 +256,15 @@ export default function ProviderDashboardPage() {
   const verificationStatus = user.verificationStatus || "approved";
   const isVerified = verificationStatus === "approved";
 
+  const shopHintParts: string[] = [];
+  if (services.length > 0) {
+    shopHintParts.push(`${services.length} service${services.length === 1 ? "" : "s"}`);
+  }
+  if (products.length > 0) {
+    shopHintParts.push(`${products.length} product${products.length === 1 ? "" : "s"}`);
+  }
+  const shopHint = shopHintParts.join(" · ");
+
   return (
     <main className="min-h-screen bg-[var(--nexora-surface)] py-6">
       <div className="container-medium">
@@ -276,6 +283,17 @@ export default function ProviderDashboardPage() {
         <div className="mt-6">
           <VerificationBanner user={user} />
         </div>
+
+        {/* 📣 SHARE MY SHOP */}
+        {hasAnyListing && (
+          <div className="mt-6">
+            <ShareMyShopCard
+              uid={user.uid}
+              displayName={displayName}
+              hint={shopHint || undefined}
+            />
+          </div>
+        )}
 
         {/* Insights */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -306,7 +324,6 @@ export default function ProviderDashboardPage() {
           </div>
         )}
 
-        {/* Add listing CTA */}
         {isVerified ? (
           <div className="mt-6">
             <Link
@@ -336,7 +353,6 @@ export default function ProviderDashboardPage() {
           </div>
         )}
 
-        {/* Listings */}
         <div className="mt-8">
           <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
             Your Listings
@@ -421,7 +437,6 @@ export default function ProviderDashboardPage() {
         </div>
       </div>
 
-      {/* Boost modal */}
       {boostTarget && (
         <BoostListingModal
           listingId={boostTarget.id}
@@ -513,7 +528,6 @@ function ListingRow({
 
   return (
     <div className={`rounded-2xl border bg-white shadow-sm ${isBoosted ? "border-amber-200" : "border-gray-100"}`}>
-      {/* ── Clickable top section → detail page ── */}
       <Link
         href={detailHref}
         className="group block cursor-pointer p-4 transition-colors hover:bg-gray-50/50"
@@ -577,7 +591,6 @@ function ListingRow({
             </div>
           </div>
 
-          {/* Chevron indicator */}
           <ChevronRight
             size={18}
             className="mt-1 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-500"
@@ -586,7 +599,6 @@ function ListingRow({
         </div>
       </Link>
 
-      {/* ── Action buttons (outside the link) ── */}
       <div className="flex flex-wrap gap-2 border-t border-gray-100 px-4 py-3">
         {!isBoosted && !boostRequested && (
           <button
