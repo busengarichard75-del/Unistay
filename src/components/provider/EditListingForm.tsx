@@ -10,6 +10,7 @@ import { updateService } from "@/services/serviceService";
 import { updateProduct } from "@/services/productService";
 import { universities } from "@/data/universities";
 import { MultiImageUploader } from "@/components/ui/MultiImageUploader";
+import { stripUndefined } from "@/lib/stripUndefined";
 import {
   SERVICE_CATEGORIES,
   Service,
@@ -194,13 +195,6 @@ export function EditListingForm(props: EditListingFormProps) {
   // 🎁 Track mount so the auto-cleanup effect only runs on user-initiated changes
   const hasMounted = useRef(false);
 
-  /**
-   * Auto-cleanup when the provider toggles to Free:
-   *  - clears payment methods
-   *  - disables flash deal (a free service can't be discounted)
-   * When switching back to "from" and no methods are set, default to cash.
-   * Only runs AFTER the first render so we don't wipe loaded state on mount.
-   */
   useEffect(() => {
     if (!hasMounted.current) {
       hasMounted.current = true;
@@ -229,7 +223,6 @@ export function EditListingForm(props: EditListingFormProps) {
     );
   }
 
-  // 🎁 Free services don't need a flash deal
   const isFreeService = isService && priceType === "free";
   const showDiscountSection =
     !isFreeService &&
@@ -316,7 +309,7 @@ export function EditListingForm(props: EditListingFormProps) {
 
     try {
       const now = Date.now();
-      const commonBase: any = {
+      const commonBase: Record<string, any> = {
         description: description.trim(),
         imageUrls,
         location: isOnline ? "Online service" : location.trim(),
@@ -335,7 +328,7 @@ export function EditListingForm(props: EditListingFormProps) {
       }
 
       if (isService && initialService) {
-        await updateService(initialService.id, {
+        const servicePayload: Record<string, any> = {
           ...commonBase,
           title: title.trim(),
           category: serviceCategory,
@@ -348,23 +341,22 @@ export function EditListingForm(props: EditListingFormProps) {
             note: availNote.trim() || undefined,
           },
           priceType,
-          // Free = 0; From = priceFrom; Contact = undefined
           priceFrom:
             priceType === "from"
               ? Number(priceFrom)
               : priceType === "free"
               ? 0
               : undefined,
-          // Free services auto-clear payment methods
           paymentMethods: priceType === "free" ? [] : paymentMethods,
           serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
-        });
+        };
+
+        await updateService(
+          initialService.id,
+          stripUndefined(servicePayload) as any
+        );
       } else if (!isService && initialProduct) {
-        // ── Product: refresh quantity + seller snapshot ──
-        // ⚠️ Firestore rejects `undefined`. Use `null` to actively clear fields
-        //     (so if a provider removes their business name, it disappears from
-        //     the listing too). Otherwise attach only when present.
-        const productData: any = {
+        const productData: Record<string, any> = {
           ...commonBase,
           name: title.trim(),
           price: Number(price),
@@ -382,7 +374,10 @@ export function EditListingForm(props: EditListingFormProps) {
         productData.sellerBusinessName = user.businessName || null;
         productData.sellerPhotoURL = user.photoURL || null;
 
-        await updateProduct(initialProduct.id, productData);
+        await updateProduct(
+          initialProduct.id,
+          stripUndefined(productData) as any
+        );
       }
 
       toast.success(
@@ -535,7 +530,6 @@ export function EditListingForm(props: EditListingFormProps) {
               )}
             </Field>
 
-            {/* Payment methods — hidden when free */}
             {priceType !== "free" && (
               <Field label="Payment methods accepted">
                 <div className="grid grid-cols-3 gap-2">
@@ -645,7 +639,6 @@ export function EditListingForm(props: EditListingFormProps) {
         )}
       </Section>
 
-      {/* ─── Flash deal (auto-hidden for free services) ─── */}
       {showDiscountSection && (
         <section className="space-y-4 rounded-2xl border border-red-100 bg-gradient-to-br from-red-50/40 to-white p-6 shadow-sm">
           <div className="flex items-center gap-2 border-b border-red-100 pb-3">

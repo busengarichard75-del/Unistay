@@ -10,6 +10,7 @@ import { addService } from "@/services/serviceService";
 import { addProduct } from "@/services/productService";
 import { universities } from "@/data/universities";
 import { MultiImageUploader } from "@/components/ui/MultiImageUploader";
+import { stripUndefined } from "@/lib/stripUndefined";
 import {
   SERVICE_CATEGORIES,
   ServiceCategory,
@@ -114,7 +115,6 @@ export function AddListingForm() {
     if (user?.university && !universityId) setUniversityId(user.university);
   }, [user, whatsapp, universityId]);
 
-  // 🎁 When service is free → auto-remove payment methods + reset discount
   useEffect(() => {
     if (type === "service" && priceType === "free") {
       setPaymentMethods([]);
@@ -136,7 +136,6 @@ export function AddListingForm() {
     );
   }
 
-  // 🎁 Free services don't need a flash deal
   const isFreeService = type === "service" && priceType === "free";
   const showDiscountSection =
     !isFreeService &&
@@ -213,7 +212,7 @@ export function AddListingForm() {
 
     try {
       const now = Date.now();
-      const commonBase: any = {
+      const commonBase: Record<string, any> = {
         ownerId: user.uid,
         description: description.trim(),
         imageUrls,
@@ -235,7 +234,7 @@ export function AddListingForm() {
       }
 
       if (type === "service") {
-        await addService({
+        const servicePayload: Record<string, any> = {
           ...commonBase,
           title: title.trim(),
           category: serviceCategory,
@@ -249,21 +248,20 @@ export function AddListingForm() {
             note: availNote.trim() || undefined,
           },
           priceType,
-          // Free = 0; From = priceFrom; Contact = undefined
           priceFrom:
             priceType === "from"
               ? Number(priceFrom)
               : priceType === "free"
               ? 0
               : undefined,
-          // Free services auto-clear payment methods
           paymentMethods: priceType === "free" ? [] : paymentMethods,
-          serviceArea: !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
-        });
+          serviceArea:
+            !isOnline && serviceArea.trim() ? serviceArea.trim() : undefined,
+        };
+
+        await addService(stripUndefined(servicePayload) as any);
       } else {
-        // ── Product: attach quantity + seller snapshot ──
-        // ⚠️ Firestore rejects `undefined` values — build conditionally.
-        const productData: any = {
+        const productPayload: Record<string, any> = {
           ...commonBase,
           name: title.trim(),
           price: Number(price),
@@ -272,12 +270,12 @@ export function AddListingForm() {
           status: "available",
         };
 
-        if (quantity.trim() !== "") productData.quantity = Number(quantity);
-        if (user.fullName) productData.sellerName = user.fullName;
-        if (user.businessName) productData.sellerBusinessName = user.businessName;
-        if (user.photoURL) productData.sellerPhotoURL = user.photoURL;
+        if (quantity.trim() !== "") productPayload.quantity = Number(quantity);
+        if (user.fullName) productPayload.sellerName = user.fullName;
+        if (user.businessName) productPayload.sellerBusinessName = user.businessName;
+        if (user.photoURL) productPayload.sellerPhotoURL = user.photoURL;
 
-        await addProduct(productData);
+        await addProduct(stripUndefined(productPayload) as any);
       }
 
       toast.success(
@@ -449,7 +447,6 @@ export function AddListingForm() {
               )}
             </Field>
 
-            {/* Payment methods — hidden when free */}
             {priceType !== "free" && (
               <Field label="Payment methods accepted">
                 <div className="grid grid-cols-3 gap-2">
@@ -551,7 +548,7 @@ export function AddListingForm() {
         )}
       </Section>
 
-      {/* ─── Flash deal (auto-hidden for free services) ─── */}
+      {/* ─── Flash deal ─── */}
       {showDiscountSection && (
         <section className="space-y-4 rounded-2xl border border-red-100 bg-gradient-to-br from-red-50/40 to-white p-6 shadow-sm">
           <div className="flex items-center gap-2 border-b border-red-100 pb-3">
