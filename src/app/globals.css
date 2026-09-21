@@ -134,7 +134,7 @@
   --nexora-danger: #DC2626;
   --nexora-danger-bg: #FEE2E2;
 
-  --nexora-surface: #EEF5FF;
+  --nexora-surface: #DDE3EC;
 }
 
 .dark {
@@ -311,16 +311,8 @@
 
   -webkit-overflow-scrolling: touch;
 
-  /*
-   * Allow the browser to keep normal vertical page gestures.
-   * Horizontal movement is handled by PropertyGrid.
-   */
   touch-action: pan-y;
 
-  /*
-   * Prevent horizontal overscroll from propagating to the page
-   * or browser when the row reaches an edge.
-   */
   overscroll-behavior-x: contain;
   overscroll-behavior-y: auto;
 
@@ -331,10 +323,6 @@
   padding-top: 8px;
   padding-bottom: 8px;
 
-  /*
-   * Prevent flex children from shrinking and make sure the
-   * actual scrollable width is larger than the viewport.
-   */
   flex-wrap: nowrap;
 }
 
@@ -342,24 +330,17 @@
   display: none;
 }
 
-/*
- * The wrapper itself must NOT become a horizontal scroll
- * container. Only .horizontal-scroll is allowed to move.
- */
 .horizontal-scroll-wrapper {
   min-width: 0;
   width: 100%;
   overflow: visible;
 }
 
-/*
- * Make sure cards remain individual fixed-width touch targets.
- */
 .horizontal-scroll > * {
   flex-shrink: 0;
 }
 
-/* ─── Animated Navbar Gradient ─── */
+/* ─── Animated Navbar Gradient (same blue, subtly dimmed) ─── */
 @keyframes navbarGradient {
   0% {
     background-position: 0% 50%;
@@ -380,12 +361,12 @@
 
 .navbar-animated {
   background: linear-gradient(135deg, 
-    #1A365D 0%, 
-    #2563EB 25%, 
-    #4F46E5 50%, 
-    #7C3AED 75%, 
-    #1A365D 100%
+    #162E50 0%, 
+    #24406A 25%, 
+    #33507A 50%, 
+    #4E4079 75%, 
+    #162E50 100%
   );
   background-size: 300% 300%;
-  animation: navbarGradient 12s ease-in-out infinite;
+  animation: navbarGradient 18s ease-in-out infinite;
 }

@@ -19,6 +19,9 @@ import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { BackButton } from "@/components/ui/BackButton";
 import { universities } from "@/data/universities";
+import { getServicesByOwner } from "@/services/serviceService";
+import { getProductsByOwner } from "@/services/productService";
+import { ShopAppearanceEditor } from "@/components/provider/ShopAppearanceEditor";
 import { toast } from "sonner";
 import {
   User as UserIcon,
@@ -35,7 +38,11 @@ import {
   IdCard,
   Camera,
   Loader2,
+  Sparkles,
+  Palette,
 } from "lucide-react";
+import type { Service } from "@/types/service";
+import type { Product } from "@/types/product";
 
 const ADMIN_EMAILS = ["admin@unistay.com", "busengarichard75@gmail.com"];
 
@@ -67,6 +74,11 @@ export default function ProfilePage() {
   const [photoURL, setPhotoURL] = useState<string | undefined>(undefined);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  // ── Shop appearance (service_provider only) ──
+  const [services, setServices] = useState<Service[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingListings, setIsLoadingListings] = useState(false);
 
   const [original, setOriginal] = useState({
     fullName: "",
@@ -114,6 +126,31 @@ export default function ProfilePage() {
     };
   }, [user]);
 
+  // ─── Fetch provider's listings (for the featured picker) ────
+  useEffect(() => {
+    if (!user || user.role !== "service_provider") return;
+    let active = true;
+    setIsLoadingListings(true);
+    Promise.all([
+      getServicesByOwner(user.uid),
+      getProductsByOwner(user.uid),
+    ])
+      .then(([svc, prd]) => {
+        if (!active) return;
+        setServices(svc);
+        setProducts(prd);
+      })
+      .catch(() => {
+        // silent — featured picker just won't have options
+      })
+      .finally(() => {
+        if (active) setIsLoadingListings(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
   const isStudent = user?.role === "student";
   const isLandlord = user?.role === "landlord";
   const isProvider = user?.role === "service_provider";
@@ -131,7 +168,6 @@ export default function ProfilePage() {
   async function handleAvatarPick(file: File) {
     if (!user) return;
 
-    // Validate
     if (!file.type.startsWith("image/")) {
       toast.error("Please pick an image file.");
       return;
@@ -143,7 +179,6 @@ export default function ProfilePage() {
 
     setIsUploadingAvatar(true);
     try {
-      // 1. Upload to Cloudinary via /api/upload
       const formData = new FormData();
       formData.append("file", file);
 
@@ -155,17 +190,14 @@ export default function ProfilePage() {
       if (!res.ok) throw new Error("Upload failed");
 
       const data = await res.json();
-      // Defensive — accept common response shapes
       const url: string | undefined =
         data?.url || data?.secure_url || data?.data?.url;
 
       if (!url) throw new Error("No URL returned");
 
-      // 2. Save to Firestore
       await updateDoc(doc(db, "users", user.uid), { photoURL: url });
       setPhotoURL(url);
 
-      // 3. Refresh auth context (in case provider page reads from it)
       if (refreshUser) await refreshUser();
 
       toast.success("Profile picture updated!");
@@ -174,7 +206,6 @@ export default function ProfilePage() {
       toast.error("Failed to upload profile picture. Please try again.");
     } finally {
       setIsUploadingAvatar(false);
-      // Reset input so picking the same file again still triggers onChange
       if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   }
@@ -394,7 +425,6 @@ export default function ProfilePage() {
         {/* Header */}
         <div className="card-premium bg-[var(--nexora-navy)] p-6 text-white">
           <div className="flex items-center gap-4">
-            {/* ── Avatar (providers: clickable upload / others: initials) ── */}
             {isProvider ? (
               <button
                 type="button"
@@ -414,7 +444,6 @@ export default function ProfilePage() {
                   initials
                 )}
 
-                {/* Camera overlay */}
                 <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                   {isUploadingAvatar ? (
                     <Loader2 size={16} className="animate-spin text-white" />
@@ -448,7 +477,6 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Provider-only: hint + remove button */}
           {isProvider && (
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3 text-xs">
               <span className="text-gray-300">
@@ -469,6 +497,50 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {/* ══════════════════════════════════════════════════════
+            🎨 SHOP CUSTOMIZATION — PROvider ONLY, SUPER VISIBLE
+           ══════════════════════════════════════════════════════ */}
+        {isProvider && (
+          <section className="relative mt-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-1 shadow-xl">
+            {/* Animated glow ring */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-20 -right-20 h-40 w-40 rounded-full bg-white/20 blur-3xl"
+            />
+
+            <div className="relative rounded-xl bg-white">
+              {/* Header banner — hard to miss */}
+              <div className="flex items-start gap-3 border-b border-gray-100 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 px-6 py-5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md">
+                  <Palette size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-bold text-[var(--nexora-navy)]">
+                      Customize Your Shop
+                    </h2>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm">
+                      <Sparkles size={9} />
+                      New
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
+                    Make your shop look unique. Pick your color, add a tagline
+                    and banner, and pin your best listing to the top. Visitors
+                    see this on your public shop page.
+                  </p>
+                </div>
+              </div>
+
+              {/* The editor */}
+              <ShopAppearanceEditor
+                services={services}
+                products={products}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Account details */}
         <section className="mt-6 card-premium p-6">

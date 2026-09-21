@@ -1,4 +1,3 @@
-// src/app/admin/analytics/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -18,10 +17,19 @@ import {
   ArrowLeft,
   BarChart3,
   Clock,
+  Info,
+  Globe,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { isAdminEmail } from "@/lib/admin";
 import { getVisitStats, VisitStats, VisitorRole, DeviceType } from "@/services/analyticsService";
+import {
+  getEventStats,
+  EventStats,
+  SOURCE_LABELS,
+  VERTICAL_LABELS,
+} from "@/services/analyticsEventService";
 
 const ADMIN_PIN = "3542";
 const PIN_SESSION_KEY = "peza_admin_pin_ok";
@@ -72,6 +80,10 @@ export default function AdminAnalyticsPage() {
   const [stats, setStats] = useState<VisitStats | null>(null);
   const [isFetching, setIsFetching] = useState(false);
 
+  // ─── NEW: event-pipeline stats ───
+  const [eventStats, setEventStats] = useState<EventStats | null>(null);
+  const [isFetchingEvents, setIsFetchingEvents] = useState(false);
+
   // Restore PIN from session
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -88,7 +100,7 @@ export default function AdminAnalyticsPage() {
     }
   }, [user, isLoading, router]);
 
-  // Fetch stats
+  // Fetch legacy stats (unchanged)
   useEffect(() => {
     if (!isPinVerified) return;
     let active = true;
@@ -97,6 +109,22 @@ export default function AdminAnalyticsPage() {
       if (active) {
         setStats(data);
         setIsFetching(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [isPinVerified, range]);
+
+  // ─── NEW: fetch event stats in parallel ───
+  useEffect(() => {
+    if (!isPinVerified) return;
+    let active = true;
+    setIsFetchingEvents(true);
+    getEventStats(rangeToMs(range)).then((data) => {
+      if (active) {
+        setEventStats(data);
+        setIsFetchingEvents(false);
       }
     });
     return () => {
@@ -169,6 +197,15 @@ export default function AdminAnalyticsPage() {
   const deviceMax = Math.max(1, ...Object.values(stats?.byDevice || { mobile: 0, tablet: 0, desktop: 0 }));
   const pathMax = Math.max(1, ...(stats?.topPages.map((p) => p.count) || [1]));
 
+  // event pipeline derived
+  const evUnique = eventStats?.uniqueVisitors || 0;
+  const evSessions = eventStats?.sessions || 0;
+  const evPages = eventStats?.pageViews || 0;
+  const evPPS = eventStats?.pagesPerSession || 0;
+  const evSourceMax = Math.max(1, ...(eventStats?.bySource.map((s) => s.count) || [1]));
+  const evVerticalMax = Math.max(1, ...(eventStats?.byVertical.map((v) => v.count) || [1]));
+  const hasEventData = eventStats && eventStats.totalEvents > 0;
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-200 p-6">
       <div className="max-w-6xl mx-auto">
@@ -214,6 +251,166 @@ export default function AdminAnalyticsPage() {
           ))}
         </div>
 
+        {/* ═══════════════════════════════════════════════════════
+            NEW: PEOPLE & TRAFFIC (reads from analytics_events)
+            Additive — the legacy sections remain untouched below.
+           ═══════════════════════════════════════════════════════ */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={16} className="text-emerald-400" />
+            <h2 className="text-sm font-semibold text-white">People & Traffic</h2>
+            <span className="text-[10px] uppercase tracking-wider text-emerald-400/80 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+              New
+            </span>
+            <span
+              className="ml-1 inline-flex items-center text-gray-500 hover:text-gray-300"
+              title="Counts are estimates. Anonymous visitors are identified by a per-device id that can be reset by clearing browser data."
+            >
+              <Info size={12} />
+            </span>
+          </div>
+
+          {isFetchingEvents ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="animate-pulse h-32 bg-gray-900/50 rounded-xl border border-gray-800"
+                />
+              ))}
+            </div>
+          ) : !hasEventData ? (
+            <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 text-center">
+              <Users size={32} className="mx-auto text-gray-700 mb-2" />
+              <p className="text-sm text-gray-400">
+                No events recorded yet in this range.
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                Data appears here as people start browsing Peza.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Headline row */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <StatCard
+                  label="Unique visitors"
+                  value={evUnique.toLocaleString()}
+                  icon={<Users size={18} className="text-emerald-400" />}
+                  hint="Estimated individuals"
+                />
+                <StatCard
+                  label="Sessions"
+                  value={evSessions.toLocaleString()}
+                  icon={<Layers size={18} className="text-cyan-400" />}
+                  hint="30-min activity windows"
+                />
+                <StatCard
+                  label="Page views"
+                  value={evPages.toLocaleString()}
+                  icon={<Eye size={18} className="text-blue-400" />}
+                  hint="Total pages loaded"
+                />
+                <StatCard
+                  label="Pages / session"
+                  value={evPPS.toFixed(2)}
+                  icon={<TrendingUp size={18} className="text-amber-400" />}
+                  hint="Avg depth per session"
+                />
+              </div>
+
+              {/* Source + Vertical breakdown */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Sources */}
+                <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
+                  <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <Globe size={16} className="text-purple-400" />
+                    Where they came from
+                  </h3>
+                  <div className="space-y-3">
+                    {eventStats!.bySource.slice(0, 8).map((s) => {
+                      const pct =
+                        eventStats!.totalEvents > 0
+                          ? (s.count / eventStats!.totalEvents) * 100
+                          : 0;
+                      return (
+                        <div key={s.source}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-gray-300">
+                              {SOURCE_LABELS[s.source] || s.source}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {s.count}{" "}
+                              <span className="text-gray-600">
+                                ({Math.round(pct)}%)
+                              </span>
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                              style={{ width: `${(s.count / evSourceMax) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Verticals */}
+                <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
+                  <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <Layers size={16} className="text-cyan-400" />
+                    Which vertical they explored
+                  </h3>
+                  <div className="space-y-3">
+                    {eventStats!.byVertical.slice(0, 8).map((v) => {
+                      const pct =
+                        eventStats!.totalEvents > 0
+                          ? (v.count / eventStats!.totalEvents) * 100
+                          : 0;
+                      return (
+                        <div key={v.vertical}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-gray-300">
+                              {VERTICAL_LABELS[v.vertical] || v.vertical}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {v.count}{" "}
+                              <span className="text-gray-600">
+                                ({Math.round(pct)}%)
+                              </span>
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                              style={{ width: `${(v.count / evVerticalMax) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ─── Divider ─── */}
+        <div className="mb-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-800" />
+          <span className="text-[10px] uppercase tracking-wider text-gray-600">
+            Legacy pipeline
+          </span>
+          <div className="h-px flex-1 bg-gray-800" />
+        </div>
+
+        {/* ═══════════════════════════════════════════════════════
+            LEGACY SECTIONS — untouched
+           ═══════════════════════════════════════════════════════ */}
         {isFetching ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (

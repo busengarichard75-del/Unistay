@@ -23,6 +23,7 @@ import {
   Map as MapIcon,
   User as UserIcon,
   BookOpen,
+  Heart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
@@ -48,7 +49,6 @@ export function Navbar() {
     return null;
   }
 
-  // Close desktop dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -59,7 +59,6 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Body scroll lock when side drawer is open
   useEffect(() => {
     if (isMobileMenuOpen) {
       const prev = document.body.style.overflow;
@@ -70,7 +69,6 @@ export function Navbar() {
     }
   }, [isMobileMenuOpen]);
 
-  // Escape to close drawer
   useEffect(() => {
     if (!isMobileMenuOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -80,7 +78,6 @@ export function Navbar() {
     return () => document.removeEventListener("keydown", onKey);
   }, [isMobileMenuOpen]);
 
-  // Auto-close drawer on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
@@ -124,338 +121,377 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full navbar-animated">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-4">
-        <Link href="/" className="shrink-0 text-base font-bold text-white sm:text-lg">
-          Peza ZM
-        </Link>
+    <>
+      <header className="sticky top-0 z-50 w-full navbar-animated">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-4">
+          <Link href="/" className="shrink-0 text-base font-bold text-white sm:text-lg">
+            Peza ZM
+          </Link>
 
-        <nav className="flex items-center gap-2 sm:gap-4">
-          {isLoading ? null : user ? (
-            <>
-              {/* Quick actions (desktop) */}
-              <div className="hidden items-center gap-4 md:flex">
+          <nav className="flex items-center gap-2 sm:gap-4">
+            {isLoading ? null : user ? (
+              <>
+                {/* Quick actions (desktop) */}
+                <div className="hidden items-center gap-4 md:flex">
+                  <Link
+                    href="/services"
+                    className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                  >
+                    <Wrench size={16} />
+                    Services
+                  </Link>
+                  <Link
+                    href="/marketplace"
+                    className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                  >
+                    <ShoppingBag size={16} />
+                    Marketplace
+                  </Link>
+                  <Link
+                    href="/map"
+                    className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                  >
+                    <MapIcon size={16} />
+                    Map
+                  </Link>
+                  <Link
+                    href="/library"
+                    className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                  >
+                    <BookOpen size={16} />
+                    Library
+                  </Link>
+
+                  {isAdminEmail(user.email) && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                    >
+                      <ShieldCheck size={16} />
+                      Admin
+                    </Link>
+                  )}
+
+                  {effectiveRole === "landlord" && (
+                    <>
+                      <Link
+                        href="/dashboard/landlord/add-listing"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                      >
+                        <Plus size={16} />
+                        Add Listing
+                      </Link>
+                      <Link
+                        href="/dashboard/landlord"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                      >
+                        <ClipboardList size={16} />
+                        Manage Listings
+                      </Link>
+                    </>
+                  )}
+
+                  {effectiveRole === "service_provider" && (
+                    <>
+                      <Link
+                        href="/dashboard/provider/add-listing"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                      >
+                        <Plus size={16} />
+                        Add Listing
+                      </Link>
+                      <Link
+                        href="/dashboard/provider"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                      >
+                        <Store size={16} />
+                        My Listings
+                      </Link>
+                    </>
+                  )}
+
+                  {effectiveRole === "student" && (
+                    <Link
+                      href="/dashboard/student"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                    >
+                      <Calendar size={16} />
+                      My Bookings
+                    </Link>
+                  )}
+                </div>
+
+                {/* Notification Bell */}
+                <div className="relative">
+                  <button
+                    onClick={toggleNotification}
+                    className="relative flex items-center justify-center rounded-full p-1.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors sm:p-2"
+                    aria-label="Notifications"
+                  >
+                    <Bell size={18} className="sm:hidden" />
+                    <Bell size={20} className="hidden sm:block" />
+                    {notificationCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-lg sm:h-5 sm:w-5 sm:text-[10px]">
+                        {notificationCount > 9 ? "9+" : notificationCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <NotificationDropdown
+                    isOpen={isNotificationOpen}
+                    onClose={closeNotification}
+                    onToggle={toggleNotification}
+                  />
+                </div>
+
+                {/* Hamburger (mobile) */}
+                <button
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="flex items-center justify-center rounded-full p-1.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors sm:p-2 md:hidden"
+                  aria-label="Open menu"
+                >
+                  <Menu size={20} />
+                </button>
+
+                {/* User Menu Dropdown (desktop) */}
+                <div className="relative hidden md:block" ref={menuRef}>
+                  <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
+                  >
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--nexora-primary)] text-xs font-bold text-white">
+                      {initials}
+                    </div>
+                    <span className="hidden max-w-[100px] truncate sm:inline-block">
+                      {displayName}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`transition-transform ${isMenuOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {isMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5">
+                      <div className="border-b border-gray-100 px-4 py-3">
+                        <p className="truncate text-sm font-semibold text-gray-900">
+                          {displayName}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">{user.email}</p>
+                        <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs capitalize text-blue-600">
+                          {effectiveRole === "service_provider"
+                            ? "Service Provider"
+                            : effectiveRole || "user"}
+                        </span>
+                      </div>
+                      <div className="py-1">
+                        {effectiveRole === "landlord" && (
+                          <Link
+                            href="/dashboard/landlord"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            <LayoutDashboard size={16} />
+                            Dashboard
+                          </Link>
+                        )}
+                        {effectiveRole === "student" && (
+                          <Link
+                            href="/dashboard/student"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            <LayoutDashboard size={16} />
+                            Dashboard
+                          </Link>
+                        )}
+                        {effectiveRole === "service_provider" && (
+                          <Link
+                            href="/dashboard/provider"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            <LayoutDashboard size={16} />
+                            My Dashboard
+                          </Link>
+                        )}
+
+                        <Link
+                          href="/services"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Wrench size={16} />
+                          Services
+                        </Link>
+                        <Link
+                          href="/marketplace"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <ShoppingBag size={16} />
+                          Marketplace
+                        </Link>
+                        <Link
+                          href="/map"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <MapIcon size={16} />
+                          Peza Map
+                        </Link>
+                        <Link
+                          href="/library"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <BookOpen size={16} />
+                          Library
+                        </Link>
+
+                        {/* ❤️ Saved Items */}
+                        <Link
+                          href="/saved"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Heart size={16} />
+                          Saved Items
+                        </Link>
+
+                        {isAdminEmail(user.email) && (
+                          <Link
+                            href="/admin"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            <ShieldCheck size={16} />
+                            Admin Panel
+                          </Link>
+                        )}
+
+                        <Link
+                          href="/dashboard/profile"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Settings size={16} />
+                          Profile & Settings
+                        </Link>
+                      </div>
+                      <div className="border-t border-gray-100 py-1">
+                        <button
+                          onClick={handleLogout}
+                          disabled={isLoggingOut}
+                          className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                        >
+                          <LogOut size={16} />
+                          {isLoggingOut ? "Logging out..." : "Log Out"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
                 <Link
                   href="/services"
-                  className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                  className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
                 >
-                  <Wrench size={16} />
-                  Services
+                  <Wrench size={14} className="sm:hidden" />
+                  <Wrench size={16} className="hidden sm:block" />
+                  <span className="hidden xs:inline sm:inline">Services</span>
                 </Link>
                 <Link
                   href="/marketplace"
-                  className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                  className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
                 >
-                  <ShoppingBag size={16} />
-                  Marketplace
+                  <ShoppingBag size={14} className="sm:hidden" />
+                  <ShoppingBag size={16} className="hidden sm:block" />
+                  <span className="hidden xs:inline sm:inline">Marketplace</span>
                 </Link>
                 <Link
                   href="/map"
-                  className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                  className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
                 >
-                  <MapIcon size={16} />
-                  Map
+                  <MapIcon size={14} className="sm:hidden" />
+                  <MapIcon size={16} className="hidden sm:block" />
+                  <span className="hidden xs:inline sm:inline">Map</span>
                 </Link>
                 <Link
                   href="/library"
-                  className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+                  className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
                 >
-                  <BookOpen size={16} />
-                  Library
+                  <BookOpen size={14} className="sm:hidden" />
+                  <BookOpen size={16} className="hidden sm:block" />
+                  <span className="hidden xs:inline sm:inline">Library</span>
                 </Link>
-
-                {isAdminEmail(user.email) && (
-                  <Link
-                    href="/admin"
-                    className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
-                  >
-                    <ShieldCheck size={16} />
-                    Admin
-                  </Link>
-                )}
-
-                {effectiveRole === "landlord" && (
-                  <>
-                    <Link
-                      href="/dashboard/landlord/add-listing"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
-                    >
-                      <Plus size={16} />
-                      Add Listing
-                    </Link>
-                    <Link
-                      href="/dashboard/landlord"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
-                    >
-                      <ClipboardList size={16} />
-                      Manage Listings
-                    </Link>
-                  </>
-                )}
-
-                {effectiveRole === "service_provider" && (
-                  <>
-                    <Link
-                      href="/dashboard/provider/add-listing"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
-                    >
-                      <Plus size={16} />
-                      Add Listing
-                    </Link>
-                    <Link
-                      href="/dashboard/provider"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
-                    >
-                      <Store size={16} />
-                      My Listings
-                    </Link>
-                  </>
-                )}
-
-                {effectiveRole === "student" && (
-                  <Link
-                    href="/dashboard/student"
-                    className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
-                  >
-                    <Calendar size={16} />
-                    My Bookings
-                  </Link>
-                )}
-              </div>
-
-              {/* Notification Bell */}
-              <div className="relative">
-                <button
-                  onClick={toggleNotification}
-                  className="relative flex items-center justify-center rounded-full p-1.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors sm:p-2"
-                  aria-label="Notifications"
+                <Link
+                  href="/login"
+                  className="text-xs font-medium text-gray-300 hover:text-white sm:text-sm"
                 >
-                  <Bell size={18} className="sm:hidden" />
-                  <Bell size={20} className="hidden sm:block" />
-                  {notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-lg sm:h-5 sm:w-5 sm:text-[10px]">
-                      {notificationCount > 9 ? "9+" : notificationCount}
-                    </span>
-                  )}
-                </button>
-
-                <NotificationDropdown
-                  isOpen={isNotificationOpen}
-                  onClose={closeNotification}
-                  onToggle={toggleNotification}
-                />
-              </div>
-
-              {/* Hamburger (mobile) */}
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="flex items-center justify-center rounded-full p-1.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors sm:p-2 md:hidden"
-                aria-label="Open menu"
-              >
-                <Menu size={20} />
-              </button>
-
-              {/* User Menu Dropdown (desktop) */}
-              <div className="relative hidden md:block" ref={menuRef}>
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
+                  Log In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="shrink-0 whitespace-nowrap rounded-full bg-[var(--nexora-primary)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[var(--nexora-primary-hover)] sm:px-4 sm:py-2 sm:text-sm"
                 >
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--nexora-primary)] text-xs font-bold text-white">
-                    {initials}
-                  </div>
-                  <span className="hidden max-w-[100px] truncate sm:inline-block">
-                    {displayName}
-                  </span>
-                  <ChevronDown
-                    size={16}
-                    className={`transition-transform ${isMenuOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
+                  Sign Up
+                </Link>
+              </>
+            )}
+          </nav>
+        </div>
 
-                {isMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5">
-                    <div className="border-b border-gray-100 px-4 py-3">
-                      <p className="truncate text-sm font-semibold text-gray-900">
-                        {displayName}
-                      </p>
-                      <p className="truncate text-xs text-gray-500">{user.email}</p>
-                      <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs capitalize text-blue-600">
-                        {effectiveRole === "service_provider"
-                          ? "Service Provider"
-                          : effectiveRole || "user"}
-                      </span>
-                    </div>
-                    <div className="py-1">
-                      {effectiveRole === "landlord" && (
-                        <Link
-                          href="/dashboard/landlord"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          <LayoutDashboard size={16} />
-                          Dashboard
-                        </Link>
-                      )}
-                      {effectiveRole === "student" && (
-                        <Link
-                          href="/dashboard/student"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          <LayoutDashboard size={16} />
-                          Dashboard
-                        </Link>
-                      )}
-                      {effectiveRole === "service_provider" && (
-                        <Link
-                          href="/dashboard/provider"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          <LayoutDashboard size={16} />
-                          My Dashboard
-                        </Link>
-                      )}
-
-                      <Link
-                        href="/services"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <Wrench size={16} />
-                        Services
-                      </Link>
-                      <Link
-                        href="/marketplace"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <ShoppingBag size={16} />
-                        Marketplace
-                      </Link>
-                      <Link
-                        href="/map"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <MapIcon size={16} />
-                        Peza Map
-                      </Link>
-                      <Link
-                        href="/library"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <BookOpen size={16} />
-                        Library
-                      </Link>
-
-                      {isAdminEmail(user.email) && (
-                        <Link
-                          href="/admin"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          <ShieldCheck size={16} />
-                          Admin Panel
-                        </Link>
-                      )}
-
-                      <Link
-                        href="/dashboard/profile"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <Settings size={16} />
-                        Profile & Settings
-                      </Link>
-                    </div>
-                    <div className="border-t border-gray-100 py-1">
-                      <button
-                        onClick={handleLogout}
-                        disabled={isLoggingOut}
-                        className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
-                      >
-                        <LogOut size={16} />
-                        {isLoggingOut ? "Logging out..." : "Log Out"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/services"
-                className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
-              >
-                <Wrench size={14} className="sm:hidden" />
-                <Wrench size={16} className="hidden sm:block" />
-                <span className="hidden xs:inline sm:inline">Services</span>
-              </Link>
-              <Link
-                href="/marketplace"
-                className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
-              >
-                <ShoppingBag size={14} className="sm:hidden" />
-                <ShoppingBag size={16} className="hidden sm:block" />
-                <span className="hidden xs:inline sm:inline">Marketplace</span>
-              </Link>
-              <Link
-                href="/map"
-                className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
-              >
-                <MapIcon size={14} className="sm:hidden" />
-                <MapIcon size={16} className="hidden sm:block" />
-                <span className="hidden xs:inline sm:inline">Map</span>
-              </Link>
-              <Link
-                href="/library"
-                className="hidden items-center gap-1 text-xs font-medium text-gray-300 hover:text-white sm:flex sm:text-sm"
-              >
-                <BookOpen size={14} className="sm:hidden" />
-                <BookOpen size={16} className="hidden sm:block" />
-                <span className="hidden xs:inline sm:inline">Library</span>
-              </Link>
-              <Link
-                href="/login"
-                className="text-xs font-medium text-gray-300 hover:text-white sm:text-sm"
-              >
-                Log In
-              </Link>
-              <Link
-                href="/signup"
-                className="shrink-0 whitespace-nowrap rounded-full bg-[var(--nexora-primary)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[var(--nexora-primary-hover)] sm:px-4 sm:py-2 sm:text-sm"
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
-        </nav>
-      </div>
+        {/* ─── MOBILE QUICK ICON ROW ─── */}
+        <div className="border-t border-white/10 md:hidden">
+          <div className="mx-auto grid max-w-7xl grid-cols-4 gap-1 px-3 py-1">
+            <MobileQuickIcon
+              href="/services"
+              label="Services"
+              accent="from-cyan-500 to-teal-600"
+              icon={<Wrench size={14} />}
+            />
+            <MobileQuickIcon
+              href="/map"
+              label="Map"
+              accent="from-emerald-500 to-green-600"
+              icon={<MapIcon size={14} />}
+            />
+            <MobileQuickIcon
+              href="/marketplace"
+              label="Marketplace"
+              accent="from-orange-500 to-pink-600"
+              icon={<ShoppingBag size={14} />}
+            />
+            <MobileQuickIcon
+              href="/library"
+              label="Library"
+              accent="from-indigo-500 to-purple-600"
+              icon={<BookOpen size={14} />}
+            />
+          </div>
+        </div>
+      </header>
 
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* MOBILE SIDE DRAWER                                          */}
       {/* ═══════════════════════════════════════════════════════════ */}
       {isMobileMenuOpen && user && (
         <div className="md:hidden">
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
           />
 
-          {/* Drawer */}
           <aside
             className="fixed right-0 top-0 z-[101] flex h-screen w-72 max-w-[85vw] flex-col bg-[var(--nexora-navy)] shadow-2xl animate-in slide-in-from-right duration-300"
             role="dialog"
             aria-modal="true"
             aria-label="Mobile menu"
           >
-            {/* Drawer header */}
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-primary)] text-sm font-bold text-white">
@@ -479,18 +515,14 @@ export function Navbar() {
               </button>
             </div>
 
-            {/* Drawer content */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              {/* Role badge */}
               <span className="mb-4 inline-block rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80">
                 {effectiveRole === "service_provider"
                   ? "Service Provider"
                   : effectiveRole || "User"}
               </span>
 
-              {/* Primary links (card style) */}
               <nav className="space-y-1.5">
-                {/* Dashboard — role-aware */}
                 {effectiveRole === "landlord" && (
                   <DrawerLink
                     href="/dashboard/landlord"
@@ -513,7 +545,6 @@ export function Navbar() {
                   />
                 )}
 
-                {/* Role-specific actions */}
                 {effectiveRole === "landlord" && (
                   <>
                     <DrawerLink
@@ -552,10 +583,8 @@ export function Navbar() {
                   />
                 )}
 
-                {/* Divider */}
                 <div className="my-3 border-t border-white/10" />
 
-                {/* Universal links */}
                 <DrawerLink
                   href="/services"
                   icon={<Wrench size={16} />}
@@ -577,10 +606,15 @@ export function Navbar() {
                   label="Library"
                 />
 
-                {/* Divider */}
+                {/* ❤️ Saved Items — mobile drawer */}
+                <DrawerLink
+                  href="/saved"
+                  icon={<Heart size={16} />}
+                  label="Saved Items"
+                />
+
                 <div className="my-3 border-t border-white/10" />
 
-                {/* Account */}
                 <DrawerLink
                   href="/dashboard/profile"
                   icon={<UserIcon size={16} />}
@@ -595,7 +629,6 @@ export function Navbar() {
                   />
                 )}
 
-                {/* Logout */}
                 <button
                   onClick={handleLogout}
                   disabled={isLoggingOut}
@@ -609,7 +642,6 @@ export function Navbar() {
               </nav>
             </div>
 
-            {/* Drawer footer */}
             <div className="border-t border-white/10 px-4 py-3">
               <p className="text-center text-[10px] text-white/40">
                 Peza ZM · Find what you need
@@ -618,14 +650,43 @@ export function Navbar() {
           </aside>
         </div>
       )}
-    </header>
+    </>
+  );
+}
+
+/* ──────────────────────────────────────────────── */
+/* Mobile Quick Icon (icon-only, compact)          */
+/* ──────────────────────────────────────────────── */
+function MobileQuickIcon({
+  href,
+  label,
+  icon,
+  accent,
+}: {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  accent: string;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      title={label}
+      className="flex items-center justify-center py-0.5 active:scale-95 transition-transform"
+    >
+      <span
+        className={`flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br ${accent} text-white shadow-sm`}
+      >
+        {icon}
+      </span>
+    </Link>
   );
 }
 
 /* ──────────────────────────────────────────────── */
 /* Drawer Link (card style)                        */
 /* ──────────────────────────────────────────────── */
-
 function DrawerLink({
   href,
   icon,

@@ -7,7 +7,7 @@ import {
   signOut as firebaseSignOut,
   reload as reloadFirebaseUser,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { User } from "@/types/user";
 
@@ -52,6 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           whatsapp: data.whatsapp,
           businessName: data.businessName,
           providerType: data.providerType,
+          photoURL: data.photoURL || undefined,          // ← FIX: was missing
+          shopSettings: data.shopSettings || undefined,  // ← NEW
           verificationStatus: data.verificationStatus,
           verificationReviewedAt: data.verificationReviewedAt,
           verificationReviewedBy: data.verificationReviewedBy,

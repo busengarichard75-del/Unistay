@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { useAuth } from "@/lib/AuthContext";
+import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 
 interface WhatsAppContactButtonProps {
   whatsapp: string;
@@ -22,6 +25,9 @@ export function WhatsAppContactButton({
   size = "md",
   fullWidth = false,
 }: WhatsAppContactButtonProps) {
+  const { user } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
   const href = buildWhatsAppLink(whatsapp, message);
   if (!href) return null;
 
@@ -33,21 +39,43 @@ export function WhatsAppContactButton({
 
   const iconSize = size === "lg" ? 18 : size === "md" ? 16 : 13;
 
+  // ─── AUTH GATE ───
+  // Guests must log in before contacting a provider.
+  // We still render the <a> (so right-click / middle-click open normally
+  // for power users, and SEO crawlers see the real link), but we intercept
+  // the left-click for guests and show the login prompt instead.
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!user) {
+      e.preventDefault();
+      setShowLoginModal(true);
+      return;
+    }
+    // Logged in → fire tracking as normal
+    if (onTrack) onTrack();
+  };
+
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={() => {
-        if (onTrack) onTrack();
-      }}
-      className={`inline-flex items-center justify-center rounded-full bg-[#25D366] font-semibold text-white shadow-sm transition-opacity hover:opacity-90 ${
-        sizeClasses[size]
-      } ${fullWidth ? "w-full" : ""} ${className}`}
-      aria-label={label}
-    >
-      <MessageCircle size={iconSize} />
-      {label}
-    </a>
+    <>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleClick}
+        className={`inline-flex items-center justify-center rounded-full bg-[#25D366] font-semibold text-white shadow-sm transition-opacity hover:opacity-90 ${
+          sizeClasses[size]
+        } ${fullWidth ? "w-full" : ""} ${className}`}
+        aria-label={label}
+      >
+        <MessageCircle size={iconSize} />
+        {label}
+      </a>
+
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        title="Sign in to contact"
+        subtitle="Create a free Peza account to message this provider — it keeps everyone on Peza safe and accountable."
+      />
+    </>
   );
 }

@@ -10,6 +10,7 @@ import { getProductsByOwner } from "@/services/productService";
 import { Service, isServiceBoosted } from "@/types/service";
 import { Product, isProductBoosted } from "@/types/product";
 import { getUniversityFullName } from "@/lib/universityLabels";
+import { getShopTheme } from "@/lib/shopThemes";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { ProductCard } from "@/components/products/ProductCard";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import {
   Store,
   AlertTriangle,
   Share2,
+  Star,
 } from "lucide-react";
 
 export default function ProviderProfilePage() {
@@ -80,7 +82,6 @@ export default function ProviderProfilePage() {
     };
   }, [uid]);
 
-  // ── Share handler (visitor → forwards shop to friends) ──
   async function handleShareShop() {
     if (!profile) return;
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -97,7 +98,7 @@ export default function ProviderProfilePage() {
       toast.success("Shop link copied — share it anywhere!");
       setTimeout(() => setShared(false), 2000);
     } catch {
-      // User cancelled or clipboard failed — silent
+      // User cancelled — silent
     }
   }
 
@@ -141,18 +142,44 @@ export default function ProviderProfilePage() {
     );
   }
 
-  const sortedServices = [...services].sort((a, b) => {
-    const aB = isServiceBoosted(a) ? 1 : 0;
-    const bB = isServiceBoosted(b) ? 1 : 0;
-    if (aB !== bB) return bB - aB;
-    return (b.createdAt || 0) - (a.createdAt || 0);
-  });
-  const sortedProducts = [...products].sort((a, b) => {
-    const aB = isProductBoosted(a) ? 1 : 0;
-    const bB = isProductBoosted(b) ? 1 : 0;
-    if (aB !== bB) return bB - aB;
-    return (b.createdAt || 0) - (a.createdAt || 0);
-  });
+  // ─── Shop customization ───
+  const shopSettings = profile.shopSettings || {};
+  const theme = getShopTheme(shopSettings.accentColor);
+  const tagline = shopSettings.tagline?.trim();
+  const bannerUrl = shopSettings.bannerUrl;
+  const featuredId = shopSettings.featuredListingId;
+  const featuredType = shopSettings.featuredListingType;
+
+  // ─── Sort: featured first (if set), then boosted, then newest ───
+  const sortWithFeatured = <T extends { id: string; boostedAt?: number | null; createdAt?: number }>(
+    list: T[],
+    isBoosted: (item: T) => boolean
+  ): { featured: T | null; rest: T[] } => {
+    const featured = featuredId
+      ? list.find((x) => x.id === featuredId) || null
+      : null;
+
+    const rest = list.filter((x) => x.id !== featuredId);
+
+    rest.sort((a, b) => {
+      const aB = isBoosted(a) ? 1 : 0;
+      const bB = isBoosted(b) ? 1 : 0;
+      if (aB !== bB) return bB - aB;
+      if (aB) return (b.boostedAt || 0) - (a.boostedAt || 0);
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+
+    return { featured, rest };
+  };
+
+  const { featured: featuredService, rest: restServices } = sortWithFeatured(
+    services,
+    isServiceBoosted
+  );
+  const { featured: featuredProduct, rest: restProducts } = sortWithFeatured(
+    products,
+    isProductBoosted
+  );
 
   const displayName = profile.displayName;
   const initials = displayName
@@ -168,8 +195,10 @@ export default function ProviderProfilePage() {
     ? getUniversityFullName(profile.university)
     : "Zambia";
 
-  const hasServices = sortedServices.length > 0;
-  const hasProducts = sortedProducts.length > 0;
+  const totalServices = services.length;
+  const totalProducts = products.length;
+  const hasServices = totalServices > 0;
+  const hasProducts = totalProducts > 0;
   const showAvatar = !!profile.photoURL && !imgError;
 
   return (
@@ -187,8 +216,23 @@ export default function ProviderProfilePage() {
 
         {/* ─── Provider header card ─── */}
         <div className="card-premium overflow-hidden">
-          <div className="bg-gradient-to-r from-[var(--nexora-navy)] to-[var(--nexora-primary)] px-6 py-8 text-white">
-            <div className="flex flex-wrap items-center gap-5">
+          {/* Header background — gradient + optional banner */}
+          <div
+            className={`relative overflow-hidden bg-gradient-to-r ${theme.gradient} px-6 py-8 text-white`}
+          >
+            {bannerUrl && (
+              <>
+                <img
+                  src={bannerUrl}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                  loading="eager"
+                />
+                <div className="absolute inset-0 bg-black/40" />
+              </>
+            )}
+
+            <div className="relative flex flex-wrap items-center gap-5">
               {/* ── Avatar ── */}
               {showAvatar ? (
                 <img
@@ -216,6 +260,13 @@ export default function ProviderProfilePage() {
                   )}
                 </div>
 
+                {/* 🎨 Tagline (custom, optional) */}
+                {tagline && (
+                  <p className="mt-1.5 max-w-xl text-sm font-medium text-white/95">
+                    {tagline}
+                  </p>
+                )}
+
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/85">
                   <span className="inline-flex items-center gap-1">
                     <Store size={12} />
@@ -239,7 +290,7 @@ export default function ProviderProfilePage() {
                 </div>
               </div>
 
-              {/* ── 🔗 Share shop button ── */}
+              {/* ── Share shop button ── */}
               <button
                 type="button"
                 onClick={handleShareShop}
@@ -266,7 +317,7 @@ export default function ProviderProfilePage() {
               <Wrench size={14} />
               Services
               <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold shadow-sm">
-                {sortedServices.length}
+                {totalServices}
               </span>
             </button>
 
@@ -282,7 +333,7 @@ export default function ProviderProfilePage() {
               <ShoppingBag size={14} />
               Products
               <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold shadow-sm">
-                {sortedProducts.length}
+                {totalProducts}
               </span>
             </button>
           </div>
@@ -292,14 +343,35 @@ export default function ProviderProfilePage() {
         <div className="mt-6">
           {activeTab === "services" && hasServices && (
             <>
+              {/* Featured service (if set and belongs to this vertical) */}
+              {featuredService && featuredType === "service" && (
+                <div className="mb-5">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                      <Star size={10} fill="currentColor" />
+                      Featured
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-2xl ring-2 ring-amber-300 ring-offset-2">
+                      <ServiceCard service={featuredService} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* All services */}
               <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
                 Services
                 <span className="ml-2 text-sm font-normal text-gray-400">
-                  ({sortedServices.length})
+                  ({totalServices})
                 </span>
               </h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {sortedServices.map((s) => (
+                {(featuredService && featuredType === "service"
+                  ? restServices
+                  : services
+                ).map((s) => (
                   <ServiceCard key={s.id} service={s} />
                 ))}
               </div>
@@ -308,14 +380,35 @@ export default function ProviderProfilePage() {
 
           {activeTab === "products" && hasProducts && (
             <>
+              {/* Featured product (if set and belongs to this vertical) */}
+              {featuredProduct && featuredType === "product" && (
+                <div className="mb-5">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                      <Star size={10} fill="currentColor" />
+                      Featured
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-2xl ring-2 ring-amber-300 ring-offset-2">
+                      <ProductCard product={featuredProduct} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* All products */}
               <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
                 Products
                 <span className="ml-2 text-sm font-normal text-gray-400">
-                  ({sortedProducts.length})
+                  ({totalProducts})
                 </span>
               </h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {sortedProducts.map((p) => (
+                {(featuredProduct && featuredType === "product"
+                  ? restProducts
+                  : products
+                ).map((p) => (
                   <ProductCard key={p.id} product={p} />
                 ))}
               </div>

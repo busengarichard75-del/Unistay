@@ -11,11 +11,13 @@ import { getUniversityFullName, getUniversityShortLabel } from "@/lib/university
 import { trackListing } from "@/lib/trackListing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { optimizeCardImage } from "@/lib/imageUrl";
+import { useAuth } from "@/lib/AuthContext";
 import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
 import { ReportButton } from "@/components/shared/ReportButton";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { RelatedListings } from "@/components/shared/RelatedListings";
+import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ProductCard } from "@/components/products/ProductCard";
 import {
   ArrowLeft,
@@ -32,16 +34,16 @@ import {
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const id = params?.id;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const tracked = useRef(false);
-
-  // ─── Related listings (Pinterest sidebar) ───
   const [related, setRelated] = useState<Product[]>([]);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const tracked = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -67,7 +69,6 @@ export default function ProductDetailPage() {
     trackListing("product", id, "views");
   }, [id, product]);
 
-  // Fetch related once the main product is loaded
   useEffect(() => {
     if (!product) return;
     let active = true;
@@ -138,7 +139,16 @@ export default function ProductDetailPage() {
     `Hi, I saw your "${product.name}" on Peza. Can you share more photos?`
   );
 
-  // Sidebar subtitle + see-all link
+  // ─── Auth-gated "View more photos" click ───
+  const handleViewMorePhotos = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!user) {
+      e.preventDefault();
+      setShowLoginModal(true);
+      return;
+    }
+    trackListing("product", product.id, "whatsappClicks");
+  };
+
   const relatedTitle = product.category
     ? `More ${product.category}`
     : "More products";
@@ -160,7 +170,6 @@ export default function ProductDetailPage() {
           Back
         </button>
 
-        {/* ═══ Pinterest 2-column layout ═══ */}
         <div
           className={
             related.length > 0
@@ -168,9 +177,7 @@ export default function ProductDetailPage() {
               : "grid grid-cols-1 gap-6"
           }
         >
-          {/* ─── MAIN COLUMN ─── */}
           <div className="min-w-0">
-            {/* ─── Images ─── */}
             {images.length > 0 && (
               <>
                 <button
@@ -213,7 +220,7 @@ export default function ProductDetailPage() {
                     href={viewMorePhotosHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => trackListing("product", product.id, "whatsappClicks")}
+                    onClick={handleViewMorePhotos}
                     className="mb-4 flex w-full items-center justify-center gap-2 rounded-full border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[var(--nexora-primary)] hover:text-[var(--nexora-primary)]"
                   >
                     <ImagePlus size={14} />
@@ -223,7 +230,6 @@ export default function ProductDetailPage() {
               </>
             )}
 
-            {/* ─── Main info ─── */}
             <div className="card-premium p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -268,7 +274,6 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              {/* ─── View provider link ─── */}
               <Link
                 href={`/provider/${product.ownerId}`}
                 className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
@@ -301,7 +306,6 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* ─── Share + Report ─── */}
             <div className="mt-3 flex items-center justify-center gap-4">
               <ShareButton targetType="product" targetTitle={product.name} />
               <span className="text-gray-300">·</span>
@@ -313,7 +317,6 @@ export default function ProductDetailPage() {
               />
             </div>
 
-            {/* ─── Description ─── */}
             <div className="card-premium mt-4 p-5">
               <h2 className="mb-2 text-sm font-semibold text-[var(--nexora-navy)]">
                 Description
@@ -328,7 +331,6 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* ─── SIDEBAR (Pinterest-style) ─── */}
           {related.length > 0 && (
             <RelatedListings
               title={relatedTitle}
@@ -346,13 +348,19 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* Lightbox */}
       <ImageLightbox
         images={images}
         initialIndex={lightboxIndex ?? 0}
         isOpen={lightboxIndex !== null}
         onClose={() => setLightboxIndex(null)}
         alt={product.name}
+      />
+
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        title="Sign in to contact"
+        subtitle="Create a free Peza account to message this seller — it keeps everyone on Peza safe and accountable."
       />
 
       <Footer />

@@ -2,6 +2,7 @@
 
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import type { ShopSettings } from "@/types/user";
 
 /**
  * Publicly safe user profile.
@@ -21,6 +22,8 @@ export interface PublicUserProfile {
   memberSince?: number;
   /** Avatar URL — service_provider only. */
   photoURL?: string;
+  /** 🎨 Provider shop customization. */
+  shopSettings?: ShopSettings;
 }
 
 export async function getPublicUserProfile(
@@ -50,6 +53,7 @@ export async function getPublicUserProfile(
       isSuspended: !!data.suspended,
       memberSince: data.createdAt,
       photoURL: data.photoURL || undefined,
+      shopSettings: data.shopSettings || undefined,
     };
   } catch (error) {
     console.error("Failed to fetch public user profile:", error);

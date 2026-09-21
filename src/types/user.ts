@@ -6,6 +6,28 @@ export type UserRole = "student" | "landlord" | "service_provider";
 export type ProviderType = "service" | "product";
 export type VerificationStatus = "pending" | "approved" | "rejected";
 
+// ─── Shop customization (providers only) ───
+export type ShopAccentColor =
+  | "indigo"
+  | "emerald"
+  | "rose"
+  | "amber"
+  | "cyan"
+  | "slate";
+
+export interface ShopSettings {
+  /** Preset accent palette id — controls the shop header gradient */
+  accentColor?: ShopAccentColor;
+  /** Short one-liner shown under the shop name (max 80 chars) */
+  tagline?: string;
+  /** Optional banner image URL (Cloudinary, ~1600x400) */
+  bannerUrl?: string;
+  /** A pinned listing shown at the top of the shop */
+  featuredListingId?: string;
+  /** Whether the featured item is a service or product */
+  featuredListingType?: "service" | "product";
+}
+
 // Lines 7-31 — the User interface
 export interface User {
   uid: string;
@@ -24,7 +46,10 @@ export interface User {
   businessName?: string;
   providerType?: ProviderType;
 
-  photoURL?: string;                    // ← the ONE new line
+  photoURL?: string;
+
+  /** 🎨 Provider-only shop customization */
+  shopSettings?: ShopSettings;
 
   verificationStatus?: VerificationStatus;
   verificationReviewedAt?: number;

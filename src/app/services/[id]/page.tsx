@@ -18,11 +18,13 @@ import { getUniversityFullName, getUniversityShortLabel } from "@/lib/university
 import { trackListing } from "@/lib/trackListing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { optimizeCardImage } from "@/lib/imageUrl";
+import { useAuth } from "@/lib/AuthContext";
 import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
 import { ReportButton } from "@/components/shared/ReportButton";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { RelatedListings } from "@/components/shared/RelatedListings";
+import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import {
   ArrowLeft,
@@ -43,16 +45,16 @@ import {
 export default function ServiceDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const id = params?.id;
 
   const [service, setService] = useState<Service | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const tracked = useRef(false);
-
-  // ─── Related listings (Pinterest sidebar) ───
   const [related, setRelated] = useState<Service[]>([]);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const tracked = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -76,7 +78,6 @@ export default function ServiceDetailPage() {
     trackListing("service", id, "views");
   }, [id, service]);
 
-  // Fetch related once the main service is loaded
   useEffect(() => {
     if (!service) return;
     let active = true;
@@ -174,7 +175,16 @@ export default function ServiceDetailPage() {
 
   const showPaymentMethods = !isFree && (service.paymentMethods?.length ?? 0) > 0;
 
-  // Sidebar subtitle + see-all link
+  // ─── Auth-gated "View more photos" click ───
+  const handleViewMorePhotos = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!user) {
+      e.preventDefault();
+      setShowLoginModal(true);
+      return;
+    }
+    trackListing("service", service.id, "whatsappClicks");
+  };
+
   const relatedTitle = cat?.label ? `More ${cat.label}` : "More services";
   const relatedSubtitle = service.universityId
     ? `near ${getUniversityShortLabel(service.universityId)}`
@@ -194,7 +204,6 @@ export default function ServiceDetailPage() {
           Back
         </button>
 
-        {/* ═══ Pinterest 2-column layout ═══ */}
         <div
           className={
             related.length > 0
@@ -202,9 +211,7 @@ export default function ServiceDetailPage() {
               : "grid grid-cols-1 gap-6"
           }
         >
-          {/* ─── MAIN COLUMN ─── */}
           <div className="min-w-0">
-            {/* ─── Images ─── */}
             {images.length > 0 && (
               <>
                 <button
@@ -247,7 +254,7 @@ export default function ServiceDetailPage() {
                     href={viewMorePhotosHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => trackListing("service", service.id, "whatsappClicks")}
+                    onClick={handleViewMorePhotos}
                     className="mb-4 flex w-full items-center justify-center gap-2 rounded-full border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[var(--nexora-primary)] hover:text-[var(--nexora-primary)]"
                   >
                     <ImagePlus size={14} />
@@ -257,7 +264,6 @@ export default function ServiceDetailPage() {
               </>
             )}
 
-            {/* ─── Main info ─── */}
             <div className="card-premium p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -389,7 +395,6 @@ export default function ServiceDetailPage() {
               )}
             </div>
 
-            {/* ─── Share + Report ─── */}
             <div className="mt-3 flex items-center justify-center gap-4">
               <ShareButton targetType="service" targetTitle={service.title} />
               <span className="text-gray-300">·</span>
@@ -401,7 +406,6 @@ export default function ServiceDetailPage() {
               />
             </div>
 
-            {/* ─── Description ─── */}
             <div className="card-premium mt-4 p-5">
               <h2 className="mb-2 text-sm font-semibold text-[var(--nexora-navy)]">
                 About this service
@@ -417,7 +421,6 @@ export default function ServiceDetailPage() {
             </div>
           </div>
 
-          {/* ─── SIDEBAR (Pinterest-style) ─── */}
           {related.length > 0 && (
             <RelatedListings
               title={relatedTitle}
@@ -435,13 +438,19 @@ export default function ServiceDetailPage() {
         </div>
       </div>
 
-      {/* Lightbox */}
       <ImageLightbox
         images={images}
         initialIndex={lightboxIndex ?? 0}
         isOpen={lightboxIndex !== null}
         onClose={() => setLightboxIndex(null)}
         alt={service.title}
+      />
+
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        title="Sign in to contact"
+        subtitle="Create a free Peza account to message this provider — it keeps everyone on Peza safe and accountable."
       />
 
       <Footer />

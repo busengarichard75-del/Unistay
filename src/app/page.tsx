@@ -19,6 +19,7 @@ import { NexoraChat } from "@/components/nexora/NexoraChat";
 import { LandlordOnboardingModal } from "@/components/landlord/LandlordOnboardingModal";
 import { WhyPezaSection } from "@/components/home/WhyPezaSection";
 import { ExplorePezaSection } from "@/components/home/ExplorePezaSection";
+import { FeaturedStrip } from "@/components/home/FeaturedStrip";
 import { ServicesMarketplaceStrip } from "@/components/home/ServicesMarketplaceStrip";
 import { ListingFilters } from "@/components/shared/ListingFilters";
 import {
@@ -34,7 +35,6 @@ function HomeContent() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState(false);
-  // ⚡ Incrementing this triggers a re-fetch (used by the Retry button)
   const [retryKey, setRetryKey] = useState(0);
 
   // ─── Existing homepage controls (kept as-is) ───
@@ -89,8 +89,6 @@ function HomeContent() {
     };
   }, [retryKey]);
 
-  // ─── Existing pre-filters (price range + available-only) ───
-  // Then advanced filters (gender, distance, amenities, boosted, sort) on top.
   const filteredProperties = useMemo(() => {
     const min = minPrice ? Number(minPrice) : 0;
     const max = maxPrice ? Number(maxPrice) : Infinity;
@@ -164,6 +162,9 @@ function HomeContent() {
       {/* ─── EXPLORE PEZA ─── */}
       <ExplorePezaSection onAccommodationSearch={setKeyword} />
 
+      {/* ─── 🔥 TRENDING ON PEZA (services + products) ─── */}
+      <FeaturedStrip />
+
       {isStudent && (
         <div className="container-wide mt-6">
           <div className="card-premium flex flex-col items-start justify-between gap-4 border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-5 sm:flex-row sm:items-center">
@@ -208,7 +209,6 @@ function HomeContent() {
           Available beds only
         </label>
 
-        {/* ─── NEW: advanced filters (gender · distance · amenities · boosted · sort) ─── */}
         <ListingFilters
           mode="properties"
           filters={filters}
@@ -268,7 +268,6 @@ function HomeContent() {
         onClose={() => setShowFindModal(false)}
       />
 
-      {/* ─── LANDLORD ONBOARDING MODAL ─── */}
       {user && user.role === "landlord" && (
         <LandlordOnboardingModal
           landlordName={user.fullName || user.email?.split("@")[0] || "Landlord"}

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Wrench, ShoppingBag, Map as MapIcon, ArrowRight, BookOpen } from "lucide-react";
+import { Search } from "lucide-react";
 
 interface ExplorePezaSectionProps {
   onAccommodationSearch?: (query: string) => void;
@@ -55,7 +54,8 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
             🎯 Find what you need
           </h2>
           <p className="mx-auto mt-1 max-w-xl text-xs text-gray-600 sm:mt-1.5 sm:text-sm">
-            Rooms, services, products, study materials — everything you need on campus.
+            Rooms, services, products, study materials — everything you need on
+            campus.
           </p>
         </div>
 
@@ -89,83 +89,7 @@ export function ExplorePezaSection({ onAccommodationSearch }: ExplorePezaSection
             We&apos;ll take you to the right section automatically
           </p>
         </div>
-
-        {/* 4 compact tiles — mobile shows 3, desktop shows 4 */}
-        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
-          <CompactTile
-            href="/services"
-            icon={Wrench}
-            title="Services"
-            line="Barbers, printing, repairs"
-            accent="from-cyan-500 to-teal-600"
-          />
-          <CompactTile
-            href="/map"
-            icon={MapIcon}
-            title="Peza Map"
-            line="See what's around you"
-            accent="from-emerald-500 to-green-600"
-          />
-          <CompactTile
-            href="/marketplace"
-            icon={ShoppingBag}
-            title="Marketplace"
-            line="Buy & sell with students"
-            accent="from-orange-500 to-pink-600"
-          />
-
-          {/* Library — hidden on mobile (accessed via nav menu instead) */}
-          <div className="hidden sm:block">
-            <CompactTile
-              href="/library"
-              icon={BookOpen}
-              title="Library"
-              line="Notes, past papers & guides"
-              accent="from-indigo-500 to-purple-600"
-            />
-          </div>
-        </div>
       </div>
     </section>
-  );
-}
-
-function CompactTile({
-  href,
-  icon: Icon,
-  title,
-  line,
-  accent,
-}: {
-  href: string;
-  icon: typeof Wrench;
-  title: string;
-  line: string;
-  accent: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex flex-col items-center gap-1.5 rounded-xl border border-gray-100 bg-white p-2.5 text-center transition-all hover:border-gray-200 hover:shadow-sm sm:flex-row sm:gap-3 sm:p-3 sm:text-left"
-    >
-      <div
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${accent} text-white shadow-sm sm:h-10 sm:w-10`}
-      >
-        <Icon size={16} className="sm:hidden" />
-        <Icon size={18} className="hidden sm:block" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-bold leading-tight text-[var(--nexora-navy)] sm:text-sm">
-          {title}
-        </p>
-        <p className="mt-0.5 hidden text-[11px] leading-snug text-gray-500 sm:block sm:truncate">
-          {line}
-        </p>
-      </div>
-      <ArrowRight
-        size={14}
-        className="hidden shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--nexora-primary)] sm:block"
-      />
-    </Link>
   );
 }

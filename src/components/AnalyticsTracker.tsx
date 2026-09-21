@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { logVisit, VisitorRole } from "@/services/analyticsService";
+import { trackEvent } from "@/lib/analyticsEvents";
 
 const ADMIN_EMAILS = ["admin@unistay.com", "busengarichard75@gmail.com"];
 
@@ -30,16 +31,29 @@ export function AnalyticsTracker() {
       sessionStorage.setItem(dedupKey, newKey);
     }
 
-    const role: VisitorRole = user?.role === "student" || user?.role === "landlord"
-      ? user.role
-      : "guest";
+    // ─────────────────────────────────────────────────────────
+    // LEGACY PIPELINE (untouched) — writes to `analytics_visits`
+    // Keeps the existing admin analytics page working exactly as before.
+    // ─────────────────────────────────────────────────────────
+    const role: VisitorRole =
+      user?.role === "student" || user?.role === "landlord"
+        ? user.role
+        : "guest";
 
     logVisit({
       userId: user?.uid || null,
       role,
       path: pathname,
-      referrer: typeof document !== "undefined" ? document.referrer || null : null,
+      referrer:
+        typeof document !== "undefined" ? document.referrer || null : null,
     });
+
+    // ─────────────────────────────────────────────────────────
+    // NEW PIPELINE (additive) — writes to `analytics_events`
+    // Enriches with visitorId + sessionId + source + vertical.
+    // Silent on failure. Does not affect the legacy pipeline.
+    // ─────────────────────────────────────────────────────────
+    trackEvent({ action: "page_view" }, user);
   }, [pathname, user]);
 
   return null;
