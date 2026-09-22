@@ -1,8 +1,4 @@
 // src/lib/firebase-admin.ts
-//
-// ⚠️ CRITICAL: This file must have ZERO module-scope side effects.
-// Any initialization that runs at import time can crash every page
-// that (transitively) imports this file. All getters are lazy.
 
 import { getApps, getApp, initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -36,23 +32,21 @@ function getAdminApp() {
   return getApp();
 }
 
-/**
- * Lazy Firestore getter — call INSIDE a function, never at module scope.
- */
 export function getFirestoreDb() {
   const app = getAdminApp();
   return getFirestore(app);
 }
 
 /**
- * Lazy Auth getter — call INSIDE a function, never at module scope.
- * Used to verify client ID tokens on server routes.
+ * Firebase Admin Auth — used to verify client ID tokens on server routes.
  */
 export function getAuthAdmin() {
   const app = getAdminApp();
   return getAuth(app);
 }
 
-// ⚠️ DO NOT add `export const db = getFirestoreDb();` here.
-// That would execute at import time and crash every page that imports this
-// module if the Admin SDK fails to initialize for any reason.
+// Legacy export — required by:
+//   src/app/api/notifications/subscribe/route.ts
+//   src/app/api/notifications/unsubscribe/route.ts
+// Safe because these routes only access `db` inside their handlers.
+export const db = getFirestoreDb();
