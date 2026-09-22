@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { getServiceById, getServicesByCategory } from "@/services/serviceService";
@@ -26,8 +27,6 @@ import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { RelatedListings } from "@/components/shared/RelatedListings";
 import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ServiceCard } from "@/components/services/ServiceCard";
-import { ReviewSection } from "@/components/reviews/ReviewSection";
-import { FollowButton } from "@/components/follow/FollowButton";
 import {
   ArrowLeft,
   MapPin,
@@ -43,6 +42,16 @@ import {
   Gift,
   Sparkles,
 } from "lucide-react";
+
+// ── Client-only components (skip SSR to avoid server crash) ──
+const ReviewSection = dynamic(
+  () => import("@/components/reviews/ReviewSection").then((m) => m.ReviewSection),
+  { ssr: false }
+);
+const FollowButton = dynamic(
+  () => import("@/components/follow/FollowButton").then((m) => m.FollowButton),
+  { ssr: false }
+);
 
 export default function ServiceDetailPage() {
   const params = useParams<{ id: string }>();
@@ -177,7 +186,6 @@ export default function ServiceDetailPage() {
 
   const showPaymentMethods = !isFree && (service.paymentMethods?.length ?? 0) > 0;
 
-  // ─── Auth-gated "View more photos" click ───
   const handleViewMorePhotos = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!user) {
       e.preventDefault();
@@ -426,7 +434,7 @@ export default function ServiceDetailPage() {
               </p>
             </div>
 
-            {/* ─── Reviews (additive) ─── */}
+            {/* ─── Reviews (client-only) ─── */}
             <ReviewSection
               targetType="service"
               targetId={service.id}
