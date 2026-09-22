@@ -10,8 +10,6 @@ import {
   studentCheckedInTemplate,
 } from "./emailTemplates";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM_ADDRESS = "Peza Accommodation <onboarding@resend.dev>";
 const REPLY_TO = "pezaaccommodation@gmail.com";
 
@@ -73,12 +71,17 @@ function renderTemplate(type: BookingEmailType, params: SendParams) {
 }
 
 export async function sendBookingEmail(params: SendParams): Promise<SendResult> {
+  // ⚡ Guard FIRST — before touching the Resend SDK
   if (!process.env.RESEND_API_KEY) {
     return { success: false, error: "RESEND_API_KEY not configured" };
   }
   if (!params.to) {
     return { success: false, error: "No recipient email" };
   }
+
+  // ⚡ Lazy-init: construct Resend ONLY when this function actually runs.
+  // Module-scope construction crashes the build when the env var is missing.
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
   let subject: string;
   let html: string;
