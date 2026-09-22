@@ -27,6 +27,7 @@ import {
   toggleWishlist,
   subscribeWishlist,
 } from "@/lib/wishlist";
+import { FollowButton } from "@/components/follow/FollowButton";
 
 interface ProductCardProps {
   product: Product;
@@ -136,8 +137,9 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* ❤️ Wishlist heart (top-left) */}
-        <div className="absolute left-2 top-2">
+        {/* ─── Top-left stack: Follow + Wishlist (side-by-side) ─── */}
+        <div className="absolute left-2 top-2 flex items-center gap-1">
+          <FollowButton variant="icon" providerId={product.ownerId} />
           <WishlistHeart id={product.id} />
         </div>
 

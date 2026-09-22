@@ -24,6 +24,10 @@ export interface PublicUserProfile {
   photoURL?: string;
   /** 🎨 Provider shop customization. */
   shopSettings?: ShopSettings;
+
+  // ─── Follows (additive) ───
+  /** Number of users following this provider. Hidden on profile when 0. */
+  followerCount?: number;
 }
 
 export async function getPublicUserProfile(
@@ -54,6 +58,10 @@ export async function getPublicUserProfile(
       memberSince: data.createdAt,
       photoURL: data.photoURL || undefined,
       shopSettings: data.shopSettings || undefined,
+
+      // ─── Additive — Follows ───
+      followerCount:
+        typeof data.followerCount === "number" ? data.followerCount : undefined,
     };
   } catch (error) {
     console.error("Failed to fetch public user profile:", error);

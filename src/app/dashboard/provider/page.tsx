@@ -15,6 +15,7 @@ import {
   deleteProduct,
   updateProduct,
 } from "@/services/productService";
+import { getFollowerCount } from "@/services/followService";
 import {
   Service,
   isServiceBoosted,
@@ -44,6 +45,7 @@ import {
   Pencil,
   Zap,
   ChevronRight,
+  Users,
 } from "lucide-react";
 
 function formatDiscountRemaining(expiresAt: number, now: number): string {
@@ -66,6 +68,7 @@ export default function ProviderDashboardPage() {
 
   const [services, setServices] = useState<Service[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [followerCount, setFollowerCount] = useState(0);
   const [isFetching, setIsFetching] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [boostTarget, setBoostTarget] = useState<
@@ -83,13 +86,15 @@ export default function ProviderDashboardPage() {
     let active = true;
     const load = async () => {
       try {
-        const [s, p] = await Promise.all([
+        const [s, p, followers] = await Promise.all([
           getServicesByOwner(user.uid),
           getProductsByOwner(user.uid),
+          getFollowerCount(user.uid),
         ]);
         if (!active) return;
         setServices(s);
         setProducts(p);
+        setFollowerCount(followers);
       } catch {
         // silent
       } finally {
@@ -294,6 +299,34 @@ export default function ProviderDashboardPage() {
             />
           </div>
         )}
+
+        {/* 👥 FOLLOWERS — additive entry point */}
+        <Link
+          href="/dashboard/provider/followers"
+          className="mt-6 flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/30"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[var(--nexora-primary)]">
+            <Users size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-[var(--nexora-text-primary)]">
+                Followers
+              </p>
+              {followerCount > 0 && (
+                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-[var(--nexora-primary)]">
+                  {followerCount}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {followerCount > 0
+                ? "See who's following your shop"
+                : "People who follow you will appear here"}
+            </p>
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-gray-300" />
+        </Link>
 
         {/* Insights */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

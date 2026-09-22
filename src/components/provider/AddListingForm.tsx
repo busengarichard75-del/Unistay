@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+import { auth } from "@/lib/firebase";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { addService } from "@/services/serviceService";
 import { addProduct } from "@/services/productService";
@@ -60,6 +61,32 @@ const DISCOUNT_DURATIONS: { id: DiscountDuration; label: string; ms: number }[] 
   { id: "weekly", label: "Weekly", ms: 7 * 86400000 },
   { id: "monthly", label: "Monthly", ms: 30 * 86400000 },
 ];
+
+/**
+ * Fire-and-forget: notify all followers of the current user that a new
+ * listing was published. Never blocks submit, never throws.
+ */
+async function notifyFollowersOfNewListing(
+  kind: "service" | "product",
+  listingId: string
+): Promise<void> {
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return;
+    fetch("/api/follows/notify-new-listing", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ kind, listingId }),
+    }).catch(() => {
+      // silent — fan-out is best-effort
+    });
+  } catch {
+    // silent — fan-out is best-effort
+  }
+}
 
 export function AddListingForm() {
   const router = useRouter();
@@ -287,6 +314,11 @@ export function AddListingForm() {
         if (user.photoURL) productPayload.sellerPhotoURL = user.photoURL;
 
         newId = await addProduct(stripUndefined(productPayload) as any);
+      }
+
+      // ── Fan-out: notify followers (fire-and-forget, never blocks) ──
+      if (newId) {
+        notifyFollowersOfNewListing(type, newId);
       }
 
       // ✅ Success → open the share modal INSTEAD of redirecting

@@ -19,6 +19,7 @@ import {
   toggleWishlist,
   subscribeWishlist,
 } from "@/lib/wishlist";
+import { FollowButton } from "@/components/follow/FollowButton";
 
 interface ServiceCardProps {
   service: Service;
@@ -154,7 +155,9 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
-        <div className="absolute bottom-2 right-2">
+        {/* ─── Bottom-right stack: Follow + Wishlist ─── */}
+        <div className="absolute bottom-2 right-2 flex flex-col items-center gap-1">
+          <FollowButton variant="icon" providerId={service.ownerId} />
           <WishlistHeart id={service.id} />
         </div>
       </div>

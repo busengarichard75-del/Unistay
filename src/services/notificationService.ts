@@ -1,4 +1,5 @@
 // src/services/notificationService.ts
+
 import {
   collection,
   query,
@@ -20,7 +21,15 @@ export interface Notification {
   userId: string;
   title: string;
   body: string;
-  type: "booking_approved" | "booking_rejected" | "booking_confirmed" | "booking_requested" | "booking_expired" | "announcement";
+  type:
+    | "booking_approved"
+    | "booking_rejected"
+    | "booking_confirmed"
+    | "booking_requested"
+    | "booking_expired"
+    | "announcement"
+    // ─── Following (additive) ───
+    | "follow_new_listing";
   read: boolean;
   createdAt: number;
   link?: string;
@@ -31,7 +40,7 @@ const NOTIFICATIONS_COLLECTION = "notifications";
 
 /**
  * Get all notifications for a user (real-time listener)
- * 
+ *
  * ⚠️ Temporarily removed orderBy("createdAt", "desc") because the index is still building.
  * Once the index is ready, re-add it for proper server-side ordering.
  */
@@ -80,7 +89,7 @@ export async function markAllNotificationsAsRead(userId: string): Promise<void> 
       where("read", "==", false)
     );
     const snapshot = await getDocs(q);
-    
+
     const updates = snapshot.docs.map((doc) =>
       updateDoc(doc.ref, { read: true })
     );
@@ -101,7 +110,7 @@ export async function clearAllNotifications(userId: string): Promise<void> {
       where("userId", "==", userId)
     );
     const snapshot = await getDocs(q);
-    
+
     const deletions = snapshot.docs.map((doc) => deleteDoc(doc.ref));
     await Promise.all(deletions);
   } catch (error) {

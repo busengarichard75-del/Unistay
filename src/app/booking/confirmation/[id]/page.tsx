@@ -1,23 +1,14 @@
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Booking } from "@/types/booking";
 import { notFound } from "next/navigation";
 import { QRCodeDisplay } from "@/components/booking/QRCodeDisplay";
 import { ConfirmationActions } from "@/components/booking/ConfirmationActions";
-import { CheckCircle, Clock, XCircle, Home, User, Phone, MapPin, Calendar, DollarSign, Tag, ShieldCheck } from "lucide-react";
+import { CheckCircle, Clock, XCircle, Home, User, Phone, MapPin, Calendar, DollarSign, ShieldCheck } from "lucide-react";
 
-// Generate all booking IDs at build time
-export async function generateStaticParams() {
-  try {
-    const bookingsRef = collection(db, "bookings");
-    const snapshot = await getDocs(bookingsRef);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-    }));
-  } catch {
-    return [];
-  }
-}
+// ⚡ Force dynamic rendering — never prerender this page at build time.
+// Every request fetches the booking fresh from Firestore.
+export const dynamic = "force-dynamic";
 
 interface ConfirmationPageProps {
   params: Promise<{ id: string }>;
