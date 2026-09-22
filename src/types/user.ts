@@ -1,3 +1,5 @@
+// src/types/user.ts
+
 // Line 1 — import
 import { Preferences } from "@/lib/recommendation/types";
 
@@ -55,4 +57,14 @@ export interface User {
   verificationReviewedAt?: number;
   verificationReviewedBy?: string;
   verificationReason?: string | null;
+
+  // ─── Follows (additive — Follow feature) ───
+  /** Number of users following this provider. Hidden on profile when 0. */
+  followerCount?: number;
+
+  // ─── Reviews (additive — Reviews feature) ───
+  /** Average rating across all this provider's listings. */
+  providerRatingAvg?: number;
+  /** Total review count across all this provider's listings. */
+  providerRatingCount?: number;
 }

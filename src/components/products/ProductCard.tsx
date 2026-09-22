@@ -10,6 +10,7 @@ import {
   Heart,
   Camera,
   Package,
+  Star,
 } from "lucide-react";
 import {
   Product,
@@ -27,6 +28,7 @@ import {
   toggleWishlist,
   subscribeWishlist,
 } from "@/lib/wishlist";
+import { FollowButton } from "@/components/follow/FollowButton";
 
 interface ProductCardProps {
   product: Product;
@@ -91,6 +93,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const isNew =
     !!product.createdAt && Date.now() - product.createdAt < NEW_THRESHOLD_MS;
 
+  // ─── Reviews (additive) ───
+  const hasRating = (product.ratingCount ?? 0) > 0;
+
   // ─── 📦 Quantity badge ───
   const qtyInfo = getQuantityLabel(product);
   const qtyToneClass = qtyInfo
@@ -136,8 +141,9 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* ❤️ Wishlist heart (top-left) */}
-        <div className="absolute left-2 top-2">
+        {/* ─── Top-left stack: Follow + Wishlist (side-by-side) ─── */}
+        <div className="absolute left-2 top-2 flex items-center gap-1">
+          <FollowButton variant="icon" providerId={product.ownerId} />
           <WishlistHeart id={product.id} />
         </div>
 
@@ -208,6 +214,19 @@ export function ProductCard({ product }: ProductCardProps) {
             </span>
           )}
         </div>
+
+        {/* ⭐ Rating (additive — hidden when 0) */}
+        {hasRating && (
+          <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-gray-600">
+            <Star size={10} className="text-amber-400" fill="currentColor" />
+            <span className="font-semibold text-gray-800">
+              {(product.ratingAvg ?? 0).toFixed(1)}
+            </span>
+            <span className="text-gray-400">
+              · {product.ratingCount} review{product.ratingCount === 1 ? "" : "s"}
+            </span>
+          </p>
+        )}
 
         {/* Price row */}
         {hasDiscount && discountedPrice !== null ? (

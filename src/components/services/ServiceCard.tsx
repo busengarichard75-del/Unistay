@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MapPin, Wrench, Zap, Flame, Heart, Gift } from "lucide-react";
+import { MapPin, Wrench, Zap, Flame, Heart, Gift, Star } from "lucide-react";
 import {
   Service,
   SERVICE_CATEGORIES,
@@ -19,6 +19,7 @@ import {
   toggleWishlist,
   subscribeWishlist,
 } from "@/lib/wishlist";
+import { FollowButton } from "@/components/follow/FollowButton";
 
 interface ServiceCardProps {
   service: Service;
@@ -88,6 +89,9 @@ export function ServiceCard({ service }: ServiceCardProps) {
       ? "Contact for price"
       : null;
 
+  // ─── Reviews (additive) ───
+  const hasRating = (service.ratingCount ?? 0) > 0;
+
   // Both free + discount are impossible (discount deactivates for free),
   // but boost + free can coexist → stack the boost badge.
   const hasTopBadge = isFree || hasDiscount;
@@ -154,7 +158,13 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
-        <div className="absolute bottom-2 right-2">
+        {/* ─── Bottom-right stack: Follow + Wishlist ─── */}
+        <div className="absolute bottom-2 right-2 flex flex-col items-center gap-1">
+          <FollowButton
+            variant="icon"
+            providerId={service.ownerId}
+            providerName={service.title}
+          />
           <WishlistHeart id={service.id} />
         </div>
       </div>
@@ -170,6 +180,19 @@ export function ServiceCard({ service }: ServiceCardProps) {
             </span>
           )}
         </div>
+
+        {/* ⭐ Rating (additive — hidden when 0) */}
+        {hasRating && (
+          <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-gray-600">
+            <Star size={10} className="text-amber-400" fill="currentColor" />
+            <span className="font-semibold text-gray-800">
+              {(service.ratingAvg ?? 0).toFixed(1)}
+            </span>
+            <span className="text-gray-400">
+              · {service.ratingCount} review{service.ratingCount === 1 ? "" : "s"}
+            </span>
+          </p>
+        )}
 
         {/* Price row */}
         {isFree ? (

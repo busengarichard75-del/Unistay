@@ -1,8 +1,10 @@
 // src/lib/firebase-admin.ts
+
 import { getApps, getApp, initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 
-export function getFirestoreDb() {
+function getAdminApp() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -17,9 +19,8 @@ export function getFirestoreDb() {
     );
   }
 
-  let app;
   if (getApps().length === 0) {
-    app = initializeApp({
+    return initializeApp({
       credential: cert({
         projectId,
         clientEmail,
@@ -27,12 +28,25 @@ export function getFirestoreDb() {
       }),
       projectId,
     });
-  } else {
-    app = getApp();
   }
+  return getApp();
+}
 
+export function getFirestoreDb() {
+  const app = getAdminApp();
   return getFirestore(app);
 }
 
+/**
+ * Firebase Admin Auth — used to verify client ID tokens on server routes.
+ * Additive: nothing existing uses this. Safe to leave in place even if the
+ * feature that calls it is later removed.
+ */
+export function getAuthAdmin() {
+  const app = getAdminApp();
+  return getAuth(app);
+}
+
 // Export db as a function that lazily loads Firestore
+// ⚠️ Legacy convenience export — prefer getFirestoreDb() inside functions.
 export const db = getFirestoreDb();

@@ -19,6 +19,8 @@ import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { RelatedListings } from "@/components/shared/RelatedListings";
 import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ProductCard } from "@/components/products/ProductCard";
+import { ReviewSection } from "@/components/reviews/ReviewSection";
+import { FollowButton } from "@/components/follow/FollowButton";
 import {
   ArrowLeft,
   MapPin,
@@ -146,7 +148,7 @@ export default function ProductDetailPage() {
       setShowLoginModal(true);
       return;
     }
-    trackListing("product", product.id, "whatsappClicks");
+    trackListing("product", product.id, "whatsappClicks", user.uid);
   };
 
   const relatedTitle = product.category
@@ -274,30 +276,39 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              <Link
-                href={`/provider/${product.ownerId}`}
-                className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
-              >
-                <div className="flex items-center gap-3 min-w-0">
+              {/* ─── Sold by + Follow ─── */}
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
+                <Link
+                  href={`/provider/${product.ownerId}`}
+                  className="group flex min-w-0 flex-1 items-center gap-3"
+                >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
                     <Store size={14} />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500">Sold by</p>
-                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)]">
+                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)] group-hover:underline">
                       View seller profile
                     </p>
                   </div>
-                </div>
-                <ChevronRight size={16} className="shrink-0 text-gray-400" />
-              </Link>
+                  <ChevronRight size={16} className="shrink-0 text-gray-400" />
+                </Link>
+                <FollowButton variant="light" providerId={product.ownerId} />
+              </div>
 
               {!isSold && (
                 <div className="mt-4">
                   <WhatsAppContactButton
                     whatsapp={product.whatsapp}
                     message={prefillMessage}
-                    onTrack={() => trackListing("product", product.id, "whatsappClicks")}
+                    onTrack={() =>
+                      trackListing(
+                        "product",
+                        product.id,
+                        "whatsappClicks",
+                        user?.uid
+                      )
+                    }
                     size="lg"
                     fullWidth
                     label="Contact Seller on WhatsApp"
@@ -325,6 +336,14 @@ export default function ProductDetailPage() {
                 {product.description}
               </p>
             </div>
+
+            {/* ─── Reviews (additive) ─── */}
+            <ReviewSection
+              targetType="product"
+              targetId={product.id}
+              targetOwnerId={product.ownerId}
+              targetTitle={product.name}
+            />
 
             <div className="mt-4 text-center text-[11px] text-gray-400">
               Peza connects you with the seller — payment and delivery are arranged between you both.

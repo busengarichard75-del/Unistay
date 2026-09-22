@@ -24,6 +24,16 @@ export interface PublicUserProfile {
   photoURL?: string;
   /** 🎨 Provider shop customization. */
   shopSettings?: ShopSettings;
+
+  // ─── Follows (additive — Follow feature) ───
+  /** Number of users following this provider. Hidden on profile when 0. */
+  followerCount?: number;
+
+  // ─── Reviews (additive — Reviews feature) ───
+  /** Average rating across all this provider's listings. */
+  providerRatingAvg?: number;
+  /** Total review count across all this provider's listings. */
+  providerRatingCount?: number;
 }
 
 export async function getPublicUserProfile(
@@ -54,6 +64,15 @@ export async function getPublicUserProfile(
       memberSince: data.createdAt,
       photoURL: data.photoURL || undefined,
       shopSettings: data.shopSettings || undefined,
+
+      // ─── Additive — Follows ───
+      followerCount: typeof data.followerCount === "number" ? data.followerCount : undefined,
+
+      // ─── Additive — Reviews ───
+      providerRatingAvg:
+        typeof data.providerRatingAvg === "number" ? data.providerRatingAvg : undefined,
+      providerRatingCount:
+        typeof data.providerRatingCount === "number" ? data.providerRatingCount : undefined,
     };
   } catch (error) {
     console.error("Failed to fetch public user profile:", error);

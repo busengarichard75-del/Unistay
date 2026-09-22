@@ -18,4 +18,12 @@ export const universities = [
   { id: "levy", name: "Levy Mwanawasa Medical University", isAvailable: true },
   { id: "zica", name: "Zambia Institute of Chartered Accountants (ZICA)", isAvailable: true },
   { id: "evelynhone", name: "Evelyn Hone College", isAvailable: true },
+
+  // ─── New additions ───
+  { id: "unilus", name: "University of Lusaka (UNILUS)", isAvailable: true },
+  { id: "texila", name: "Texila American University Zambia", isAvailable: true },
+  { id: "icu", name: "Information and Communications University (ICU)", isAvailable: true },
+  { id: "lusakaapex", name: "Lusaka Apex Medical University", isAvailable: true },
+  { id: "zcu", name: "Zambia Catholic University", isAvailable: true },
+  { id: "africauni", name: "University of Africa", isAvailable: true },
 ];

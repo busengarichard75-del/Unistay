@@ -71,6 +71,12 @@ export interface Product {
   // ─── Flash deals ───
   discountPercent?: number;
   discountExpiresAt?: number;
+
+  // ─── Reviews (additive — Reviews feature) ───
+  /** Cached average rating (1.0–5.0). Undefined when ratingCount is 0. */
+  ratingAvg?: number;
+  /** Cached total review count. Hidden on cards when 0. */
+  ratingCount?: number;
 }
 
 // ─────────────────────────────────────────────────────────

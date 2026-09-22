@@ -38,6 +38,7 @@ import {
 } from "@/services/adminActionsService";
 import { getRecentAuditEntries, AuditEntry } from "@/services/auditLogService";
 import { getAllReports, updateReportStatus } from "@/services/reportService";
+import { deleteReview } from "@/services/reviewService";
 import type { Report } from "@/types/report";
 import {
   HidePropertyModal, RefundBoostModal, SuspendUserModal,
@@ -917,7 +918,7 @@ export default function AdminPage() {
               : s
           )
         );
-      } else {
+      } else if (report.targetType === "product") {
         await updateProduct(report.targetId, {
           adminHidden: true,
           adminHiddenReason: `Reported: ${report.reason}`,
@@ -929,6 +930,10 @@ export default function AdminPage() {
               : p
           )
         );
+      } else if (report.targetType === "review") {
+        // Reviews feature — delete the offending review.
+        // The API recomputes listing + provider aggregates server-side.
+        await deleteReview(report.targetId);
       }
 
       await updateReportStatus(report.id, "resolved", adminCtx.adminEmail);
@@ -940,10 +945,16 @@ export default function AdminPage() {
         )
       );
 
-      toast.success("Listing taken down.");
+      toast.success(
+        report.targetType === "review" ? "Review removed." : "Listing taken down."
+      );
       fetchAudit();
     } catch {
-      toast.error("Failed to take down listing.");
+      toast.error(
+        report.targetType === "review"
+          ? "Failed to remove review."
+          : "Failed to take down listing."
+      );
     } finally {
       setBusyReportId(null);
     }

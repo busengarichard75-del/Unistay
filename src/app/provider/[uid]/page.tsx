@@ -7,12 +7,14 @@ import { Footer } from "@/components/footer/Footer";
 import { getPublicUserProfile, PublicUserProfile } from "@/services/userService";
 import { getServicesByOwner } from "@/services/serviceService";
 import { getProductsByOwner } from "@/services/productService";
+import { getFollowerCount } from "@/services/followService";
 import { Service, isServiceBoosted } from "@/types/service";
 import { Product, isProductBoosted } from "@/types/product";
 import { getUniversityFullName } from "@/lib/universityLabels";
 import { getShopTheme } from "@/lib/shopThemes";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { ProductCard } from "@/components/products/ProductCard";
+import { FollowButton } from "@/components/follow/FollowButton";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -25,6 +27,7 @@ import {
   AlertTriangle,
   Share2,
   Star,
+  Users,
 } from "lucide-react";
 
 export default function ProviderProfilePage() {
@@ -35,6 +38,7 @@ export default function ProviderProfilePage() {
   const [profile, setProfile] = useState<PublicUserProfile | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [followerCount, setFollowerCount] = useState(0);
   const [isFetching, setIsFetching] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<"services" | "products">("services");
@@ -58,14 +62,16 @@ export default function ProviderProfilePage() {
         }
         setProfile(p);
 
-        const [s, pr] = await Promise.all([
+        const [s, pr, followers] = await Promise.all([
           getServicesByOwner(uid),
           getProductsByOwner(uid),
+          getFollowerCount(uid),
         ]);
         if (!active) return;
 
         setServices(s.filter((x) => !x.adminHidden));
         setProducts(pr.filter((x) => !x.adminHidden));
+        setFollowerCount(followers);
 
         const hasS = s.filter((x) => !x.adminHidden).length > 0;
         const hasP = pr.filter((x) => !x.adminHidden).length > 0;
@@ -201,6 +207,10 @@ export default function ProviderProfilePage() {
   const hasProducts = totalProducts > 0;
   const showAvatar = !!profile.photoURL && !imgError;
 
+  // ─── Additive: follower count + aggregate rating ───
+  const showFollowerCount = followerCount > 0;
+  const showProviderRating = (profile.providerRatingCount ?? 0) > 0;
+
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
       <Navbar />
@@ -288,18 +298,50 @@ export default function ProviderProfilePage() {
                     </span>
                   )}
                 </div>
+
+                {/* ─── Additive: followers + rating row (hidden when empty) ─── */}
+                {(showFollowerCount || showProviderRating) && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/85">
+                    {showFollowerCount && (
+                      <span className="inline-flex items-center gap-1">
+                        <Users size={12} />
+                        {followerCount} follower{followerCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {showProviderRating && (
+                      <span className="inline-flex items-center gap-1">
+                        <Star size={12} fill="currentColor" className="text-amber-300" />
+                        <span className="font-semibold">
+                          {(profile.providerRatingAvg ?? 0).toFixed(1)}
+                        </span>
+                        <span className="text-white/70">
+                          · {profile.providerRatingCount} review
+                          {profile.providerRatingCount === 1 ? "" : "s"}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* ── Share shop button ── */}
-              <button
-                type="button"
-                onClick={handleShareShop}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-white/25 active:scale-95"
-                aria-label="Share this shop"
-              >
-                <Share2 size={14} />
-                {shared ? "Copied!" : "Share"}
-              </button>
+              {/* ── Actions: Follow + Share ── */}
+              <div className="flex shrink-0 items-center gap-2">
+                <FollowButton
+                  variant="full"
+                  providerId={profile.uid}
+                  providerName={profile.displayName}
+                  providerPhotoURL={profile.photoURL}
+                />
+                <button
+                  type="button"
+                  onClick={handleShareShop}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-white/25 active:scale-95"
+                  aria-label="Share this shop"
+                >
+                  <Share2 size={14} />
+                  {shared ? "Copied!" : "Share"}
+                </button>
+              </div>
             </div>
           </div>
 

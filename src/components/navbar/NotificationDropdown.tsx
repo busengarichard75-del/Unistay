@@ -4,7 +4,7 @@
 import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Check, CheckCheck, Trash2, X, Clock, Home, Calendar, Star, Megaphone, ExternalLink } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, X, Clock, Home, Calendar, Star, Megaphone, ExternalLink, UserPlus, MessageCircle } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Notification } from "@/services/notificationService";
 import { formatDistanceToNow } from "date-fns";
@@ -59,6 +59,12 @@ export function NotificationDropdown({ isOpen, onClose, onToggle }: Notification
         return <Clock className="text-gray-500" size={16} />;
       case "announcement":
         return <Megaphone className="text-purple-500" size={16} />;
+      // ─── Following (additive) ───
+      case "follow_new_listing":
+        return <UserPlus className="text-blue-500" size={16} />;
+      // ─── Reviews (additive) ───
+      case "review_reply":
+        return <MessageCircle className="text-indigo-500" size={16} />;
       default:
         return <Bell className="text-gray-500" size={16} />;
     }
@@ -136,7 +142,7 @@ export function NotificationDropdown({ isOpen, onClose, onToggle }: Notification
                 {!notification.read && (
                   <span className="mt-1.5 h-2 w-2 min-w-[8px] rounded-full bg-[var(--nexora-primary)]" />
                 )}
-                
+
                 {/* Icon */}
                 <div className="mt-0.5 flex h-8 w-8 min-w-[32px] items-center justify-center rounded-full bg-gray-100">
                   {getNotificationIcon(notification.type)}

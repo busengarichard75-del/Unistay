@@ -26,6 +26,8 @@ import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { RelatedListings } from "@/components/shared/RelatedListings";
 import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ServiceCard } from "@/components/services/ServiceCard";
+import { ReviewSection } from "@/components/reviews/ReviewSection";
+import { FollowButton } from "@/components/follow/FollowButton";
 import {
   ArrowLeft,
   MapPin,
@@ -182,7 +184,7 @@ export default function ServiceDetailPage() {
       setShowLoginModal(true);
       return;
     }
-    trackListing("service", service.id, "whatsappClicks");
+    trackListing("service", service.id, "whatsappClicks", user.uid);
   };
 
   const relatedTitle = cat?.label ? `More ${cat.label}` : "More services";
@@ -363,30 +365,39 @@ export default function ServiceDetailPage() {
                 </span>
               </div>
 
-              <Link
-                href={`/provider/${service.ownerId}`}
-                className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
-              >
-                <div className="flex items-center gap-3 min-w-0">
+              {/* ─── Sold by + Follow ─── */}
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
+                <Link
+                  href={`/provider/${service.ownerId}`}
+                  className="group flex min-w-0 flex-1 items-center gap-3"
+                >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
                     <Store size={14} />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500">Sold by</p>
-                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)]">
+                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)] group-hover:underline">
                       View provider profile
                     </p>
                   </div>
-                </div>
-                <ChevronRight size={16} className="shrink-0 text-gray-400" />
-              </Link>
+                  <ChevronRight size={16} className="shrink-0 text-gray-400" />
+                </Link>
+                <FollowButton variant="light" providerId={service.ownerId} />
+              </div>
 
               {!isInactive && (
                 <div className="mt-4">
                   <WhatsAppContactButton
                     whatsapp={service.whatsapp}
                     message={prefillMessage}
-                    onTrack={() => trackListing("service", service.id, "whatsappClicks")}
+                    onTrack={() =>
+                      trackListing(
+                        "service",
+                        service.id,
+                        "whatsappClicks",
+                        user?.uid
+                      )
+                    }
                     size="lg"
                     fullWidth
                     label={isFree ? "Claim this free service" : "Chat on WhatsApp"}
@@ -414,6 +425,14 @@ export default function ServiceDetailPage() {
                 {service.description}
               </p>
             </div>
+
+            {/* ─── Reviews (additive) ─── */}
+            <ReviewSection
+              targetType="service"
+              targetId={service.id}
+              targetOwnerId={service.ownerId}
+              targetTitle={service.title}
+            />
 
             <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-gray-400">
               <MessageCircle size={12} />

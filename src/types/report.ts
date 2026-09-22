@@ -1,6 +1,6 @@
 // src/types/report.ts
 
-export type ReportTargetType = "service" | "product";
+export type ReportTargetType = "service" | "product" | "review";
 export type ReportStatus = "pending" | "resolved" | "dismissed";
 export type ReportReason =
   | "inappropriate"
