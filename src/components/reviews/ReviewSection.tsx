@@ -43,7 +43,9 @@ export function ReviewSection({
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
 
-  // ─── Load everything for this listing ───
+  // ⚡ Dep on user?.uid (stable string) — NOT `user` (new object each render)
+  const uid = user?.uid;
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -54,14 +56,13 @@ export function ReviewSection({
       setReviews(list);
       setBreakdown(bd);
 
-      if (user) {
+      if (uid) {
         const [mine, clicked] = await Promise.all([
-          getUserReview(user.uid, targetId),
-          hasClickedWhatsApp(user.uid, targetId),
+          getUserReview(uid, targetId),
+          hasClickedWhatsApp(uid, targetId),
         ]);
         setMyReview(mine);
-        // Only allow review if: clicked WhatsApp AND not the listing owner
-        setCanReview(clicked && user.uid !== targetOwnerId);
+        setCanReview(clicked && uid !== targetOwnerId);
       } else {
         setMyReview(null);
         setCanReview(false);
@@ -69,13 +70,12 @@ export function ReviewSection({
     } finally {
       setLoading(false);
     }
-  }, [targetId, user, targetOwnerId]);
+  }, [targetId, uid, targetOwnerId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // ─── Aggregate stats ───
   const count = reviews.length;
   const avg =
     count > 0
@@ -83,16 +83,14 @@ export function ReviewSection({
       : 0;
   const roundedAvg = Math.round(avg * 10) / 10;
 
-  // ─── Button label logic ───
-  const isOwner = user?.uid === targetOwnerId;
-  const showWriteButton = !!user && !isOwner;
+  const isOwner = uid === targetOwnerId;
+  const showWriteButton = !!uid && !isOwner;
 
   const buttonLabel = myReview ? "Edit your review" : "Write a review";
   const buttonIcon = myReview ? Pencil : MessageSquarePlus;
 
   return (
     <section className="card-premium mt-4 p-5">
-      {/* ─── Header ─── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-[var(--nexora-navy)]">
@@ -126,14 +124,12 @@ export function ReviewSection({
         )}
       </div>
 
-      {/* ─── Gate hint (user has not contacted via WhatsApp) ─── */}
       {showWriteButton && !canReview && !myReview && (
         <p className="mt-2 rounded-lg bg-blue-50/60 px-3 py-2 text-[11px] text-blue-700">
           💬 Only users who contacted this provider via WhatsApp can leave a review.
         </p>
       )}
 
-      {/* ─── Loading ─── */}
       {loading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 size={20} className="animate-spin text-gray-300" />
@@ -149,7 +145,6 @@ export function ReviewSection({
         </div>
       ) : (
         <>
-          {/* ─── Breakdown bars ─── */}
           <div className="mt-4 grid grid-cols-1 gap-1 sm:grid-cols-2">
             {[5, 4, 3, 2, 1].map((star) => {
               const starCount = breakdown[star as 1 | 2 | 3 | 4 | 5] ?? 0;
@@ -173,7 +168,6 @@ export function ReviewSection({
             })}
           </div>
 
-          {/* ─── Review list ─── */}
           <div className="mt-5 space-y-3">
             {reviews.map((r) => (
               <ReviewCard
@@ -189,7 +183,6 @@ export function ReviewSection({
         </>
       )}
 
-      {/* ─── Form modal ─── */}
       <ReviewForm
         isOpen={formOpen}
         onClose={() => setFormOpen(false)}

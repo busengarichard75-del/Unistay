@@ -16,12 +16,9 @@ type FollowVariant = "full" | "icon" | "light";
 
 interface FollowButtonProps {
   providerId: string;
-  /** Denormalized display snapshots — written into the follow doc. */
   providerName?: string;
   providerPhotoURL?: string;
-  /** How the button renders. */
   variant?: FollowVariant;
-  /** Optional callback after a successful toggle. */
   onToggle?: (nowFollowing: boolean) => void;
 }
 
@@ -37,22 +34,24 @@ export function FollowButton({
   const [busy, setBusy] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // ─── Real-time follow state ───
+  // ⚡ Dep on user?.uid (stable string) — NOT `user` (new object each render)
+  const uid = user?.uid;
+
   useEffect(() => {
-    if (!user || !providerId) {
+    if (!uid || !providerId) {
       setFollowing(false);
       return;
     }
-    if (user.uid === providerId) return; // self-follow: no listener needed
+    if (uid === providerId) return; // self-follow: no listener needed
 
-    const unsub = subscribeToFollow(user.uid, providerId, (isFollowing) => {
+    const unsub = subscribeToFollow(uid, providerId, (isFollowing) => {
       setFollowing(isFollowing);
     });
     return () => unsub();
-  }, [user, providerId]);
+  }, [uid, providerId]);
 
-  // ─── Self-follow: render nothing ───
-  if (user && user.uid === providerId) return null;
+  // Self-follow: render nothing
+  if (uid && uid === providerId) return null;
 
   const handleClick = async (
     e: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
@@ -60,18 +59,15 @@ export function FollowButton({
     e.preventDefault();
     e.stopPropagation();
 
-    // ── Guest gate ──
     if (!user) {
       setShowLoginModal(true);
       return;
     }
-
     if (busy) return;
     setBusy(true);
 
     const wasFollowing = following;
     const next = !wasFollowing;
-    // Optimistic flip
     setFollowing(next);
 
     try {
@@ -91,7 +87,6 @@ export function FollowButton({
       }
       onToggle?.(next);
     } catch (err) {
-      // Revert on failure
       setFollowing(wasFollowing);
       console.error("Follow toggle failed:", err);
       toast.error(
@@ -102,9 +97,7 @@ export function FollowButton({
     }
   };
 
-  // ─────────────────────────────────────────────────────────
-  // ICON variant — for cards (stacks with wishlist heart)
-  // ─────────────────────────────────────────────────────────
+  // ─── ICON variant ───
   if (variant === "icon") {
     return (
       <>
@@ -137,9 +130,7 @@ export function FollowButton({
     );
   }
 
-  // ─────────────────────────────────────────────────────────
-  // LIGHT variant — for light-background cards (e.g., "Sold by")
-  // ─────────────────────────────────────────────────────────
+  // ─── LIGHT variant ───
   if (variant === "light") {
     return (
       <>
@@ -153,7 +144,7 @@ export function FollowButton({
           }}
           className={`pointer-events-auto inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all active:scale-95 ${
             following
-              ? "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+              ? "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
               : "bg-[var(--nexora-primary)] text-white hover:opacity-90"
           }`}
         >
@@ -177,9 +168,7 @@ export function FollowButton({
     );
   }
 
-  // ─────────────────────────────────────────────────────────
-  // FULL variant — for provider profile header
-  // ─────────────────────────────────────────────────────────
+  // ─── FULL variant ───
   return (
     <>
       <button
