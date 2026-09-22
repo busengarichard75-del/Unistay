@@ -39,13 +39,28 @@ export function getFirestoreDb() {
 
 /**
  * Firebase Admin Auth — used to verify client ID tokens on server routes.
- * Additive: nothing existing uses this. Safe to remove if unused.
  */
 export function getAuthAdmin() {
   const app = getAdminApp();
   return getAuth(app);
 }
 
-// Legacy export — required by existing API routes that import { db }.
-// Keep this until those routes are migrated to getFirestoreDb().
-export const db = getFirestoreDb();
+/**
+ * Lazy Proxy for `db`.
+ *
+ * ⚡ Initialization is deferred until the FIRST method access.
+ * This means importing this module NEVER touches env vars — safe to
+ * import in any route without a build-time crash. The real Firestore
+ * instance is created only when a route actually uses `.collection()` etc.
+ *
+ * Legacy export — required by:
+ *   src/app/api/notifications/subscribe/route.ts
+ *   src/app/api/notifications/unsubscribe/route.ts
+ */
+export const db = new Proxy({} as FirebaseFirestore.Firestore, {
+  get(_target, prop) {
+    const real = getFirestoreDb();
+    const value = (real as any)[prop];
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
