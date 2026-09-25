@@ -8,7 +8,7 @@ import {
   RefreshCw, LayoutGrid, CreditCard, Users, Building,
   BarChart3, Settings, Wrench, Mail, Ban, Trash2,
   ScrollText, Store, ShoppingBag,
-  Shield, AlertTriangle, Flag,
+  Shield, AlertTriangle, Flag, BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
@@ -56,6 +56,7 @@ import { CommsTab } from "@/components/admin/tabs/CommsTab";
 import { AnalyticsTab } from "@/components/admin/tabs/AnalyticsTab";
 import { ReportsTab } from "@/components/admin/tabs/ReportsTab";
 import { ToolsTab } from "@/components/admin/tabs/ToolsTab";
+import { LibraryTab } from "@/components/admin/tabs/LibraryTab";
 import type { AdminTab, DirectoryUser, UnansweredQuestion, AdminStats } from "@/components/admin/types";
 
 const AGENT_FEE = 100;
@@ -73,6 +74,7 @@ const TABS: { id: AdminTab; label: string; icon: typeof LayoutGrid; color: strin
   { id: "analytics", label: "Analytics", icon: BarChart3, color: "text-yellow-400" },
   { id: "reports", label: "Reports", icon: Flag, color: "text-red-400" },
   { id: "tools", label: "Tools", icon: Wrench, color: "text-red-400" },
+  { id: "library", label: "Library", icon: BookOpen, color: "text-indigo-400" },
 ];
 
 export default function AdminPage() {
@@ -917,7 +919,7 @@ export default function AdminPage() {
               : s
           )
         );
-      } else {
+      } else if (report.targetType === "product") {
         await updateProduct(report.targetId, {
           adminHidden: true,
           adminHiddenReason: `Reported: ${report.reason}`,
@@ -1264,6 +1266,8 @@ export default function AdminPage() {
             onDismiss={handleDismissReport}
           />
         )}
+
+        {activeTab === "library" && <LibraryTab />}
 
         {activeTab === "tools" && (
           <ToolsTab

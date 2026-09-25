@@ -2,7 +2,8 @@
 
 export type AdminTab =
   | "dashboard" | "payments" | "properties" | "users" | "shop"
-  | "bookings" | "comms" | "analytics" | "reports" | "tools";
+  | "bookings" | "comms" | "analytics" | "reports" | "tools"
+  | "library";
 
 export interface UnansweredQuestion {
   id: string;

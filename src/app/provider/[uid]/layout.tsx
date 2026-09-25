@@ -24,6 +24,11 @@ function withTimeout<T>(
   ]).catch(() => null);
 }
 
+interface ProviderShopSettings {
+  bannerUrl?: string;
+  tagline?: string;
+}
+
 interface ProviderDoc {
   fullName?: string;
   businessName?: string;
@@ -34,6 +39,8 @@ interface ProviderDoc {
   photoURL?: string;
   suspended?: boolean;
   createdAt?: number;
+  // ─── Additive: shop customization for premium preview ───
+  shopSettings?: ProviderShopSettings;
 }
 
 async function fetchProvider(uid: string): Promise<ProviderDoc | null> {
@@ -61,7 +68,13 @@ function displayName(p: ProviderDoc | null): string {
   return p.businessName?.trim() || p.fullName?.trim() || "Peza Provider";
 }
 
+/**
+ * Pick the best image for the OG preview.
+ * Priority: shop banner → avatar → default fallback.
+ * Banners are wider (~1600x400) and feel more "shop-like" on WhatsApp.
+ */
 function ogImageFor(p: ProviderDoc | null): string {
+  if (p?.shopSettings?.bannerUrl?.trim()) return p.shopSettings.bannerUrl.trim();
   if (p?.photoURL) return p.photoURL;
   return "/og-providers.png";
 }
@@ -97,11 +110,15 @@ export async function generateMetadata({
   if (isVerified) titleParts.push("Verified");
   const title = titleParts.join(" · ");
 
-  const description = `${
-    isVerified ? "Verified provider on Peza. " : ""
-  }Browse ${typeLabel.toLowerCase()} from ${name}${
-    provider.university ? ` near ${provider.university}` : ""
-  }. Contact directly on WhatsApp.`;
+  // ─── Prefer the shop tagline in the description ───
+  const tagline = provider.shopSettings?.tagline?.trim();
+  const description =
+    tagline ||
+    `${
+      isVerified ? "Verified provider on Peza. " : ""
+    }Browse ${typeLabel.toLowerCase()} from ${name}${
+      provider.university ? ` near ${provider.university}` : ""
+    }. Contact directly on WhatsApp.`;
 
   const image = ogImageFor(provider);
 
@@ -141,11 +158,17 @@ function providerJsonLd(uid: string, p: ProviderDoc) {
   const name = displayName(p);
   const isStore = p.providerType === "product";
 
+  // Prefer banner for image, fall back to avatar
+  const image = ogImageFor(p);
+  const absoluteImage = image.startsWith("http")
+    ? image
+    : `${SITE_URL}${image}`;
+
   return {
     "@context": "https://schema.org",
     "@type": isStore ? "Store" : "LocalBusiness",
     name,
-    image: p.photoURL || undefined,
+    image: absoluteImage,
     url: `${SITE_URL}/provider/${uid}`,
     areaServed: p.university || "Zambia",
     address: p.university
@@ -161,6 +184,8 @@ function providerJsonLd(uid: string, p: ProviderDoc) {
           name: p.fullName,
         }
       : undefined,
+    // ─── Additive: use tagline as description in schema.org ───
+    description: p.shopSettings?.tagline?.trim() || undefined,
   };
 }
 

@@ -13,6 +13,7 @@ import { getUniversityFullName } from "@/lib/universityLabels";
 import { getShopTheme } from "@/lib/shopThemes";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { ProductCard } from "@/components/products/ProductCard";
+import { ShowcaseStrip } from "@/components/provider/ShowcaseStrip";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -39,10 +40,10 @@ export default function ProviderProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<"services" | "products">("services");
 
-  // ── Avatar fallback if the image URL fails to load ──
+  // Avatar fallback if the image URL fails to load
   const [imgError, setImgError] = useState(false);
 
-  // ── Share feedback state ──
+  // Share feedback state
   const [shared, setShared] = useState(false);
 
   useEffect(() => {
@@ -86,7 +87,7 @@ export default function ProviderProfilePage() {
     if (!profile) return;
     const url = typeof window !== "undefined" ? window.location.href : "";
     const title = `${profile.displayName} on Peza`;
-    const text = `Check out ${profile.displayName} on Peza — services, products, and more. Tap to browse:`;
+    const text = `Check out ${profile.displayName} on Peza - services, products, and more. Tap to browse:`;
 
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
@@ -95,10 +96,10 @@ export default function ProviderProfilePage() {
       }
       await navigator.clipboard.writeText(`${text}\n${url}`);
       setShared(true);
-      toast.success("Shop link copied — share it anywhere!");
+      toast.success("Shop link copied - share it anywhere!");
       setTimeout(() => setShared(false), 2000);
     } catch {
-      // User cancelled — silent
+      // User cancelled - silent
     }
   }
 
@@ -142,7 +143,7 @@ export default function ProviderProfilePage() {
     );
   }
 
-  // ─── Shop customization ───
+  // Shop customization
   const shopSettings = profile.shopSettings || {};
   const theme = getShopTheme(shopSettings.accentColor);
   const tagline = shopSettings.tagline?.trim();
@@ -150,7 +151,7 @@ export default function ProviderProfilePage() {
   const featuredId = shopSettings.featuredListingId;
   const featuredType = shopSettings.featuredListingType;
 
-  // ─── Sort: featured first (if set), then boosted, then newest ───
+  // Sort: featured first (if set), then boosted, then newest
   const sortWithFeatured = <T extends { id: string; boostedAt?: number | null; createdAt?: number }>(
     list: T[],
     isBoosted: (item: T) => boolean
@@ -214,9 +215,9 @@ export default function ProviderProfilePage() {
           Back
         </button>
 
-        {/* ─── Provider header card ─── */}
+        {/* Provider header card */}
         <div className="card-premium overflow-hidden">
-          {/* Header background — gradient + optional banner */}
+          {/* Header background - gradient + optional banner */}
           <div
             className={`relative overflow-hidden bg-gradient-to-r ${theme.gradient} px-6 py-8 text-white`}
           >
@@ -233,7 +234,7 @@ export default function ProviderProfilePage() {
             )}
 
             <div className="relative flex flex-wrap items-center gap-5">
-              {/* ── Avatar ── */}
+              {/* Avatar */}
               {showAvatar ? (
                 <img
                   src={profile.photoURL!}
@@ -260,7 +261,7 @@ export default function ProviderProfilePage() {
                   )}
                 </div>
 
-                {/* 🎨 Tagline (custom, optional) */}
+                {/* Tagline (custom, optional) */}
                 {tagline && (
                   <p className="mt-1.5 max-w-xl text-sm font-medium text-white/95">
                     {tagline}
@@ -290,7 +291,7 @@ export default function ProviderProfilePage() {
                 </div>
               </div>
 
-              {/* ── Share shop button ── */}
+              {/* Share button */}
               <button
                 type="button"
                 onClick={handleShareShop}
@@ -303,7 +304,7 @@ export default function ProviderProfilePage() {
             </div>
           </div>
 
-          {/* ─── Stats strip ─── */}
+          {/* Stats strip */}
           <div className="grid grid-cols-2 divide-x divide-gray-100 border-t border-gray-100 bg-white">
             <button
               onClick={() => setActiveTab("services")}
@@ -339,11 +340,17 @@ export default function ProviderProfilePage() {
           </div>
         </div>
 
-        {/* ─── Listings ─── */}
+        {/* Showcase strip - best work, appears only when enough images exist */}
+        <ShowcaseStrip
+          services={services}
+          products={products}
+          featuredId={featuredId}
+        />
+
+        {/* Listings */}
         <div className="mt-6">
           {activeTab === "services" && hasServices && (
             <>
-              {/* Featured service (if set and belongs to this vertical) */}
               {featuredService && featuredType === "service" && (
                 <div className="mb-5">
                   <div className="mb-2 flex items-center gap-2">
@@ -360,7 +367,6 @@ export default function ProviderProfilePage() {
                 </div>
               )}
 
-              {/* All services */}
               <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
                 Services
                 <span className="ml-2 text-sm font-normal text-gray-400">
@@ -380,7 +386,6 @@ export default function ProviderProfilePage() {
 
           {activeTab === "products" && hasProducts && (
             <>
-              {/* Featured product (if set and belongs to this vertical) */}
               {featuredProduct && featuredType === "product" && (
                 <div className="mb-5">
                   <div className="mb-2 flex items-center gap-2">
@@ -397,7 +402,6 @@ export default function ProviderProfilePage() {
                 </div>
               )}
 
-              {/* All products */}
               <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
                 Products
                 <span className="ml-2 text-sm font-normal text-gray-400">
@@ -415,7 +419,6 @@ export default function ProviderProfilePage() {
             </>
           )}
 
-          {/* Empty state */}
           {!hasServices && !hasProducts && (
             <div className="card-premium p-10 text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[var(--nexora-primary)]">
