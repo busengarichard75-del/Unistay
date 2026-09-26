@@ -7,6 +7,7 @@ import { AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NetworkStatus } from "@/components/NetworkStatus";
 import { WelcomeModal } from "@/components/WelcomeModal";
+import { PostAuthWelcomeModal } from "@/components/PostAuthWelcomeModal";
 import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 
@@ -125,6 +126,7 @@ export default function RootLayout({
             </AnimatePresence>
             <Toaster position="bottom-right" richColors closeButton />
             <WelcomeModal />
+            <PostAuthWelcomeModal />
             <FloatingWhatsAppButton />
           </AuthProvider>
         </ErrorBoundary>
