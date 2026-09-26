@@ -3,6 +3,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getCountFromServer,
   query,
   orderBy,
   where,
@@ -12,6 +13,11 @@ import { db } from "@/lib/firebase";
 
 const VISITS_COLLECTION = "analytics_visits";
 const VISITOR_KEY = "peza_visitor_id";
+
+// Safety cap for the aggregation pass — only affects breakdown numbers
+// (unique visitors, role/device splits, top pages).
+// Total visits uses getCountFromServer so it's always accurate.
+const AGGREGATION_FETCH_LIMIT = 5000;
 
 export type VisitorRole = "guest" | "student" | "landlord";
 export type DeviceType = "mobile" | "tablet" | "desktop";
@@ -101,11 +107,24 @@ export async function getVisitStats(sinceMs: number): Promise<VisitStats> {
 
   try {
     const visitsRef = collection(db, VISITS_COLLECTION);
+
+    // ⚡ Accurate total — uses Firestore aggregation, no cap
+    let totalVisits = 0;
+    try {
+      const countSnap = await getCountFromServer(
+        query(visitsRef, where("timestamp", ">=", sinceMs))
+      );
+      totalVisits = countSnap.data().count;
+    } catch (err) {
+      console.warn("Count query failed, falling back to fetch length:", err);
+    }
+
+    // Fetch a capped sample for breakdown (unique/role/device/pages)
     const q = query(
       visitsRef,
       where("timestamp", ">=", sinceMs),
       orderBy("timestamp", "desc"),
-      limit(1000) // safety cap
+      limit(AGGREGATION_FETCH_LIMIT)
     );
     const snap = await getDocs(q);
 
@@ -114,7 +133,14 @@ export async function getVisitStats(sinceMs: number): Promise<VisitStats> {
       ...(d.data() as Omit<VisitRecord, "id">),
     }));
 
-    if (visits.length === 0) return emptyStats;
+    // If count query failed, fall back to fetch length
+    if (totalVisits === 0 && visits.length > 0) {
+      totalVisits = visits.length;
+    }
+
+    if (visits.length === 0) {
+      return { ...emptyStats, totalVisits };
+    }
 
     // Aggregate
     const uniqueSet = new Set<string>();
@@ -135,7 +161,7 @@ export async function getVisitStats(sinceMs: number): Promise<VisitStats> {
       .slice(0, 8);
 
     return {
-      totalVisits: visits.length,
+      totalVisits,
       uniqueVisitors: uniqueSet.size,
       byRole,
       byDevice,

@@ -29,6 +29,7 @@ import {
 import { VerificationBanner } from "@/components/provider/VerificationBanner";
 import { BoostListingModal } from "@/components/provider/BoostListingModal";
 import { ShareMyShopCard } from "@/components/provider/ShareMyShopCard";
+import { WhatsAppStatusKit } from "@/components/provider/WhatsAppStatusKit";
 import { toast } from "sonner";
 import {
   Eye,
@@ -294,6 +295,13 @@ export default function ProviderDashboardPage() {
             />
           </div>
         )}
+
+        {/* 💬 WHATSAPP STATUS KIT */}
+        <WhatsAppStatusKit
+          uid={user.uid}
+          displayName={displayName}
+          tagline={user.shopSettings?.tagline}
+        />
 
         {/* Insights */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

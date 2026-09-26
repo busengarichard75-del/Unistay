@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
 import { addLibraryEntry } from "@/services/libraryService";
+import { stripUndefined } from "@/lib/stripUndefined";
 import {
   LIBRARY_CATEGORIES,
   LibraryCategory,
@@ -138,7 +139,9 @@ export function UploadForm() {
         user.email?.split("@")[0] ||
         "Student";
 
-      await addLibraryEntry({
+      // ⚡ Build the payload, then strip undefined values.
+      // Firestore rejects any field whose value is `undefined`.
+      const rawPayload = {
         title: title.trim(),
         description: description.trim(),
         category,
@@ -150,7 +153,7 @@ export function UploadForm() {
         coverImageUrl: coverImageUrl || undefined,
         uploaderId: user.uid,
         uploaderName,
-        status: "pending",
+        status: "pending" as const,
         adminHidden: false,
         adminHiddenReason: null,
         views: 0,
@@ -158,7 +161,9 @@ export function UploadForm() {
         reports: 0,
         createdAt: now,
         updatedAt: now,
-      });
+      };
+
+      await addLibraryEntry(stripUndefined(rawPayload) as any);
 
       toast.success(
         "Submitted! Admin will review and publish within a few hours."
