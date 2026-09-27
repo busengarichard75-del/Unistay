@@ -97,6 +97,10 @@ export const metadata: Metadata = {
 
   applicationName: "Peza",
   category: "marketplace",
+
+  verification: {
+    google: "nu7rNbVJIN6RBZ7XYMbEB68xGfvl4z5EIamOAhAeHU4",
+  },
 };
 
 export const viewport: Viewport = {
