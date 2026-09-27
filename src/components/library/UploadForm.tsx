@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
-import { addLibraryEntry } from "@/services/libraryService";
+import {
+  addLibraryEntry,
+  saveLibraryPrivateLink,
+} from "@/services/libraryService";
 import { stripUndefined } from "@/lib/stripUndefined";
 import {
   LIBRARY_CATEGORIES,
@@ -14,14 +17,10 @@ import {
 } from "@/types/library";
 import { universities } from "@/data/universities";
 import {
-  BookOpen,
   FileText,
   Tag,
-  School,
-  Calendar,
   Link as LinkIcon,
   Image as ImageIcon,
-  Check,
   ArrowRight,
   Info,
   X,
@@ -53,7 +52,6 @@ export function UploadForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // ─── Cover upload ─────────────────────────────────────
   async function handleCoverPick(file: File) {
     if (!file.type.startsWith("image/")) {
       toast.error("Please pick an image file.");
@@ -96,13 +94,11 @@ export function UploadForm() {
     if (file) handleCoverPick(file);
   }
 
-  // ─── Submit ───────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     setError("");
 
-    // Validation
     if (!title.trim() || title.trim().length < 4) {
       setError("Please enter a title (at least 4 characters).");
       return;
@@ -139,9 +135,8 @@ export function UploadForm() {
         user.email?.split("@")[0] ||
         "Student";
 
-      // ⚡ Build the payload, then strip undefined values.
-      // Firestore rejects any field whose value is `undefined`.
-      const rawPayload = {
+      // Public payload — NO driveLink.
+      const rawPublicPayload = {
         title: title.trim(),
         description: description.trim(),
         category,
@@ -149,7 +144,6 @@ export function UploadForm() {
         courseCode: courseCode.trim() || undefined,
         year: year.trim() || undefined,
         semester: semester.trim() || undefined,
-        driveLink: driveLink.trim(),
         coverImageUrl: coverImageUrl || undefined,
         uploaderId: user.uid,
         uploaderName,
@@ -163,7 +157,21 @@ export function UploadForm() {
         updatedAt: now,
       };
 
-      await addLibraryEntry(stripUndefined(rawPayload) as any);
+      // 1. Create the public entry
+      const newId = await addLibraryEntry(
+        stripUndefined(rawPublicPayload) as any
+      );
+
+      // 2. Write the drive link to libraryPrivate
+      try {
+        await saveLibraryPrivateLink(newId, driveLink.trim());
+      } catch (privateErr) {
+        console.error("Failed to save private drive link:", privateErr);
+        setError(
+          "Your listing was saved but the Drive link couldn't be attached. Please contact support."
+        );
+        return;
+      }
 
       toast.success(
         "Submitted! Admin will review and publish within a few hours."
@@ -182,7 +190,6 @@ export function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* ─── Link guidance (top, so they read it) ─── */}
       <div className="flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4">
         <Info size={16} className="mt-0.5 shrink-0 text-indigo-600" />
         <div className="text-xs leading-relaxed text-indigo-900">
@@ -193,7 +200,6 @@ export function UploadForm() {
         </div>
       </div>
 
-      {/* ─── Basic info ─── */}
       <Section icon={<FileText size={16} />} title="Basic information">
         <Field label="Title">
           <input
@@ -218,7 +224,6 @@ export function UploadForm() {
         </Field>
       </Section>
 
-      {/* ─── Category & academic info ─── */}
       <Section icon={<Tag size={16} />} title="Category & course">
         <Field label="Category">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -315,7 +320,6 @@ export function UploadForm() {
         </div>
       </Section>
 
-      {/* ─── The link ─── */}
       <Section icon={<LinkIcon size={16} />} title="Google Drive link">
         <Field label="Share link">
           <input
@@ -333,7 +337,6 @@ export function UploadForm() {
         </Field>
       </Section>
 
-      {/* ─── Optional cover ─── */}
       <Section icon={<ImageIcon size={16} />} title="Cover image (optional)">
         {coverImageUrl ? (
           <div className="relative overflow-hidden rounded-xl border border-gray-200">
@@ -384,14 +387,12 @@ export function UploadForm() {
         </p>
       </Section>
 
-      {/* ─── Error ─── */}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600">
           {error}
         </div>
       )}
 
-      {/* ─── Submit row ─── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Link
           href="/library"
@@ -420,10 +421,6 @@ export function UploadForm() {
     </form>
   );
 }
-
-/* ──────────────────────────────────────────────── */
-/* Sub-components                                  */
-/* ──────────────────────────────────────────────── */
 
 function Section({
   icon,

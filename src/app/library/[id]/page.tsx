@@ -8,16 +8,19 @@ import { Footer } from "@/components/footer/Footer";
 import {
   getLibraryEntryById,
   getApprovedLibraryEntries,
+  checkUnlockState,
+  unlockMaterial,
+  getPrivateDriveLink,
 } from "@/services/libraryService";
 import {
-  LibraryEntry,
+  LibraryEntryPublic,
   getLibraryCategoryMeta,
-  buildDrivePreviewUrl,
 } from "@/types/library";
 import { LibraryCard } from "@/components/library/LibraryCard";
 import { getUniversityShortLabel, getUniversityFullName } from "@/lib/universityLabels";
 import { timeAgo } from "@/lib/timeUtils";
 import { useAuth } from "@/lib/AuthContext";
+import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import {
   ArrowLeft,
   MapPin,
@@ -25,10 +28,13 @@ import {
   Upload,
   Eye,
   ExternalLink,
-  BookOpen,
   Share2,
   Check,
   AlertTriangle,
+  Lock,
+  Loader2,
+  Star,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,16 +42,26 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+type Challenge = "share" | "follow";
+
 export default function LibraryDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const { user } = useAuth();
 
-  const [entry, setEntry] = useState<LibraryEntry | null>(null);
-  const [related, setRelated] = useState<LibraryEntry[]>([]);
+  const [entry, setEntry] = useState<LibraryEntryPublic | null>(null);
+  const [related, setRelated] = useState<LibraryEntryPublic[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [shared, setShared] = useState(false);
+
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [busyChallenge, setBusyChallenge] = useState<Challenge | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // ⚡ Deps on user?.uid (stable string) — NOT user (new object each render)
+  const uid = user?.uid;
 
   // ── Fetch entry + related ──
   useEffect(() => {
@@ -70,7 +86,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
           body: JSON.stringify({ id }),
         }).catch(() => {});
 
-        // Fetch related (same category, different id, top 4)
         const all = await getApprovedLibraryEntries();
         if (!active) return;
         const rel = all
@@ -94,32 +109,111 @@ export default function LibraryDetailPage({ params }: PageProps) {
     };
   }, [id]);
 
-  // ── Share handler ──
-  const handleShare = async () => {
+  // ── Check unlock state — deps on uid (string), not user ──
+  useEffect(() => {
+    if (!uid || !id) {
+      setIsUnlocked(false);
+      return;
+    }
+    let active = true;
+    checkUnlockState(uid, id)
+      .then((unlocked) => {
+        if (active) setIsUnlocked(unlocked);
+      });
+    return () => {
+      active = false;
+    };
+  }, [uid, id]);
+
+  // ── Share page (works for guests too — different from unlocking) ──
+  const handleSharePage = async () => {
     if (!entry) return;
     const url = typeof window !== "undefined" ? window.location.href : "";
-    const shareTitle = entry.title;
-    const shareText = `${shareTitle} — shared on Peza Library`;
-
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
         await (navigator as any).share({
-          title: shareTitle,
-          text: shareText,
+          title: entry.title,
+          text: `${entry.title} — Peza Library`,
           url,
         });
       } else {
         await navigator.clipboard.writeText(url);
         setShared(true);
-        toast.success("Link copied to clipboard!");
+        toast.success("Link copied!");
         setTimeout(() => setShared(false), 2000);
       }
     } catch {
-      // user cancelled or clipboard failed — silent
+      // silent
     }
   };
 
-  // ── Loading ──
+  // ── Complete a challenge ──
+  async function handleChallenge(challenge: Challenge) {
+    if (!uid || !entry) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    setBusyChallenge(challenge);
+    try {
+      const pageUrl =
+        typeof window !== "undefined" ? window.location.href : "";
+
+      if (challenge === "share") {
+        const msg = `Free study materials on Peza — check this out: ${pageUrl}`;
+        if (typeof navigator !== "undefined" && (navigator as any).share) {
+          try {
+            await (navigator as any).share({ title: "Peza Library", text: msg });
+          } catch {
+            // user cancelled — don't unlock
+            setBusyChallenge(null);
+            return;
+          }
+        } else {
+          await navigator.clipboard.writeText(msg);
+          toast.success("Share message copied!");
+        }
+      } else if (challenge === "follow") {
+        window.open(
+          "https://www.facebook.com/peza.zm",
+          "_blank",
+          "noopener,noreferrer"
+        );
+      }
+
+      // Record the unlock
+      await unlockMaterial(uid, entry.id, challenge);
+      setIsUnlocked(true);
+      toast.success("Material unlocked! 🎉");
+    } catch (err) {
+      console.error("Challenge failed:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong."
+      );
+    } finally {
+      setBusyChallenge(null);
+    }
+  }
+
+  // ── Open the Drive link (fetch from libraryPrivate) ──
+  async function handleOpen() {
+    if (!entry) return;
+    setUnlocking(true);
+    try {
+      const link = await getPrivateDriveLink(entry.id);
+      if (!link) {
+        toast.error("Couldn't retrieve the link. Please try again.");
+        return;
+      }
+      window.open(link, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.error("Open failed:", err);
+      toast.error("Couldn't retrieve the link. Please try again.");
+    } finally {
+      setUnlocking(false);
+    }
+  }
+
   if (isFetching) {
     return (
       <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
@@ -137,7 +231,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
     );
   }
 
-  // ── Not found ──
   if (notFound || !entry) {
     return (
       <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
@@ -164,8 +257,8 @@ export default function LibraryDetailPage({ params }: PageProps) {
   }
 
   const cat = getLibraryCategoryMeta(entry.category);
-  const previewUrl = buildDrivePreviewUrl(entry.driveLink);
-  const isOwner = user?.uid === entry.uploaderId;
+  const isOwner = uid === entry.uploaderId;
+  const canOpen = isUnlocked || isOwner;
 
   const metaParts: string[] = [];
   if (entry.courseCode) metaParts.push(entry.courseCode);
@@ -178,7 +271,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
       <Navbar />
 
       <div className="container-medium py-6">
-        {/* ── Back ── */}
         <button
           onClick={() => router.back()}
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-[var(--nexora-navy)]"
@@ -187,7 +279,7 @@ export default function LibraryDetailPage({ params }: PageProps) {
           Back
         </button>
 
-        {/* ── Header card ── */}
+        {/* ── Header ── */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 px-6 py-6 text-white">
             <div className="flex items-start gap-4">
@@ -231,71 +323,146 @@ export default function LibraryDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* ── Primary CTAs ── */}
           <div className="flex flex-wrap gap-2 border-t border-gray-100 p-4">
-            <a
-              href={entry.driveLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
-            >
-              <ExternalLink size={14} />
-              Open in Google Drive
-            </a>
-
             <button
               type="button"
-              onClick={handleShare}
+              onClick={handleSharePage}
               className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               {shared ? <Check size={14} /> : <Share2 size={14} />}
-              {shared ? "Copied" : "Share"}
+              {shared ? "Copied" : "Share page"}
             </button>
           </div>
         </div>
 
-        {/* ── Inline preview (Drive iframe) ── */}
-        {previewUrl ? (
-          <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
-            <div className="border-b border-gray-100 px-4 py-3">
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                <BookOpen size={14} />
-                Preview
-              </p>
-              <p className="mt-0.5 text-[11px] text-gray-400">
-                Read directly on Peza — no download needed
-              </p>
-            </div>
-            <div className="bg-gray-50">
-              <iframe
-                src={previewUrl}
-                title={entry.title}
-                className="h-[70vh] min-h-[500px] w-full border-0"
-                loading="lazy"
-                allow="autoplay"
-              />
-            </div>
-            <div className="border-t border-gray-100 px-4 py-3 text-center">
-              <p className="text-[11px] text-gray-400">
-                Preview not loading?{" "}
-                <a
-                  href={entry.driveLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-[var(--nexora-primary)] hover:underline"
+        {/* ── THE GATE ── */}
+        <div className="mt-6">
+          {!uid ? (
+            // ─── State 1: Not logged in ───
+            <div className="overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-white shadow-sm">
+              <div className="flex flex-col items-center px-6 py-10 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-500">
+                  <Lock size={28} />
+                </div>
+                <h2 className="mt-4 text-lg font-bold text-gray-900">
+                  🔒 Material Locked
+                </h2>
+                <p className="mt-2 max-w-sm text-sm text-gray-600">
+                  Create a free Peza account to unlock this material and 70+
+                  other study resources.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowLoginModal(true)}
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
                 >
-                  Open in Google Drive
-                </a>
-              </p>
+                  Sign in to access this material
+                </button>
+                <p className="mt-3 text-[11px] text-gray-400">
+                  Takes less than a minute · Free forever
+                </p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
-            <p className="text-xs text-amber-800">
-              ⚠️ This material can&apos;t be previewed inline. Use the button above to open it in Google Drive.
-            </p>
-          </div>
-        )}
+          ) : canOpen ? (
+            // ─── State 3: Unlocked ───
+            <div className="overflow-hidden rounded-2xl border-2 border-emerald-200 bg-white shadow-sm">
+              <div className="flex flex-col items-center px-6 py-10 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+                  <Check size={32} strokeWidth={3} />
+                </div>
+                <h2 className="mt-4 text-lg font-bold text-gray-900">
+                  ✓ Material Unlocked
+                </h2>
+                <p className="mt-2 max-w-sm text-sm text-gray-600">
+                  {isOwner
+                    ? "This is your upload — you can always open it."
+                    : "You have full access to this material."}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpen}
+                  disabled={unlocking}
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {unlocking ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <ExternalLink size={16} />
+                  )}
+                  {unlocking ? "Opening…" : "Open in Google Drive"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            // ─── State 2: Logged in, not unlocked — 2 challenges ───
+            <div className="overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-white shadow-sm">
+              <div className="px-6 pt-8 pb-4 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 text-indigo-500">
+                  <Lock size={24} />
+                </div>
+                <h2 className="mt-3 text-lg font-bold text-gray-900">
+                  🔒 Material Locked
+                </h2>
+                <p className="mt-2 max-w-sm text-sm text-gray-600">
+                  Choose <span className="font-semibold">ONE</span> option below to
+                  unlock this material.
+                </p>
+              </div>
+
+              <div className="space-y-2 px-6 pb-8">
+                {/* Challenge 1 — Share */}
+                <button
+                  type="button"
+                  onClick={() => handleChallenge("share")}
+                  disabled={!!busyChallenge}
+                  className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/40 disabled:opacity-50"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                    <Send size={18} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900">
+                      Share Peza
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-gray-500">
+                      Share Peza with a classmate
+                    </p>
+                  </div>
+                  {busyChallenge === "share" ? (
+                    <Loader2 size={16} className="animate-spin text-indigo-500" />
+                  ) : (
+                    <ExternalLink size={16} className="text-gray-300" />
+                  )}
+                </button>
+
+                {/* Challenge 2 — Follow */}
+                <button
+                  type="button"
+                  onClick={() => handleChallenge("follow")}
+                  disabled={!!busyChallenge}
+                  className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/40 disabled:opacity-50"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                    <Star size={18} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900">
+                      Follow Peza on Facebook
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-gray-500">
+                      Opens our official page
+                    </p>
+                  </div>
+                  {busyChallenge === "follow" ? (
+                    <Loader2 size={16} className="animate-spin text-blue-500" />
+                  ) : (
+                    <ExternalLink size={16} className="text-gray-300" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ── Description ── */}
         {entry.description && (
@@ -309,7 +476,7 @@ export default function LibraryDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* ── Uploader info ── */}
+        {/* ── Uploader ── */}
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
             Shared by
@@ -343,7 +510,7 @@ export default function LibraryDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* ── Related materials ── */}
+        {/* ── Related ── */}
         {related.length > 0 && (
           <div className="mt-8">
             <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">
@@ -354,12 +521,19 @@ export default function LibraryDetailPage({ params }: PageProps) {
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {related.map((r) => (
-                <LibraryCard key={r.id} entry={r} />
+                <LibraryCard key={r.id} entry={r as any} />
               ))}
             </div>
           </div>
         )}
       </div>
+
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        title="Sign in to access"
+        subtitle="Create a free Peza account to unlock this material and 70+ other study resources."
+      />
 
       <Footer />
     </main>
