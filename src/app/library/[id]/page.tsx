@@ -44,6 +44,10 @@ interface PageProps {
 
 type Challenge = "share" | "follow";
 
+// ─── Peza's official Facebook page ───
+const PEZA_FACEBOOK_URL =
+  "https://www.facebook.com/profile.php?id=61594233460420";
+
 export default function LibraryDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
@@ -116,10 +120,9 @@ export default function LibraryDetailPage({ params }: PageProps) {
       return;
     }
     let active = true;
-    checkUnlockState(uid, id)
-      .then((unlocked) => {
-        if (active) setIsUnlocked(unlocked);
-      });
+    checkUnlockState(uid, id).then((unlocked) => {
+      if (active) setIsUnlocked(unlocked);
+    });
     return () => {
       active = false;
     };
@@ -174,11 +177,7 @@ export default function LibraryDetailPage({ params }: PageProps) {
           toast.success("Share message copied!");
         }
       } else if (challenge === "follow") {
-        window.open(
-          "https://www.facebook.com/peza.zm",
-          "_blank",
-          "noopener,noreferrer"
-        );
+        window.open(PEZA_FACEBOOK_URL, "_blank", "noopener,noreferrer");
       }
 
       // Record the unlock
