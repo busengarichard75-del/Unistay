@@ -74,7 +74,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/about"
+                  href="/why-peza"
                   className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
                 >
                   <Info size={16} />
@@ -83,7 +83,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/contact"
+                  href="/help"
                   className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
                 >
                   <MessageCircle size={16} />

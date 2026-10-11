@@ -81,12 +81,6 @@ export function ServiceCard({ service }: ServiceCardProps) {
   const originalPrice = service.priceFrom || null;
 
   const showFromPrice = service.priceType === "from" && originalPrice;
-  const priceLabel =
-    service.priceType === "from" && originalPrice
-      ? `From K${originalPrice.toLocaleString()}`
-      : service.priceType === "contact"
-      ? "Contact for price"
-      : null;
 
   // Both free + discount are impossible (discount deactivates for free),
   // but boost + free can coexist → stack the boost badge.
@@ -171,38 +165,47 @@ export function ServiceCard({ service }: ServiceCardProps) {
           )}
         </div>
 
-        {/* Price row */}
+        {/* ─── 💰 PRICE ROW (premium style) ─── */}
         {isFree ? (
-          /* 🎁 Free — bold green, no numbers */
-          <p className="mt-1 text-[13px] font-bold text-emerald-600">
+          <p className="mt-1.5 text-lg font-extrabold leading-none text-emerald-600">
             🎁 FREE
           </p>
         ) : showFromPrice && discountedPrice !== null ? (
-          <div className="mt-1 flex flex-wrap items-baseline gap-1.5">
-            <p className="text-[13px] font-bold text-red-600">
-              From K{discountedPrice.toLocaleString()}
-            </p>
-            <p className="text-[11px] text-gray-400 line-through">
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+              From
+            </span>
+            <span className="text-[11px] font-bold text-red-600">K</span>
+            <span className="text-lg font-extrabold leading-none text-red-600">
+              {discountedPrice.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-gray-400 line-through">
               K{originalPrice!.toLocaleString()}
-            </p>
+            </span>
           </div>
-        ) : priceLabel ? (
-          <p
-            className={`mt-1 truncate text-[12px] font-semibold ${
-              service.priceType === "from"
-                ? "text-[var(--nexora-navy)]"
-                : "text-gray-500"
-            }`}
-          >
-            {priceLabel}
+        ) : showFromPrice && originalPrice ? (
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+              From
+            </span>
+            <span className="text-[11px] font-bold text-[var(--nexora-navy)]">
+              K
+            </span>
+            <span className="text-lg font-extrabold leading-none text-[var(--nexora-navy)]">
+              {originalPrice.toLocaleString()}
+            </span>
+          </div>
+        ) : service.priceType === "contact" ? (
+          <p className="mt-1.5 text-[12px] font-semibold text-gray-500">
+            Contact for price
           </p>
         ) : null}
 
-        <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-gray-500">
+        <p className="mt-1.5 flex items-center gap-1 truncate text-[11px] text-gray-500">
           <MapPin size={10} className="shrink-0" />
           <span className="truncate">{service.location}</span>
         </p>
-        <p className="mt-1 text-[11px] text-[var(--nexora-primary)]">
+        <p className="mt-0.5 text-[11px] text-[var(--nexora-primary)]">
           {getUniversityShortLabel(service.universityId)}
         </p>
 

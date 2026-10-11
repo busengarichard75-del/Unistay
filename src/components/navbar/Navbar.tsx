@@ -21,9 +21,11 @@ import {
   ShoppingBag,
   Store,
   Map as MapIcon,
+  MapPin,
   User as UserIcon,
   BookOpen,
   Heart,
+  Home as HomeIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
@@ -118,6 +120,13 @@ export function Navbar() {
 
   const closeNotification = () => {
     setIsNotificationOpen(false);
+  };
+
+  // ─── Active-tab helper for the quick-nav row ───
+  const isActivePath = (href: string): boolean => {
+    if (!pathname) return false;
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(href + "/");
   };
 
   return (
@@ -444,32 +453,43 @@ export function Navbar() {
           </nav>
         </div>
 
-        {/* ─── MOBILE QUICK ICON ROW ─── */}
-        <div className="border-t border-white/10 md:hidden">
-          <div className="mx-auto grid max-w-7xl grid-cols-4 gap-1 px-3 py-1">
-            <MobileQuickIcon
+        {/* ─── QUICK ICON ROW — Home · Products · Services · Library · Map ─── */}
+        <div className="border-t border-white/10">
+          <div className="mx-auto grid max-w-7xl grid-cols-5 gap-1 px-3 py-1">
+            <QuickNavIcon
+              href="/"
+              label="Home"
+              accent="from-blue-500 to-indigo-600"
+              icon={<HomeIcon size={13} />}
+              isActive={isActivePath("/")}
+            />
+            <QuickNavIcon
+              href="/marketplace"
+              label="Products"
+              accent="from-orange-500 to-pink-600"
+              icon={<ShoppingBag size={13} />}
+              isActive={isActivePath("/marketplace")}
+            />
+            <QuickNavIcon
               href="/services"
               label="Services"
               accent="from-cyan-500 to-teal-600"
-              icon={<Wrench size={14} />}
+              icon={<Wrench size={13} />}
+              isActive={isActivePath("/services")}
             />
-            <MobileQuickIcon
-              href="/map"
-              label="Map"
-              accent="from-emerald-500 to-green-600"
-              icon={<MapIcon size={14} />}
-            />
-            <MobileQuickIcon
-              href="/marketplace"
-              label="Marketplace"
-              accent="from-orange-500 to-pink-600"
-              icon={<ShoppingBag size={14} />}
-            />
-            <MobileQuickIcon
+            <QuickNavIcon
               href="/library"
               label="Library"
               accent="from-indigo-500 to-purple-600"
-              icon={<BookOpen size={14} />}
+              icon={<BookOpen size={13} />}
+              isActive={isActivePath("/library")}
+            />
+            <QuickNavIcon
+              href="/map"
+              label="Map"
+              accent="from-emerald-500 to-green-600"
+              icon={<MapPin size={13} />}
+              isActive={isActivePath("/map")}
             />
           </div>
         </div>
@@ -655,18 +675,20 @@ export function Navbar() {
 }
 
 /* ──────────────────────────────────────────────── */
-/* Mobile Quick Icon (icon-only, compact)          */
+/* Quick Nav Icon (icon-only, all screens)         */
 /* ──────────────────────────────────────────────── */
-function MobileQuickIcon({
+function QuickNavIcon({
   href,
   label,
   icon,
   accent,
+  isActive,
 }: {
   href: string;
   label: string;
   icon: React.ReactNode;
   accent: string;
+  isActive: boolean;
 }) {
   return (
     <Link
@@ -676,7 +698,11 @@ function MobileQuickIcon({
       className="flex items-center justify-center py-0.5 active:scale-95 transition-transform"
     >
       <span
-        className={`flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br ${accent} text-white shadow-sm`}
+        className={`flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br ${accent} text-white shadow-sm transition-all sm:h-8 sm:w-8 ${
+          isActive
+            ? "ring-2 ring-white/80 shadow-md"
+            : "opacity-80 hover:opacity-100"
+        }`}
       >
         {icon}
       </span>

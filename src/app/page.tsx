@@ -41,7 +41,6 @@ function HomeContent() {
   const [keyword, setKeyword] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
-  const [showAvailableOnly, setShowAvailableOnly] = useState(false);
 
   // ─── New advanced filters (additive) ───
   const [filters, setFilters] = useState<ListingFilterState>(
@@ -99,18 +98,11 @@ function HomeContent() {
       const price = property.price ?? 0;
       if (price < min || price > max) return false;
 
-      if (showAvailableOnly) {
-        const availableCount = (property.bedSpaces ?? []).filter(
-          (bed) => bed.isAvailable
-        ).length;
-        if (availableCount === 0) return false;
-      }
-
       return true;
     });
 
     return applyPropertyFilters(prefiltered, keyword, null, filters);
-  }, [properties, keyword, minPrice, maxPrice, showAvailableOnly, filters]);
+  }, [properties, keyword, minPrice, maxPrice, filters]);
 
   const handleRetry = () => {
     setRetryKey((k) => k + 1);
@@ -198,16 +190,6 @@ function HomeContent() {
           onMinChange={setMinPrice}
           onMaxChange={setMaxPrice}
         />
-
-        <label className="flex w-fit items-center gap-2 text-sm text-[var(--nexora-text-secondary)]">
-          <input
-            type="checkbox"
-            checked={showAvailableOnly}
-            onChange={(e) => setShowAvailableOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-[var(--nexora-primary)] focus:ring-[var(--nexora-primary)]"
-          />
-          Available beds only
-        </label>
 
         <ListingFilters
           mode="properties"

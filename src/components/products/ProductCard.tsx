@@ -209,20 +209,26 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
 
-        {/* Price row */}
+        {/* ─── 💰 PRICE ROW (premium style) ─── */}
         {hasDiscount && discountedPrice !== null ? (
-          <div className="mt-1 flex flex-wrap items-baseline gap-1.5">
-            <p className="text-[14px] font-bold text-red-600">
-              K{discountedPrice.toLocaleString()}
-            </p>
-            <p className="text-[11px] text-gray-400 line-through">
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-1.5">
+            <span className="text-[11px] font-bold text-red-600">K</span>
+            <span className="text-lg font-extrabold leading-none text-red-600">
+              {discountedPrice.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-gray-400 line-through">
               K{product.price.toLocaleString()}
-            </p>
+            </span>
           </div>
         ) : (
-          <p className="mt-1 text-sm font-bold text-[var(--nexora-navy)]">
-            K{product.price.toLocaleString()}
-          </p>
+          <div className="mt-1.5 flex items-baseline gap-1">
+            <span className="text-[11px] font-bold text-[var(--nexora-navy)]">
+              K
+            </span>
+            <span className="text-lg font-extrabold leading-none text-[var(--nexora-navy)]">
+              {product.price.toLocaleString()}
+            </span>
+          </div>
         )}
 
         {/* 📦 Quantity badge (only when set) */}
@@ -235,11 +241,11 @@ export function ProductCard({ product }: ProductCardProps) {
           </span>
         )}
 
-        <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-gray-500">
+        <p className="mt-1.5 flex items-center gap-1 truncate text-[11px] text-gray-500">
           <MapPin size={10} className="shrink-0" />
           <span className="truncate">{product.location}</span>
         </p>
-        <p className="mt-1 text-[11px] text-[var(--nexora-primary)]">
+        <p className="mt-0.5 text-[11px] text-[var(--nexora-primary)]">
           {getUniversityShortLabel(product.universityId)}
         </p>
 

@@ -14,10 +14,6 @@ export function Hero() {
         <p className="mt-3 text-base text-gray-600 sm:mt-4 sm:text-lg">
           Your campus, all in one place.
         </p>
-        <p className="mt-1.5 text-sm text-gray-500 sm:mt-2 sm:text-base">
-          Find verified rooms, trusted services, and student deals — everything
-          you need to settle in and thrive at university.
-        </p>
       </div>
     </section>
   );

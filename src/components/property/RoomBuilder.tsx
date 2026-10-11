@@ -27,18 +27,30 @@ function getNextRoomNumber(rooms: Room[]): number {
 }
 
 export function RoomBuilder({ rooms, onChange }: RoomBuilderProps) {
-  // ─── Room count state ───
+  // ─── Room count state (committed value) ───
   const [roomCount, setRoomCount] = useState<number>(rooms.length || 1);
+
+  // ─── Room count input text (allows empty while typing) ───
+  const [roomCountInput, setRoomCountInput] = useState<string>(
+    String(rooms.length || 1)
+  );
 
   // ─── Quick Add state ───
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddRooms, setQuickAddRooms] = useState(1);
   const [quickAddBeds, setQuickAddBeds] = useState(1);
+  const [quickAddRoomsInput, setQuickAddRoomsInput] = useState("1");
+  const [quickAddBedsInput, setQuickAddBedsInput] = useState("1");
   const [quickAddBunkPattern, setQuickAddBunkPattern] = useState<"allTop" | "allBottom" | "alternate">("alternate");
 
   // ─── Room name editing state ───
   const [editingRoomIndex, setEditingRoomIndex] = useState<number | null>(null);
   const [editingRoomName, setEditingRoomName] = useState("");
+
+  // ─── Keep input in sync if roomCount changes from elsewhere ───
+  useEffect(() => {
+    setRoomCountInput(String(roomCount));
+  }, [roomCount]);
 
   // ─── When roomCount changes, adjust the rooms array ───
   useEffect(() => {
@@ -70,21 +82,39 @@ export function RoomBuilder({ rooms, onChange }: RoomBuilderProps) {
     }
   }, [roomCount]);
 
+  // ─── Commit room count from input on blur ───
+  const commitRoomCount = () => {
+    const parsed = parseInt(roomCountInput, 10);
+    if (isNaN(parsed) || parsed < 1) {
+      // Revert to current committed value
+      setRoomCountInput(String(roomCount));
+      return;
+    }
+    if (parsed !== roomCount) setRoomCount(parsed);
+  };
+
   // ─── Quick Add: Generate multiple rooms at once ───
   const handleQuickAdd = () => {
-    if (quickAddRooms < 1 || quickAddBeds < 1) {
-      toast.error("Please enter at least 1 room and 1 bed per room.");
+    const parsedRooms = parseInt(quickAddRoomsInput, 10);
+    const parsedBeds = parseInt(quickAddBedsInput, 10);
+
+    if (isNaN(parsedRooms) || parsedRooms < 1) {
+      toast.error("Please enter at least 1 room.");
+      return;
+    }
+    if (isNaN(parsedBeds) || parsedBeds < 1) {
+      toast.error("Please enter at least 1 bed per room.");
       return;
     }
 
     const nextNumber = getNextRoomNumber(rooms);
     const newRooms: Room[] = [];
 
-    for (let i = 0; i < quickAddRooms; i++) {
+    for (let i = 0; i < parsedRooms; i++) {
       const roomNumber = nextNumber + i;
       const bedSpaces: BedSpace[] = [];
 
-      for (let j = 0; j < quickAddBeds; j++) {
+      for (let j = 0; j < parsedBeds; j++) {
         let type: "Top" | "Bottom" = "Top";
 
         if (quickAddBunkPattern === "allTop") {
@@ -112,7 +142,7 @@ export function RoomBuilder({ rooms, onChange }: RoomBuilderProps) {
 
     onChange([...rooms, ...newRooms]);
     setShowQuickAdd(false);
-    toast.success(`${quickAddRooms} room(s) added successfully! 🎉`);
+    toast.success(`${parsedRooms} room(s) added successfully! 🎉`);
   };
 
   // ─── Update beds in a specific room ───
@@ -233,10 +263,15 @@ export function RoomBuilder({ rooms, onChange }: RoomBuilderProps) {
             <input
               type="number"
               min={1}
-              value={roomCount}
-              onChange={(e) => {
-                const val = Math.max(1, Number(e.target.value));
-                setRoomCount(val);
+              inputMode="numeric"
+              value={roomCountInput}
+              placeholder="1"
+              onChange={(e) => setRoomCountInput(e.target.value)}
+              onBlur={commitRoomCount}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  (e.target as HTMLInputElement).blur();
+                }
               }}
               className="w-16 rounded-lg border border-gray-200 px-2 py-1.5 text-center text-sm outline-none focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/20"
             />
@@ -285,8 +320,20 @@ export function RoomBuilder({ rooms, onChange }: RoomBuilderProps) {
               <input
                 type="number"
                 min={1}
-                value={quickAddRooms}
-                onChange={(e) => setQuickAddRooms(Math.max(1, Number(e.target.value) || 1))}
+                inputMode="numeric"
+                value={quickAddRoomsInput}
+                placeholder="1"
+                onChange={(e) => setQuickAddRoomsInput(e.target.value)}
+                onBlur={() => {
+                  const parsed = parseInt(quickAddRoomsInput, 10);
+                  if (isNaN(parsed) || parsed < 1) {
+                    setQuickAddRoomsInput("1");
+                    setQuickAddRooms(1);
+                  } else {
+                    setQuickAddRooms(parsed);
+                    setQuickAddRoomsInput(String(parsed));
+                  }
+                }}
                 className="mt-1 w-full rounded-lg border border-blue-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
@@ -296,8 +343,20 @@ export function RoomBuilder({ rooms, onChange }: RoomBuilderProps) {
               <input
                 type="number"
                 min={1}
-                value={quickAddBeds}
-                onChange={(e) => setQuickAddBeds(Math.max(1, Number(e.target.value) || 1))}
+                inputMode="numeric"
+                value={quickAddBedsInput}
+                placeholder="1"
+                onChange={(e) => setQuickAddBedsInput(e.target.value)}
+                onBlur={() => {
+                  const parsed = parseInt(quickAddBedsInput, 10);
+                  if (isNaN(parsed) || parsed < 1) {
+                    setQuickAddBedsInput("1");
+                    setQuickAddBeds(1);
+                  } else {
+                    setQuickAddBeds(parsed);
+                    setQuickAddBedsInput(String(parsed));
+                  }
+                }}
                 className="mt-1 w-full rounded-lg border border-blue-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
