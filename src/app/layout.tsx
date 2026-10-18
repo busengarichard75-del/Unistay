@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/lib/AuthContext";
@@ -13,10 +13,6 @@ import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 import { WebVitals } from "@/components/WebVitals";
 
-// ─────────────────────────────────────────────────────────
-// SITE URL — matches your existing env var (NEXT_PUBLIC_APP_URL),
-// with production fallback. Every child layout inherits via metadataBase.
-// ─────────────────────────────────────────────────────────
 const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
 
@@ -26,14 +22,11 @@ const DEFAULT_DESCRIPTION =
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-
   title: {
     default: DEFAULT_TITLE,
     template: "%s | Peza",
   },
-
   description: DEFAULT_DESCRIPTION,
-
   keywords: [
     "Peza",
     "student accommodation Zambia",
@@ -46,20 +39,16 @@ export const metadata: Metadata = {
     "CBU",
     "hostels near campus",
   ],
-
   authors: [{ name: "Peza" }],
   creator: "Peza",
   publisher: "Peza",
-
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png",
   },
-
   alternates: {
     canonical: "/",
   },
-
   openGraph: {
     type: "website",
     siteName: "Peza",
@@ -76,7 +65,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-
   twitter: {
     card: "summary_large_image",
     title: DEFAULT_TITLE,
@@ -84,7 +72,6 @@ export const metadata: Metadata = {
     images: ["/og-default.png"],
     creator: "@peza",
   },
-
   robots: {
     index: true,
     follow: true,
@@ -96,10 +83,8 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-
   applicationName: "Peza",
   category: "marketplace",
-
   verification: {
     google: "nu7rNbVJIN6RBZ7XYMbEB68xGfvl4z5EIamOAhAeHU4",
   },
@@ -122,6 +107,9 @@ export default function RootLayout({
       lang="en"
       className={cn("h-full", "antialiased", "font-sans")}
     >
+      {/* ✅ Google Analytics placed here automatically goes into the <head> */}
+      <GoogleAnalytics gaId="G-6VCP2PHEB8" />
+      
       <body className="min-h-full flex flex-col bg-[var(--nexora-surface)]">
         <ErrorBoundary>
           <AuthProvider>
@@ -137,20 +125,6 @@ export default function RootLayout({
             <FloatingWhatsAppButton />
           </AuthProvider>
         </ErrorBoundary>
-
-        {/* ─── Google Analytics (GA4) ─── */}
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=G-6VCP2PHEB8`}
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-6VCP2PHEB8');
-          `}
-        </Script>
       </body>
     </html>
   );
