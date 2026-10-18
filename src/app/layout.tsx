@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/lib/AuthContext";
@@ -10,6 +11,7 @@ import { WelcomeModal } from "@/components/WelcomeModal";
 import { PostAuthWelcomeModal } from "@/components/PostAuthWelcomeModal";
 import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
+import { WebVitals } from "@/components/WebVitals";
 
 // ─────────────────────────────────────────────────────────
 // SITE URL — matches your existing env var (NEXT_PUBLIC_APP_URL),
@@ -125,6 +127,7 @@ export default function RootLayout({
           <AuthProvider>
             <NetworkStatus />
             <AnalyticsTracker />
+            <WebVitals />
             <AnimatePresence mode="wait" initial={false}>
               {children}
             </AnimatePresence>
@@ -134,6 +137,20 @@ export default function RootLayout({
             <FloatingWhatsAppButton />
           </AuthProvider>
         </ErrorBoundary>
+
+        {/* ─── Google Analytics (GA4) ─── */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=G-6VCP2PHEB8`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-6VCP2PHEB8');
+          `}
+        </Script>
       </body>
     </html>
   );
