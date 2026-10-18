@@ -47,14 +47,9 @@ export interface Product {
   adminHiddenReason?: string | null;
 
   // ─── Stock count (optional) ───
-  // If unset → card shows no quantity badge (one-off sellers stay clean).
-  // If 0 → card shows "Out of stock".
-  // If > 0 → card shows "📦 N available" (amber if ≤3).
   quantity?: number;
 
   // ─── Seller snapshot (denormalized for instant card rendering) ───
-  // Copied from the seller's user doc at listing time. Avoids an extra
-  // Firestore read per card on browse pages.
   sellerName?: string;
   sellerBusinessName?: string;
   sellerPhotoURL?: string;
@@ -71,6 +66,12 @@ export interface Product {
   // ─── Flash deals ───
   discountPercent?: number;
   discountExpiresAt?: number;
+
+  // ─── Negotiation (additive) ───
+  /** When true, the buyer can click "Negotiate" to reveal lastPrice. */
+  isNegotiable?: boolean;
+  /** The hidden floor price the seller is willing to accept. */
+  lastPrice?: number;
 }
 
 // ─────────────────────────────────────────────────────────

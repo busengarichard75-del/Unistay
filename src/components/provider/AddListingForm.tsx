@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+import { auth } from "@/lib/firebase";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { addService } from "@/services/serviceService";
 import { addProduct } from "@/services/productService";
@@ -42,6 +43,7 @@ import {
   Globe,
   Package,
   Gift,
+  Handshake,
 } from "lucide-react";
 
 const PropertyMap = dynamic(
@@ -60,6 +62,24 @@ const DISCOUNT_DURATIONS: { id: DiscountDuration; label: string; ms: number }[] 
   { id: "weekly", label: "Weekly", ms: 7 * 86400000 },
   { id: "monthly", label: "Monthly", ms: 30 * 86400000 },
 ];
+
+async function notifyFollowersOfNewListing(
+  kind: "service" | "product",
+  listingId: string
+): Promise<void> {
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return;
+    fetch("/api/follows/notify-new-listing", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ kind, listingId }),
+    }).catch(() => {});
+  } catch {}
+}
 
 export function AddListingForm() {
   const router = useRouter();
@@ -102,6 +122,8 @@ export function AddListingForm() {
   const [productCategory, setProductCategory] = useState<string>("");
   const [condition, setCondition] = useState<ProductCondition>("used");
   const [quantity, setQuantity] = useState("");
+  const [isNegotiable, setIsNegotiable] = useState(false);
+  const [lastPrice, setLastPrice] = useState("");
 
   // Flash deal
   const [hasDiscount, setHasDiscount] = useState(false);
@@ -200,6 +222,16 @@ export function AddListingForm() {
           return;
         }
       }
+      if (isNegotiable) {
+        if (!lastPrice || Number(lastPrice) <= 0) {
+          setError("Please enter a valid last price, or turn off negotiation.");
+          return;
+        }
+        if (Number(lastPrice) >= Number(price)) {
+          setError("Last price must be strictly less than the original price.");
+          return;
+        }
+      }
     }
 
     let discountPayload: { discountPercent?: number; discountExpiresAt?: number } = {};
@@ -285,11 +317,19 @@ export function AddListingForm() {
         if (user.fullName) productPayload.sellerName = user.fullName;
         if (user.businessName) productPayload.sellerBusinessName = user.businessName;
         if (user.photoURL) productPayload.sellerPhotoURL = user.photoURL;
+        
+        if (isNegotiable && lastPrice) {
+          productPayload.isNegotiable = true;
+          productPayload.lastPrice = Number(lastPrice);
+        }
 
         newId = await addProduct(stripUndefined(productPayload) as any);
       }
 
-      // ✅ Success → open the share modal INSTEAD of redirecting
+      if (newId) {
+        notifyFollowersOfNewListing(type, newId);
+      }
+
       setCreatedListing({
         id: newId,
         title: title.trim(),
@@ -306,7 +346,6 @@ export function AddListingForm() {
     }
   }
 
-  // ─── Share modal handlers ───
   function handleCloseShareModal() {
     setShowShareModal(false);
     router.push("/dashboard/provider");
@@ -576,6 +615,52 @@ export function AddListingForm() {
                   — low stock (≤3) shows urgency.
                 </p>
               </Field>
+
+              {/* ─── Negotiation ─── */}
+              <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isNegotiable}
+                    onChange={(e) => setIsNegotiable(e.target.checked)}
+                    disabled={isSubmitting}
+                    className="h-4 w-4 rounded border-gray-300 text-[var(--nexora-primary)] focus:ring-[var(--nexora-primary)]"
+                  />
+                  <div>
+                    <p className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+                      <Handshake size={16} className="text-blue-600" />
+                      Allow Negotiation
+                    </p>
+                    <p className="text-[11px] text-blue-700/80">
+                      Buyers can click "Negotiate" to reveal a hidden last price.
+                    </p>
+                  </div>
+                </label>
+
+                {isNegotiable && (
+                  <div className="mt-4 pl-7">
+                    <Field label="Last Price (K)">
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">
+                          K
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={lastPrice}
+                          onChange={(e) => setLastPrice(e.target.value)}
+                          placeholder="e.g., 2000"
+                          disabled={isSubmitting}
+                          className={`${inputClass} pl-8`}
+                        />
+                      </div>
+                      <p className="mt-1 text-[10px] text-blue-600">
+                        This is hidden from the public until they click Negotiate. Must be lower than the original price.
+                      </p>
+                    </Field>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </Section>
@@ -942,7 +1027,6 @@ export function AddListingForm() {
         </div>
       </form>
 
-      {/* 🎉 Post-creation share modal */}
       {createdListing && (
         <PostListingShareModal
           isOpen={showShareModal}
@@ -958,10 +1042,6 @@ export function AddListingForm() {
     </>
   );
 }
-
-/* ──────────────────────────────────────────────── */
-/* Sub-components                                  */
-/* ──────────────────────────────────────────────── */
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-[var(--nexora-primary)]/15 disabled:bg-gray-50";

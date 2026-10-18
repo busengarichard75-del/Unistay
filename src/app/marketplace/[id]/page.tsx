@@ -19,6 +19,7 @@ import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { RelatedListings } from "@/components/shared/RelatedListings";
 import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ProductCard } from "@/components/products/ProductCard";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   MapPin,
@@ -29,6 +30,7 @@ import {
   Store,
   ChevronRight,
   Sparkles,
+  Handshake,
 } from "lucide-react";
 
 export default function ProductDetailPage() {
@@ -43,6 +45,7 @@ export default function ProductDetailPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
   const tracked = useRef(false);
 
   useEffect(() => {
@@ -132,7 +135,10 @@ export default function ProductDetailPage() {
     PRODUCT_CONDITIONS.find((c) => c.id === product.condition)?.label ||
     product.condition;
 
-  const prefillMessage = `Hi, I found your "${product.name}" listed on Peza for K${product.price.toLocaleString()}. Is it still available?`;
+  // ─── Price Logic for Negotiation ───
+  const displayPrice = isRevealed && product.lastPrice ? product.lastPrice : product.price;
+  
+  const prefillMessage = `Hi, I found your "${product.name}" listed on Peza for K${displayPrice.toLocaleString()}. Is it still available?`;
 
   const viewMorePhotosHref = buildWhatsAppLink(
     product.whatsapp,
@@ -147,6 +153,20 @@ export default function ProductDetailPage() {
       return;
     }
     trackListing("product", product.id, "whatsappClicks");
+  };
+
+  const handleNegotiate = () => {
+    if (!product.isNegotiable || !product.lastPrice) {
+      toast.info("The seller is firm on this one! They've already listed their best price. 😊", {
+        icon: "🤝",
+        duration: 4000,
+      });
+      return;
+    }
+    setIsRevealed(true);
+    toast.success("You unlocked the seller's last price!", {
+      description: "The final price is now shown below.",
+    });
   };
 
   const relatedTitle = product.category
@@ -236,10 +256,52 @@ export default function ProductDetailPage() {
                   <h1 className="text-xl font-bold text-[var(--nexora-navy)] sm:text-2xl">
                     {product.name}
                   </h1>
-                  <p className="mt-2 text-2xl font-bold text-[var(--nexora-primary)]">
-                    K{product.price.toLocaleString()}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+
+                  {/* ─── PRICE & NEGOTIATION SECTION ─── */}
+                  <div className="mt-3 flex flex-col gap-3">
+                    {isRevealed && product.isNegotiable ? (
+                      <div className="flex flex-col rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+                        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
+                          <Sparkles size={14} /> Final Price Unlocked
+                        </p>
+                        <p className="mt-1 text-3xl font-extrabold text-emerald-700">
+                          K{product.lastPrice?.toLocaleString()}
+                        </p>
+                        <p className="text-sm text-emerald-600/80 line-through mt-0.5">
+                          Original: K{product.price.toLocaleString()}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-3xl font-bold text-[var(--nexora-primary)]">
+                          K{product.price.toLocaleString()}
+                        </p>
+                        {product.isNegotiable && (
+                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-600 border border-blue-200">
+                            Negotiable
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 🔥 SUPER VISIBLE NEGOTIATE BUTTON 🔥 */}
+                    {!isSold && !isRevealed && (
+                      <button
+                        type="button"
+                        onClick={handleNegotiate}
+                        className={`mt-1 inline-flex w-fit items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-md transition-all active:scale-95 ${
+                          product.isNegotiable
+                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:opacity-95"
+                            : "border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Handshake size={18} />
+                        {product.isNegotiable ? " Negotiate Price" : "Ask for Last Price"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                     <span className="inline-flex items-center gap-1">
                       <Tag size={11} />
                       {product.category}
@@ -274,33 +336,44 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              <Link
-                href={`/provider/${product.ownerId}`}
-                className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
-              >
-                <div className="flex items-center gap-3 min-w-0">
+              {/* ─── Sold by ─── */}
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
+                <Link
+                  href={`/provider/${product.ownerId}`}
+                  className="group flex min-w-0 flex-1 items-center gap-3"
+                >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
                     <Store size={14} />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500">Sold by</p>
-                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)]">
+                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)] group-hover:underline">
                       View seller profile
                     </p>
                   </div>
-                </div>
-                <ChevronRight size={16} className="shrink-0 text-gray-400" />
-              </Link>
+                  <ChevronRight size={16} className="shrink-0 text-gray-400" />
+                </Link>
+              </div>
 
               {!isSold && (
                 <div className="mt-4">
                   <WhatsAppContactButton
                     whatsapp={product.whatsapp}
                     message={prefillMessage}
-                    onTrack={() => trackListing("product", product.id, "whatsappClicks")}
+                    onTrack={() =>
+                      trackListing(
+                        "product",
+                        product.id,
+                        "whatsappClicks"
+                      )
+                    }
                     size="lg"
                     fullWidth
-                    label="Contact Seller on WhatsApp"
+                    label={
+                      isRevealed
+                        ? `Buy at K${product.lastPrice?.toLocaleString()} on WhatsApp`
+                        : "Contact Seller on WhatsApp"
+                    }
                   />
                 </div>
               )}
