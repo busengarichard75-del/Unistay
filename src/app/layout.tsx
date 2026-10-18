@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import Script from "next/script";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/lib/AuthContext";
@@ -28,16 +28,8 @@ export const metadata: Metadata = {
   },
   description: DEFAULT_DESCRIPTION,
   keywords: [
-    "Peza",
-    "student accommodation Zambia",
-    "student housing",
-    "campus rooms",
-    "student marketplace",
-    "student services",
-    "MUKUBA",
-    "UNZA",
-    "CBU",
-    "hostels near campus",
+    "Peza", "student accommodation Zambia", "student housing", "campus rooms",
+    "student marketplace", "student services", "MUKUBA", "UNZA", "CBU", "hostels near campus",
   ],
   authors: [{ name: "Peza" }],
   creator: "Peza",
@@ -107,8 +99,21 @@ export default function RootLayout({
       lang="en"
       className={cn("h-full", "antialiased", "font-sans")}
     >
-      {/* ✅ Google Analytics placed here automatically goes into the <head> */}
-      <GoogleAnalytics gaId="G-6VCP2PHEB8" />
+      <head>
+        {/* 🚀 Force GA4 into the <head> for Google Search Console */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=G-6VCP2PHEB8`}
+          strategy="beforeInteractive"
+        />
+        <Script id="google-analytics" strategy="beforeInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-6VCP2PHEB8');
+          `}
+        </Script>
+      </head>
       
       <body className="min-h-full flex flex-col bg-[var(--nexora-surface)]">
         <ErrorBoundary>
