@@ -29,7 +29,9 @@ import {
 import { VerificationBanner } from "@/components/provider/VerificationBanner";
 import { BoostListingModal } from "@/components/provider/BoostListingModal";
 import { ShareMyShopCard } from "@/components/provider/ShareMyShopCard";
-import { WhatsAppStatusKit } from "@/components/provider/WhatsAppStatusKit";
+import { UpgradeBanner } from "@/components/provider/UpgradeBanner";
+import { PlanUpgradeModal } from "@/components/provider/PlanUpgradeModal";
+import { getPlanLimit, getEffectivePlan, PLANS } from "@/lib/plans";
 import { toast } from "sonner";
 import {
   Eye,
@@ -45,6 +47,7 @@ import {
   Pencil,
   Zap,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 
 function formatDiscountRemaining(expiresAt: number, now: number): string {
@@ -72,6 +75,7 @@ export default function ProviderDashboardPage() {
   const [boostTarget, setBoostTarget] = useState<
     { kind: "service" | "product"; id: string; title: string } | null
   >(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -123,6 +127,13 @@ export default function ProviderDashboardPage() {
   const mostViewed = [...allItems]
     .filter((x) => (x.data.views || 0) > 0)
     .sort((a, b) => (b.data.views || 0) - (a.data.views || 0))[0];
+
+  // ── Plan Logic ──
+  const effectivePlan = getEffectivePlan(user?.plan, user?.planExpiry);
+  const planLimit = getPlanLimit(user?.plan, user?.planExpiry);
+  const currentListingCount = allItems.length;
+  const isAtLimit = currentListingCount >= planLimit;
+  const planName = PLANS[effectivePlan].name;
 
   async function handleDelete(kind: "service" | "product", id: string, label: string) {
     if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
@@ -296,12 +307,16 @@ export default function ProviderDashboardPage() {
           </div>
         )}
 
-        {/* 💬 WHATSAPP STATUS KIT */}
-        <WhatsAppStatusKit
-          uid={user.uid}
-          displayName={displayName}
-          tagline={user.shopSettings?.tagline}
-        />
+        {/* 🚀 UPGRADE BANNER */}
+        <div className="mt-6">
+          <UpgradeBanner
+            plan={user.plan}
+            planExpiry={user.planExpiry}
+            used={currentListingCount}
+            limit={planLimit}
+            onClick={() => setShowUpgradeModal(true)}
+          />
+        </div>
 
         {/* Insights */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -332,24 +347,44 @@ export default function ProviderDashboardPage() {
           </div>
         )}
 
+        {/* Add Listing / Upgrade Section */}
         {isVerified ? (
           <div className="mt-6">
-            <Link
-              href="/dashboard/provider/add-listing"
-              className="flex w-full items-center gap-4 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 p-5 text-left text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20">
-                <Plus size={24} />
-              </div>
-              <div className="flex-1">
-                <p className="text-lg font-bold">
-                  {hasAnyListing ? "Add Another Listing" : "Add Your First Listing"}
-                </p>
-                <p className="text-sm text-white/80">
-                  Create a Service or Product listing
-                </p>
-              </div>
-            </Link>
+            {isAtLimit ? (
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="flex w-full items-center gap-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 p-5 text-left text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20">
+                  <AlertCircle size={24} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-lg font-bold">
+                    You've reached your limit!
+                  </p>
+                  <p className="text-sm text-white/90">
+                    You are using {currentListingCount} of {planLimit} listings on the {planName}. Upgrade to add more.
+                  </p>
+                </div>
+              </button>
+            ) : (
+              <Link
+                href="/dashboard/provider/add-listing"
+                className="flex w-full items-center gap-4 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 p-5 text-left text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20">
+                  <Plus size={24} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-lg font-bold">
+                    {hasAnyListing ? "Add Another Listing" : "Add Your First Listing"}
+                  </p>
+                  <p className="text-sm text-white/80">
+                    Create a Service or Product listing ({currentListingCount}/{planLimit} used)
+                  </p>
+                </div>
+              </Link>
+            )}
           </div>
         ) : (
           <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 text-center">
@@ -454,6 +489,15 @@ export default function ProviderDashboardPage() {
           onConfirm={handleBoostConfirm}
         />
       )}
+
+      <PlanUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentPlan={user.plan}
+        currentPlanExpiry={user.planExpiry}
+        userEmail={user.email}
+        userName={displayName}
+      />
     </main>
   );
 }

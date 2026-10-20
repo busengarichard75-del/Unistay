@@ -26,6 +26,7 @@ import {
   BookOpen,
   Heart,
   Home as HomeIcon,
+  Rocket,
 } from "lucide-react";
 import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
@@ -33,6 +34,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { isAdminEmail } from "@/lib/admin";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationDropdown } from "@/components/navbar/NotificationDropdown";
+import { PlanUpgradeModal } from "@/components/provider/PlanUpgradeModal";
+import { getEffectivePlan } from "@/lib/plans";
 
 export function Navbar() {
   const { user, isLoading } = useAuth();
@@ -42,10 +45,15 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { counts, unreadCount } = useNotifications();
 
   const effectiveRole = user?.role || null;
+  
+  // ─── Plan Logic ───
+  const effectivePlan = getEffectivePlan(user?.plan, user?.planExpiry);
+  const canUpgrade = effectiveRole === "service_provider" && effectivePlan !== "full_time";
 
   if (pathname?.startsWith("/admin")) {
     return null;
@@ -140,6 +148,17 @@ export function Navbar() {
           <nav className="flex items-center gap-2 sm:gap-4">
             {isLoading ? null : user ? (
               <>
+                {/* 🚀 UPGRADE BUTTON (Desktop) */}
+                {canUpgrade && (
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-1.5 text-xs font-bold text-white shadow-md transition-transform hover:scale-105 active:scale-95 animate-pulse"
+                  >
+                    <Rocket size={14} />
+                    Upgrade Shop
+                  </button>
+                )}
+
                 {/* Quick actions (desktop) */}
                 <div className="hidden items-center gap-4 md:flex">
                   <Link
@@ -536,6 +555,22 @@ export function Navbar() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4">
+              {/* 🚀 UPGRADE BUTTON (Mobile) */}
+              {canUpgrade && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setShowUpgradeModal(true);
+                  }}
+                  className="mb-4 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-3 text-sm font-bold text-white shadow-md animate-pulse"
+                >
+                  <span className="flex items-center gap-2">
+                    <Rocket size={16} /> Upgrade Shop
+                  </span>
+                  <ChevronRight size={16} />
+                </button>
+              )}
+
               <span className="mb-4 inline-block rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80">
                 {effectiveRole === "service_provider"
                   ? "Service Provider"
@@ -669,6 +704,18 @@ export function Navbar() {
             </div>
           </aside>
         </div>
+      )}
+
+      {/* 🚀 GLOBAL UPGRADE MODAL */}
+      {user && (
+        <PlanUpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          currentPlan={user.plan}
+          currentPlanExpiry={user.planExpiry}
+          userEmail={user.email}
+          userName={user.businessName || user.fullName || "Provider"}
+        />
       )}
     </>
   );

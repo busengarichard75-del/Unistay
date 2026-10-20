@@ -3,7 +3,7 @@
 export type AdminTab =
   | "dashboard" | "payments" | "properties" | "users" | "shop"
   | "bookings" | "comms" | "analytics" | "reports" | "tools"
-  | "library";
+  | "library" | "upgrades";
 
 export interface UnansweredQuestion {
   id: string;
@@ -33,6 +33,10 @@ export interface DirectoryUser {
   verificationReviewedAt?: number;
   verificationReviewedBy?: string;
   verificationReason?: string | null;
+  
+  // Additive for Plans
+  plan?: "basic" | "pro" | "full_time";
+  planExpiry?: number;
 }
 
 export interface AdminStats {

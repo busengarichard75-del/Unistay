@@ -8,7 +8,7 @@ import {
   RefreshCw, LayoutGrid, CreditCard, Users, Building,
   BarChart3, Settings, Wrench, Mail, Ban, Trash2,
   ScrollText, Store, ShoppingBag,
-  Shield, AlertTriangle, Flag, BookOpen,
+  Shield, AlertTriangle, Flag, BookOpen, Rocket,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
@@ -57,6 +57,7 @@ import { AnalyticsTab } from "@/components/admin/tabs/AnalyticsTab";
 import { ReportsTab } from "@/components/admin/tabs/ReportsTab";
 import { ToolsTab } from "@/components/admin/tabs/ToolsTab";
 import { LibraryTab } from "@/components/admin/tabs/LibraryTab";
+import { UpgradesTab } from "@/components/admin/tabs/UpgradesTab";
 import type { AdminTab, DirectoryUser, UnansweredQuestion, AdminStats } from "@/components/admin/types";
 
 const AGENT_FEE = 100;
@@ -69,12 +70,13 @@ const TABS: { id: AdminTab; label: string; icon: typeof LayoutGrid; color: strin
   { id: "properties", label: "Properties", icon: Home, color: "text-cyan-400" },
   { id: "users", label: "Users", icon: Users, color: "text-purple-400" },
   { id: "shop", label: "Shop", icon: Store, color: "text-emerald-400" },
+  { id: "upgrades", label: "Upgrades", icon: Rocket, color: "text-orange-400" },
   { id: "bookings", label: "Bookings", icon: Calendar, color: "text-orange-400" },
   { id: "comms", label: "Comms", icon: Megaphone, color: "text-pink-400" },
   { id: "analytics", label: "Analytics", icon: BarChart3, color: "text-yellow-400" },
   { id: "reports", label: "Reports", icon: Flag, color: "text-red-400" },
-  { id: "tools", label: "Tools", icon: Wrench, color: "text-red-400" },
   { id: "library", label: "Library", icon: BookOpen, color: "text-indigo-400" },
+  { id: "tools", label: "Tools", icon: Wrench, color: "text-red-400" },
 ];
 
 export default function AdminPage() {
@@ -969,6 +971,23 @@ export default function AdminPage() {
     }
   };
 
+  // ─── Upgrade Handler ───
+  const handleUpdatePlan = async (uid: string, plan: "basic" | "pro" | "full_time") => {
+    const planExpiry = plan === "basic" ? null : Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+    
+    await updateDoc(doc(db, "users", uid), {
+      plan,
+      planExpiry
+    });
+
+    setDirectoryUsers((prev) =>
+      prev.map((u) =>
+        u.uid === uid ? { ...u, plan, planExpiry: planExpiry || undefined } : u
+      )
+    );
+    fetchAudit();
+  };
+
   const filteredQuestions = showResolved
     ? unansweredQuestions
     : unansweredQuestions.filter((q) => !q.resolved);
@@ -1213,6 +1232,14 @@ export default function AdminPage() {
             busyBoostId={busyBoostId}
             onActivateBoost={handleActivateBoost}
             onDeactivateBoost={handleDeactivateBoost}
+          />
+        )}
+
+        {activeTab === "upgrades" && (
+          <UpgradesTab
+            users={directoryUsers}
+            isFetching={isFetchingUsers}
+            onUpgrade={handleUpdatePlan}
           />
         )}
 

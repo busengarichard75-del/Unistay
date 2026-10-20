@@ -15,6 +15,7 @@ import {
 import {
   LibraryEntryPublic,
   getLibraryCategoryMeta,
+  buildDrivePreviewUrl,
 } from "@/types/library";
 import { LibraryCard } from "@/components/library/LibraryCard";
 import { getUniversityShortLabel, getUniversityFullName } from "@/lib/universityLabels";
@@ -35,6 +36,9 @@ import {
   Loader2,
   Star,
   Send,
+  MessageCircle,
+  BookOpen,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -63,6 +67,10 @@ export default function LibraryDetailPage({ params }: PageProps) {
   const [busyChallenge, setBusyChallenge] = useState<Challenge | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // ── Preview State ──
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [rawDriveLink, setRawDriveLink] = useState<string | null>(null);
 
   // ⚡ Deps on user?.uid (stable string) — NOT user (new object each render)
   const uid = user?.uid;
@@ -128,7 +136,7 @@ export default function LibraryDetailPage({ params }: PageProps) {
     };
   }, [uid, id]);
 
-  // ── Share page (works for guests too — different from unlocking) ──
+  // ── Share page (works for guests too) ──
   const handleSharePage = async () => {
     if (!entry) return;
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -168,7 +176,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
           try {
             await (navigator as any).share({ title: "Peza Library", text: msg });
           } catch {
-            // user cancelled — don't unlock
             setBusyChallenge(null);
             return;
           }
@@ -194,8 +201,8 @@ export default function LibraryDetailPage({ params }: PageProps) {
     }
   }
 
-  // ── Open the Drive link (fetch from libraryPrivate) ──
-  async function handleOpen() {
+  // ── Open the Drive link IN-APP ──
+  async function handleUnlock() {
     if (!entry) return;
     setUnlocking(true);
     try {
@@ -204,7 +211,14 @@ export default function LibraryDetailPage({ params }: PageProps) {
         toast.error("Couldn't retrieve the link. Please try again.");
         return;
       }
-      window.open(link, "_blank", "noopener,noreferrer");
+      setRawDriveLink(link);
+      const preview = buildDrivePreviewUrl(link);
+      if (preview) {
+        setPreviewUrl(preview);
+      } else {
+        // Fallback if it's not a standard Drive link
+        window.open(link, "_blank", "noopener,noreferrer");
+      }
     } catch (err) {
       console.error("Open failed:", err);
       toast.error("Couldn't retrieve the link. Please try again.");
@@ -212,6 +226,14 @@ export default function LibraryDetailPage({ params }: PageProps) {
       setUnlocking(false);
     }
   }
+
+  // ── WhatsApp Viral Share ──
+  const handleShareWhatsApp = () => {
+    if (!entry) return;
+    const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+    const text = `I just found "${entry.title}" on Peza for free! Check it out here: ${pageUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
 
   if (isFetching) {
     return (
@@ -365,7 +387,7 @@ export default function LibraryDetailPage({ params }: PageProps) {
           ) : canOpen ? (
             // ─── State 3: Unlocked ───
             <div className="overflow-hidden rounded-2xl border-2 border-emerald-200 bg-white shadow-sm">
-              <div className="flex flex-col items-center px-6 py-10 text-center">
+              <div className="flex flex-col items-center px-6 py-8 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
                   <Check size={32} strokeWidth={3} />
                 </div>
@@ -377,23 +399,62 @@ export default function LibraryDetailPage({ params }: PageProps) {
                     ? "This is your upload — you can always open it."
                     : "You have full access to this material."}
                 </p>
-                <button
-                  type="button"
-                  onClick={handleOpen}
-                  disabled={unlocking}
-                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                  {unlocking ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <ExternalLink size={16} />
-                  )}
-                  {unlocking ? "Opening…" : "Open in Google Drive"}
-                </button>
+                
+                <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleUnlock}
+                    disabled={unlocking}
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    {unlocking ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <BookOpen size={16} />
+                    )}
+                    {unlocking ? "Opening…" : "Read on Peza"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleShareWhatsApp}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+                  >
+                    <MessageCircle size={16} fill="currentColor" />
+                    Share with classmates
+                  </button>
+                </div>
               </div>
+
+              {/* ⚡ IN-APP PREVIEW ⚡ */}
+              {previewUrl && (
+                <div className="border-t border-gray-200">
+                  <div className="flex items-center justify-between bg-gray-50 px-4 py-2">
+                    <p className="text-xs font-semibold text-gray-600">Previewing Document</p>
+                    <button onClick={() => setPreviewUrl(null)} className="rounded-full p-1 text-gray-400 hover:bg-gray-200">
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <iframe
+                    src={previewUrl}
+                    className="h-[75vh] w-full border-0"
+                    title={entry.title}
+                  />
+                  <div className="bg-gray-50 px-4 py-3 text-center border-t border-gray-200">
+                    <a
+                      href={rawDriveLink || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-medium text-gray-400 hover:text-[var(--nexora-primary)] hover:underline"
+                    >
+                      Not loading? Open directly in Google Drive
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            // ─── State 2: Logged in, not unlocked — 2 challenges ───
+            // ─── State 2: Logged in, not unlocked ───
             <div className="overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-white shadow-sm">
               <div className="px-6 pt-8 pb-4 text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 text-indigo-500">

@@ -10,6 +10,7 @@ import {
   Wrench,
   ShoppingBag,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { getAllServices } from "@/services/serviceService";
 import { getAllProducts } from "@/services/productService";
@@ -80,25 +81,27 @@ export function FeaturedStrip() {
   if (!isFetching && items.length === 0) return null;
 
   return (
-    <section className="container-wide pt-6">
+    <section className="container-wide pt-8 pb-4">
       {/* Header */}
-      <div className="mb-3 flex items-center gap-2.5 px-1">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-md shadow-orange-500/30">
-          <Flame size={16} fill="currentColor" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-base font-bold text-[var(--nexora-navy)] sm:text-lg">
-            Trending on Peza
-          </h2>
-          <p className="text-[11px] text-gray-500">
-            Popular services &amp; products right now
-          </p>
+      <div className="mb-4 flex items-end justify-between px-1">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-lg shadow-orange-500/30">
+            <Flame size={20} fill="currentColor" />
+          </span>
+          <div>
+            <h2 className="text-xl font-extrabold tracking-tight text-[var(--nexora-navy)]">
+              Trending on Peza
+            </h2>
+            <p className="text-xs font-medium text-gray-500">
+              The hottest services & products right now
+            </p>
+          </div>
         </div>
         <Link
           href="/services"
-          className="shrink-0 text-[11px] font-semibold text-[var(--nexora-primary)] hover:underline"
+          className="hidden items-center gap-1 text-sm font-bold text-[var(--nexora-primary)] hover:underline sm:flex"
         >
-          See all →
+          See all <ArrowRight size={14} />
         </Link>
       </div>
 
@@ -107,7 +110,7 @@ export function FeaturedStrip() {
         <StripSkeleton />
       ) : (
         <div
-          className="flex gap-2 overflow-x-auto pb-2"
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-4 pt-1"
           style={{
             scrollbarWidth: "none",
             msOverflowStyle: "none",
@@ -117,7 +120,7 @@ export function FeaturedStrip() {
           {items.map((item) => (
             <div
               key={`${item.kind}:${item.data.id}`}
-              className="w-[135px] shrink-0 sm:w-[150px]"
+              className="w-[160px] shrink-0 snap-start sm:w-[190px]"
             >
               {item.kind === "service" ? (
                 <CompactServiceCard service={item.data} />
@@ -128,7 +131,7 @@ export function FeaturedStrip() {
           ))}
 
           {/* View more card — end of strip */}
-          <div className="w-[135px] shrink-0 sm:w-[150px]">
+          <div className="w-[160px] shrink-0 snap-start sm:w-[190px]">
             <ViewMoreCard />
           </div>
         </div>
@@ -137,41 +140,42 @@ export function FeaturedStrip() {
   );
 }
 
-// ─── View more card (last card in the strip) ───
+// ─── Premium View more card ───
 function ViewMoreCard() {
   return (
     <Link
       href="/services"
-      className="group flex h-full min-h-[180px] flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--nexora-primary)]/40 bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-3 text-center transition-all hover:border-[var(--nexora-primary)] hover:shadow-md sm:min-h-[200px]"
-      aria-label="View more listings on Peza"
+      className="group relative flex h-full min-h-[220px] flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--nexora-navy)] to-slate-900 p-4 text-center shadow-md transition-all hover:scale-[1.02] hover:shadow-xl sm:min-h-[250px]"
     >
-      <div className="flex items-center justify-center gap-1.5">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-sm">
-          <Wrench size={13} />
+      {/* Decorative background glow */}
+      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl transition-opacity group-hover:opacity-100" />
+      <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-[var(--nexora-primary)]/20 blur-2xl transition-opacity group-hover:opacity-100" />
+
+      <div className="relative z-10 flex items-center justify-center gap-2">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-sm">
+          <Wrench size={18} />
         </span>
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-pink-600 text-white shadow-sm">
-          <ShoppingBag size={13} />
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-sm">
+          <ShoppingBag size={18} />
         </span>
       </div>
 
-      <div>
-        <p className="text-[11px] font-bold text-[var(--nexora-navy)]">
-          View more
-        </p>
-        <p className="mt-0.5 text-[10px] leading-tight text-gray-500">
-          Services &amp; products
+      <div className="relative z-10">
+        <p className="text-sm font-bold text-white">Discover more</p>
+        <p className="mt-1 text-[11px] leading-tight text-gray-400">
+          Explore hundreds of<br />services & products
         </p>
       </div>
 
-      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--nexora-primary)] px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm transition-transform group-hover:translate-x-0.5">
+      <span className="relative z-10 mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-xs font-bold text-[var(--nexora-navy)] shadow-sm transition-transform group-hover:translate-x-1">
         Explore
-        <ArrowRight size={10} />
+        <ArrowRight size={12} />
       </span>
     </Link>
   );
 }
 
-// ─── Compact service card (strip only) ───
+// ─── Compact service card (premium style) ───
 function CompactServiceCard({ service }: { service: Service }) {
   const image = service.imageUrls?.[0];
   const optimized = image ? optimizeCardImage(image) : null;
@@ -180,84 +184,92 @@ function CompactServiceCard({ service }: { service: Service }) {
   const isFree = isServiceFree(service);
   const discountedPrice = getServiceDiscountedPrice(service);
 
-  let priceLabel: string | null = null;
-  if (isFree) priceLabel = "FREE";
-  else if (service.priceType === "from" && service.priceFrom) {
+  let priceLabel: React.ReactNode = null;
+  
+  if (isFree) {
+    priceLabel = <span className="text-emerald-600 font-extrabold text-base">FREE</span>;
+  } else if (service.priceType === "from" && service.priceFrom) {
     if (hasDiscount && discountedPrice !== null) {
-      priceLabel = `K${discountedPrice.toLocaleString()}`;
+      priceLabel = (
+        <div className="flex flex-col">
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-[10px] font-bold text-red-600">K</span>
+            <span className="text-base font-extrabold text-red-600 leading-none">{discountedPrice.toLocaleString()}</span>
+          </div>
+          <span className="text-[9px] text-gray-400 line-through">K{service.priceFrom.toLocaleString()}</span>
+        </div>
+      );
     } else {
-      priceLabel = `From K${service.priceFrom.toLocaleString()}`;
+      priceLabel = (
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">From</span>
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-[10px] font-bold text-[var(--nexora-navy)]">K</span>
+            <span className="text-base font-extrabold text-[var(--nexora-navy)] leading-none">{service.priceFrom.toLocaleString()}</span>
+          </div>
+        </div>
+      );
     }
   } else if (service.priceType === "contact") {
-    priceLabel = "Contact";
+    priceLabel = <span className="text-xs font-semibold text-gray-500">Contact</span>;
   }
 
   return (
     <Link
       href={`/services/${service.id}`}
-      className={`group block overflow-hidden rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md ${
+      className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all hover:-translate-y-1 hover:shadow-md ${
         isBoosted ? "ring-2 ring-amber-300" : ""
       }`}
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-50">
         {optimized ? (
           <img
             src={optimized}
             alt={service.title}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-300">
-            No image
+          <div className="flex h-full w-full items-center justify-center text-gray-300">
+            <Wrench size={24} />
           </div>
         )}
 
+        {/* Badges */}
+        <div className="absolute left-2 top-2 flex flex-col gap-1">
+          {isFree && (
+            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">
+              <Gift size={10} /> FREE
+            </span>
+          )}
+          {hasDiscount && !isFree && (
+            <span className="inline-flex w-fit items-center gap-0.5 rounded-full bg-red-500/90 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">
+              <FlameIcon size={10} fill="currentColor" /> {service.discountPercent}% OFF
+            </span>
+          )}
+        </div>
+
         {isBoosted && (
-          <span className="absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-sm">
-            <Zap size={10} fill="currentColor" />
-          </span>
-        )}
-
-        {hasDiscount && !isFree && (
-          <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] font-bold text-white shadow-sm">
-            <FlameIcon size={8} fill="currentColor" />
-            {service.discountPercent}%
-          </span>
-        )}
-
-        {isFree && (
-          <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[8px] font-bold text-white shadow-sm">
-            <Gift size={8} />
-            FREE
+          <span className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
+            <Zap size={12} fill="currentColor" />
           </span>
         )}
       </div>
 
-      <div className="p-2">
-        <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">
+      <div className="flex flex-1 flex-col justify-between p-3">
+        <p className="line-clamp-2 text-[13px] font-semibold leading-tight text-gray-900 group-hover:text-[var(--nexora-primary)] transition-colors">
           {service.title}
         </p>
-        {priceLabel && (
-          <p
-            className={`mt-1 truncate text-[11px] font-bold ${
-              isFree
-                ? "text-emerald-600"
-                : hasDiscount
-                ? "text-red-600"
-                : "text-[var(--nexora-navy)]"
-            }`}
-          >
-            {priceLabel}
-          </p>
-        )}
+        <div className="mt-2">
+          {priceLabel}
+        </div>
       </div>
     </Link>
   );
 }
 
-// ─── Compact product card (strip only) ───
+// ─── Compact product card (premium style) ───
 function CompactProductCard({ product }: { product: Product }) {
   const image = product.imageUrls?.[0];
   const optimized = image ? optimizeCardImage(image) : null;
@@ -265,58 +277,65 @@ function CompactProductCard({ product }: { product: Product }) {
   const hasDiscount = isProductDiscountActive(product);
   const discountedPrice = getProductDiscountedPrice(product);
 
-  const priceLabel =
-    hasDiscount && discountedPrice !== null
-      ? `K${discountedPrice.toLocaleString()}`
-      : `K${product.price.toLocaleString()}`;
-
   return (
     <Link
       href={`/marketplace/${product.id}`}
-      className={`group block overflow-hidden rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md ${
+      className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all hover:-translate-y-1 hover:shadow-md ${
         isBoosted ? "ring-2 ring-amber-300" : ""
       }`}
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-50">
         {optimized ? (
           <img
             src={optimized}
             alt={product.name}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-300">
-            No image
+          <div className="flex h-full w-full items-center justify-center text-gray-300">
+            <ShoppingBag size={24} />
           </div>
         )}
 
-        {isBoosted && (
-          <span className="absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-sm">
-            <Zap size={10} fill="currentColor" />
-          </span>
-        )}
+        {/* Badges */}
+        <div className="absolute left-2 top-2 flex flex-col gap-1">
+          {hasDiscount && (
+            <span className="inline-flex w-fit items-center gap-0.5 rounded-full bg-red-500/90 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">
+              <FlameIcon size={10} fill="currentColor" /> {product.discountPercent}% OFF
+            </span>
+          )}
+        </div>
 
-        {hasDiscount && (
-          <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] font-bold text-white shadow-sm">
-            <FlameIcon size={8} fill="currentColor" />
-            {product.discountPercent}%
+        {isBoosted && (
+          <span className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
+            <Zap size={12} fill="currentColor" />
           </span>
         )}
       </div>
 
-      <div className="p-2">
-        <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">
+      <div className="flex flex-1 flex-col justify-between p-3">
+        <p className="line-clamp-2 text-[13px] font-semibold leading-tight text-gray-900 group-hover:text-[var(--nexora-primary)] transition-colors">
           {product.name}
         </p>
-        <p
-          className={`mt-1 truncate text-[11px] font-bold ${
-            hasDiscount ? "text-red-600" : "text-[var(--nexora-navy)]"
-          }`}
-        >
-          {priceLabel}
-        </p>
+        
+        <div className="mt-2">
+          {hasDiscount && discountedPrice !== null ? (
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-[10px] font-bold text-red-600">K</span>
+                <span className="text-base font-extrabold text-red-600 leading-none">{discountedPrice.toLocaleString()}</span>
+              </div>
+              <span className="text-[9px] text-gray-400 line-through">K{product.price.toLocaleString()}</span>
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-[10px] font-bold text-[var(--nexora-navy)]">K</span>
+              <span className="text-base font-extrabold text-[var(--nexora-navy)] leading-none">{product.price.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
       </div>
     </Link>
   );
@@ -365,15 +384,16 @@ function rankProducts(products: Product[]): Product[] {
 
 function StripSkeleton() {
   return (
-    <div className="flex gap-2 overflow-x-hidden pb-2">
-      {Array.from({ length: 8 }).map((_, i) => (
+    <div className="flex gap-3 overflow-x-hidden pb-4 pt-1">
+      {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
-          className="w-[135px] shrink-0 animate-pulse rounded-xl bg-white p-2 shadow-sm sm:w-[150px]"
+          className="w-[160px] shrink-0 animate-pulse overflow-hidden rounded-2xl bg-white p-3 shadow-sm sm:w-[190px]"
         >
-          <div className="mb-2 aspect-square w-full rounded-lg bg-gray-200" />
-          <div className="mb-1.5 h-3 w-4/5 rounded bg-gray-200" />
-          <div className="h-3 w-1/2 rounded bg-gray-200" />
+          <div className="mb-3 aspect-[4/3] w-full rounded-xl bg-gray-200" />
+          <div className="mb-2 h-3.5 w-11/12 rounded bg-gray-200" />
+          <div className="mb-3 h-3.5 w-2/3 rounded bg-gray-200" />
+          <div className="h-5 w-1/2 rounded bg-gray-200" />
         </div>
       ))}
     </div>
