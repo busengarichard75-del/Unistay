@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic"; // ⚡ Import dynamic
 import { Navbar } from "@/components/navbar/Navbar";
 import { Hero } from "@/components/hero/Hero";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
@@ -14,9 +15,6 @@ import { getAllProperties } from "@/services/propertyService";
 import { Property } from "@/types/property";
 import { useAuth } from "@/lib/AuthContext";
 import { Sparkles, WifiOff, RefreshCw } from "lucide-react";
-import { PreferenceModal } from "@/components/find-my-best-house/PreferenceModal";
-import { NexoraChat } from "@/components/nexora/NexoraChat";
-import { LandlordOnboardingModal } from "@/components/landlord/LandlordOnboardingModal";
 import { WhyPezaSection } from "@/components/home/WhyPezaSection";
 import { ExplorePezaSection } from "@/components/home/ExplorePezaSection";
 import { FeaturedStrip } from "@/components/home/FeaturedStrip";
@@ -28,6 +26,22 @@ import {
   ListingFilterState,
 } from "@/lib/filterListings";
 
+// ⚡ Lazy load heavy components that aren't needed immediately
+const PreferenceModal = dynamic(
+  () => import("@/components/find-my-best-house/PreferenceModal").then((mod) => mod.PreferenceModal),
+  { ssr: false }
+);
+
+const NexoraChat = dynamic(
+  () => import("@/components/nexora/NexoraChat").then((mod) => mod.NexoraChat),
+  { ssr: false }
+);
+
+const LandlordOnboardingModal = dynamic(
+  () => import("@/components/landlord/LandlordOnboardingModal").then((mod) => mod.LandlordOnboardingModal),
+  { ssr: false }
+);
+
 function HomeContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -37,12 +51,10 @@ function HomeContent() {
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
-  // ─── Existing homepage controls (kept as-is) ───
   const [keyword, setKeyword] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
-  // ─── New advanced filters (additive) ───
   const [filters, setFilters] = useState<ListingFilterState>(
     DEFAULT_PROPERTY_FILTERS
   );
@@ -151,10 +163,8 @@ function HomeContent() {
 
       <Hero />
 
-      {/* ─── EXPLORE PEZA ─── */}
       <ExplorePezaSection onAccommodationSearch={setKeyword} />
 
-      {/* ─── 🔥 TRENDING ON PEZA (services + products) ─── */}
       <FeaturedStrip />
 
       {isStudent && (
@@ -216,11 +226,6 @@ function HomeContent() {
                   <div className="h-3 w-20 rounded bg-gray-200" />
                   <div className="h-3 w-12 rounded bg-gray-200" />
                 </div>
-                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-                  <div className="h-3 w-14 rounded bg-gray-200" />
-                  <div className="h-3 w-14 rounded bg-gray-200" />
-                  <div className="h-3 w-14 rounded bg-gray-200" />
-                </div>
               </div>
             ))}
           </div>
@@ -238,17 +243,19 @@ function HomeContent() {
         </div>
       )}
 
-      {/* ─── WHY PEZA (below properties) ─── */}
       <WhyPezaSection />
 
       <Footer />
 
+      {/* ⚡ These only download if the user interacts with them */}
       <NexoraChat />
 
-      <PreferenceModal
-        isOpen={showFindModal}
-        onClose={() => setShowFindModal(false)}
-      />
+      {showFindModal && (
+        <PreferenceModal
+          isOpen={showFindModal}
+          onClose={() => setShowFindModal(false)}
+        />
+      )}
 
       {user && user.role === "landlord" && (
         <LandlordOnboardingModal

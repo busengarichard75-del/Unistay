@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { MapPin, Wrench, Zap, Flame, Heart, Gift } from "lucide-react";
 import {
@@ -81,9 +82,6 @@ export function ServiceCard({ service }: ServiceCardProps) {
   const originalPrice = service.priceFrom || null;
 
   const showFromPrice = service.priceType === "from" && originalPrice;
-
-  // Both free + discount are impossible (discount deactivates for free),
-  // but boost + free can coexist → stack the boost badge.
   const hasTopBadge = isFree || hasDiscount;
 
   return (
@@ -95,12 +93,12 @@ export function ServiceCard({ service }: ServiceCardProps) {
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
         {primaryImage ? (
-          <img
+          <Image
             src={primaryImage}
             alt={service.title}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-gray-400">
@@ -114,7 +112,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
-        {/* ⚡ Boost badge — stacked top-right */}
+        {/* ⚡ Boost badge */}
         {isBoosted && (
           <span
             className={`absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-md ${
@@ -126,7 +124,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </span>
         )}
 
-        {/* 🎁 FREE badge — primary, top-right */}
+        {/* 🎁 FREE badge */}
         {isFree && !isInactive && (
           <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
             <Gift size={10} />
@@ -165,7 +163,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
           )}
         </div>
 
-        {/* ─── 💰 PRICE ROW (premium style) ─── */}
+        {/* ─── 💰 PRICE ROW ─── */}
         {isFree ? (
           <p className="mt-1.5 text-lg font-extrabold leading-none text-emerald-600">
             🎁 FREE

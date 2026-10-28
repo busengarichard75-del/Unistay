@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image"; // ⚡ Added Next.js Image
 import { useEffect, useState } from "react";
 import {
   MapPin,
@@ -123,12 +124,12 @@ export function ProductCard({ product }: ProductCardProps) {
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
         {primaryImage ? (
-          <img
+          <Image
             src={primaryImage}
             alt={product.name}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-gray-400">
@@ -170,14 +171,14 @@ export function ProductCard({ product }: ProductCardProps) {
         {/* 👤 Small seller pill (bottom-left) */}
         {showSellerPill && (
           <span className="pointer-events-none absolute bottom-2 left-2 inline-flex max-w-[calc(100%-4rem)] items-center gap-1 rounded-full bg-black/55 py-0.5 pl-0.5 pr-2 text-[10px] font-medium text-white shadow-sm backdrop-blur-sm">
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-gray-700">
+            <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-gray-700">
               {optimizedSellerAvatar ? (
-                <img
+                <Image
                   src={optimizedSellerAvatar}
                   alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover"
+                  width={16}
+                  height={16}
+                  className="object-cover"
                 />
               ) : (
                 <span className="text-[8px] font-bold">{sellerInitials}</span>
