@@ -13,8 +13,9 @@ import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 import { WebVitals } from "@/components/WebVitals";
 
+// ✅ Fallback updated to the new custom domain
 const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL || "https://pezaa.com";
 
 const DEFAULT_TITLE = "Peza — Find what you need on campus";
 const DEFAULT_DESCRIPTION =
@@ -34,10 +35,11 @@ export const metadata: Metadata = {
   authors: [{ name: "Peza" }],
   creator: "Peza",
   publisher: "Peza",
-  icons: {
-    icon: "/favicon.png",
-    apple: "/favicon.png",
-  },
+
+  // Icons are NOT set here on purpose.
+  // Next.js automatically uses favicon.ico, icon.png and apple-icon.png
+  // from the src/app folder.
+
   alternates: {
     canonical: "/",
   },
