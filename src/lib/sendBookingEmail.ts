@@ -41,7 +41,7 @@ interface SendResult {
 
 function getPassUrl(booking: Booking): string {
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
+    process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
   return `${baseUrl}/booking/confirmation/${booking.id}`;
 }
 

@@ -26,7 +26,7 @@ function withTimeout<T>(
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
+    process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
   const now = new Date();
 
   // ─── Static pages ───

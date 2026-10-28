@@ -90,7 +90,7 @@ export default async function BookingConfirmationPage({ params }: ConfirmationPa
     icon: <Clock size={18} className="text-gray-600" />,
   };
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
   const verifyUrl = `${baseUrl}/verify/${booking.id}?token=${booking.verificationToken || ""}`;
 
   const isConfirmed = booking.status === "confirmed";

@@ -309,7 +309,7 @@ export function bookingRejectedTemplate({
       "😔 This specific bed isn't available anymore. Don't worry — there are many other verified properties near your campus.",
       "danger"
     ) +
-    ctaButton("Browse Other Properties →", `${new URL(booking ? "/" : "/", "https://peza.vercel.app").toString()}`) +
+    ctaButton("Browse Other Properties →", `${new URL(booking ? "/" : "/", "https://pezazm.com").toString()}`) +
     nextSteps([
       "Browse other verified properties on Peza",
       "Send new booking requests to multiple places",
@@ -341,7 +341,7 @@ export function bookingExpiredTemplate({
       "⏰ The bed is now available to other students. If you're still interested, you can send a new request — but be quick!",
       "neutral"
     ) +
-    ctaButton("Browse Properties →", "https://peza.vercel.app") +
+    ctaButton("Browse Properties →", "https://pezazm.com") +
     nextSteps([
       "Browse properties again — some may still be available",
       "Send a new booking request",

@@ -22,7 +22,7 @@ export function WhatsAppStatusKit({
   const shopUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/provider/${uid}`
-      : `https://peza-zm.vercel.app/provider/${uid}`;
+      : `https://pezazm.com/provider/${uid}`;
 
   const taglineLine = tagline ? ` ${tagline}` : "";
 

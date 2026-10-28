@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getFirestoreDb } from "@/lib/firebase-admin";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://peza.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
 
 /**
  * ⚡ TIMEOUT GUARD

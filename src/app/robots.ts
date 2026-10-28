@@ -2,7 +2,7 @@
 import type { MetadataRoute } from "next";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://peza-zm.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
 
 export default function robots(): MetadataRoute.Robots {
   return {
