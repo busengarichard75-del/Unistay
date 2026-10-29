@@ -1,0 +1,14 @@
+# Peza
+
+> Peza is an online platform for Zambian university students. It brings student accommodation, campus services and a student marketplace into one place.
+
+## What Peza offers
+- Accommodation: find rooms and bed-spaces near campus and request bookings from landlords
+- Services: book campus services such as barbers
+- Marketplace: buy and sell items such as phones
+
+## Coverage
+- Serves students at universities across Zambia
+
+## Links
+- Website: https://pezazm.com

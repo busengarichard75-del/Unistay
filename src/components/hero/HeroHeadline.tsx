@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const messages = [
   "Find your next Boarding house.",
@@ -18,37 +18,36 @@ const messages = [
 export function HeroHeadline() {
   const [index, setIndex] = useState(0);
   const [fade, setFade] = useState(false);
-  const indexRef = useRef(0);
 
   useEffect(() => {
-    // Check reduced motion
+    // Respect reduced motion: keep the first message, no rotation
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
     if (prefersReducedMotion) return;
 
-    // Update the ref whenever index changes
-    indexRef.current = index;
-  }, [index]);
+    let swapTimeout: ReturnType<typeof setTimeout>;
 
-  useEffect(() => {
     const interval = setInterval(() => {
       // Fade out
       setFade(true);
 
       // After 400ms, change text and fade in
-      setTimeout(() => {
+      swapTimeout = setTimeout(() => {
         setIndex((prev) => (prev + 1) % messages.length);
         setFade(false);
       }, 400);
     }, 4500);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(swapTimeout);
+    };
   }, []);
 
   return (
     <span
-      className={`inline-block transition-all duration-500 ease-in-out ${
+      className={`block min-h-[2.4em] transition-all duration-500 ease-in-out sm:min-h-[2em] ${
         fade ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"
       }`}
     >

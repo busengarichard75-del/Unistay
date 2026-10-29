@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic"; // ⚡ Import dynamic
 import { Navbar } from "@/components/navbar/Navbar";
 import { Hero } from "@/components/hero/Hero";
@@ -44,7 +43,6 @@ const LandlordOnboardingModal = dynamic(
 
 function HomeContent() {
   const { user } = useAuth();
-  const searchParams = useSearchParams();
 
   const [properties, setProperties] = useState<Property[]>([]);
   const [isFetching, setIsFetching] = useState(true);
@@ -65,10 +63,11 @@ function HomeContent() {
   const isStudent = user && effectiveRole === "student";
 
   useEffect(() => {
-    if (searchParams.get("openModal") === "true") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("openModal") === "true") {
       setShowFindModal(true);
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     const handleOpenModal = () => setShowFindModal(true);

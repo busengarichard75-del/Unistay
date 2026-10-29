@@ -31,7 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (firebaseUser: FirebaseUser): Promise<User | null> => {
     try {
-      await reloadFirebaseUser(firebaseUser);
+      if (!firebaseUser.emailVerified) {
+        await reloadFirebaseUser(firebaseUser);
+      }
 
       const docRef = doc(db, "users", firebaseUser.uid);
       const docSnap = await getDoc(docRef);

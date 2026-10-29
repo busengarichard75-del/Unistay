@@ -4,7 +4,6 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/lib/AuthContext";
 import { Toaster } from "sonner";
-import { AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NetworkStatus } from "@/components/NetworkStatus";
 import { WelcomeModal } from "@/components/WelcomeModal";
@@ -13,9 +12,8 @@ import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 import { WebVitals } from "@/components/WebVitals";
 
-// ✅ Fallback updated to the new custom domain
 const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://pezaa.com";
+  process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
 
 const DEFAULT_TITLE = "Peza — Find what you need on campus";
 const DEFAULT_DESCRIPTION =
@@ -91,6 +89,31 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+// Structured data: tells search engines and AI tools what Peza is
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "Peza",
+      url: SITE_URL,
+      logo: `${SITE_URL}/og-default.png`,
+      description: DEFAULT_DESCRIPTION,
+      areaServed: { "@type": "Country", name: "Zambia" },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "Peza",
+      description: DEFAULT_DESCRIPTION,
+      inLanguage: "en-ZM",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -102,12 +125,16 @@ export default function RootLayout({
       className={cn("h-full", "antialiased", "font-sans")}
     >
       <head>
-        {/* 🚀 Force GA4 into the <head> for Google Search Console */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        {/* GA4 loads after the page is interactive so it doesn't slow first load */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=G-6VCP2PHEB8`}
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
-        <Script id="google-analytics" strategy="beforeInteractive">
+        <Script id="google-analytics" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -116,16 +143,14 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      
+
       <body className="min-h-full flex flex-col bg-[var(--nexora-surface)]">
         <ErrorBoundary>
           <AuthProvider>
             <NetworkStatus />
             <AnalyticsTracker />
             <WebVitals />
-            <AnimatePresence mode="wait" initial={false}>
-              {children}
-            </AnimatePresence>
+            {children}
             <Toaster position="bottom-right" richColors closeButton />
             <WelcomeModal />
             <PostAuthWelcomeModal />
