@@ -1,7 +1,8 @@
 import { MetadataRoute } from "next";
 import { getFirestoreDb } from "@/lib/firebase-admin";
 import { getAllProperties } from "@/services/propertyService";
-import { universities } from "@/data/universities"; // ⚡ Imported universities
+import { universities } from "@/data/universities";
+import { GUIDES } from "@/data/guides"; // ⚡ Imported Guides
 
 export const revalidate = 3600;
 
@@ -22,12 +23,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
   const now = new Date();
 
-  // ─── Static public pages only ───
+  // ─── Static public pages ───
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${baseUrl}`,                  priority: 1.0, changeFrequency: "daily" },
     { url: `${baseUrl}/services`,         priority: 0.9, changeFrequency: "daily" },
     { url: `${baseUrl}/marketplace`,      priority: 0.9, changeFrequency: "daily" },
     { url: `${baseUrl}/library`,          priority: 0.9, changeFrequency: "daily" },
+    { url: `${baseUrl}/guides`,           priority: 0.9, changeFrequency: "weekly" }, // ⚡ Added
     { url: `${baseUrl}/map`,              priority: 0.8, changeFrequency: "weekly" },
     { url: `${baseUrl}/why-peza`,         priority: 0.6, changeFrequency: "monthly" },
     { url: `${baseUrl}/help`,             priority: 0.5, changeFrequency: "monthly" },
@@ -47,14 +49,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
+  // ─── Guides (Blog) ───
+  const guidePages: MetadataRoute.Sitemap = GUIDES.map((guide) => ({
+    url: `${baseUrl}/guides/${guide.slug}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
+
   let db;
   try {
     db = getFirestoreDb();
   } catch {
-    return [...staticPages, ...housingPages];
+    return [...staticPages, ...housingPages, ...guidePages];
   }
 
-  // ─── Properties (excluding admin-hidden) ───
+  // ─── Properties ───
   let propertyPages: MetadataRoute.Sitemap = [];
   try {
     const properties = await withTimeout(getAllProperties());
@@ -173,6 +183,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...housingPages,
+    ...guidePages,
     ...propertyPages,
     ...servicePages,
     ...productPages,

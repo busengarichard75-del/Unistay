@@ -9,6 +9,7 @@ import {
   Heart,
   Info,
   MessageCircle,
+  BookOpen, // ⚡ Imported BookOpen for the Guides icon
 } from "lucide-react";
 
 export function Footer() {
@@ -62,6 +63,16 @@ export function Footer() {
                 >
                   <Home size={16} />
                   Home
+                </Link>
+              </li>
+              {/* ⚡ Added Guides Link */}
+              <li>
+                <Link
+                  href="/guides"
+                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
+                >
+                  <BookOpen size={16} />
+                  Student Guides
                 </Link>
               </li>
               <li>
