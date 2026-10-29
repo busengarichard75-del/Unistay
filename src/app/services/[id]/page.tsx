@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image"; // ⚡ Added
-import dynamic from "next/dynamic"; // ⚡ Added
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { getServiceById, getServicesByCategory } from "@/services/serviceService";
@@ -43,7 +43,6 @@ import {
   Sparkles,
 } from "lucide-react";
 
-// ⚡ Lazy-load the lightbox
 const ImageLightbox = dynamic(
   () => import("@/components/shared/ImageLightbox").then((mod) => mod.ImageLightbox),
   { ssr: false }
@@ -182,7 +181,6 @@ export default function ServiceDetailPage() {
 
   const showPaymentMethods = !isFree && (service.paymentMethods?.length ?? 0) > 0;
 
-  // ─── Auth-gated "View more photos" click ───
   const handleViewMorePhotos = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!user) {
       e.preventDefault();
@@ -369,7 +367,6 @@ export default function ServiceDetailPage() {
                 </span>
               </div>
 
-              {/* ─── Sold by ─── */}
               <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
                 <Link
                   href={`/provider/${service.ownerId}`}
@@ -402,9 +399,24 @@ export default function ServiceDetailPage() {
               )}
             </div>
 
-            <div className="mt-3 flex items-center justify-center gap-4">
+            {/* ⚡ Share & Report Actions */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    const url = window.location.href;
+                    const text = `Check out this ${service.title} service I found on Peza! 👇\n${url}`;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 active:scale-95"
+              >
+                <MessageCircle size={14} fill="currentColor" />
+                Share on WhatsApp
+              </button>
               <ShareButton targetType="service" targetTitle={service.title} />
-              <span className="text-gray-300">·</span>
+              <span className="hidden text-gray-300 sm:inline">·</span>
               <ReportButton
                 targetType="service"
                 targetId={service.id}
@@ -445,7 +457,6 @@ export default function ServiceDetailPage() {
         </div>
       </div>
 
-      {/* ⚡ Loaded only when needed */}
       {lightboxIndex !== null && (
         <ImageLightbox
           images={images}

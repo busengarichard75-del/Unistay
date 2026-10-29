@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image"; // ⚡ Added
-import dynamic from "next/dynamic"; // ⚡ Added
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { getProductById, getProductsByCategory } from "@/services/productService";
@@ -32,6 +32,7 @@ import {
   ChevronRight,
   Sparkles,
   Handshake,
+  MessageCircle, // ⚡ Added for WhatsApp button
 } from "lucide-react";
 
 // ⚡ Lazy-load the lightbox
@@ -380,9 +381,24 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            <div className="mt-3 flex items-center justify-center gap-4">
+            {/* ⚡ Share & Report Actions */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    const url = window.location.href;
+                    const text = `Check out this ${product.name} I found on Peza! 👇\n${url}`;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 active:scale-95"
+              >
+                <MessageCircle size={14} fill="currentColor" />
+                Share on WhatsApp
+              </button>
               <ShareButton targetType="product" targetTitle={product.name} />
-              <span className="text-gray-300">·</span>
+              <span className="hidden text-gray-300 sm:inline">·</span>
               <ReportButton
                 targetType="product"
                 targetId={product.id}
@@ -422,7 +438,6 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* ⚡ Loaded only when needed */}
       {lightboxIndex !== null && (
         <ImageLightbox
           images={images}
