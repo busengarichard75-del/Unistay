@@ -14,12 +14,12 @@ import { trackListing } from "@/lib/trackListing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { optimizeCardImage } from "@/lib/imageUrl";
 import { useAuth } from "@/lib/AuthContext";
-import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
 import { ReportButton } from "@/components/shared/ReportButton";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { RelatedListings } from "@/components/shared/RelatedListings";
 import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ProductCard } from "@/components/products/ProductCard";
+import { BuyProductModal } from "@/components/products/BuyProductModal";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -32,10 +32,9 @@ import {
   ChevronRight,
   Sparkles,
   Handshake,
-  MessageCircle, // ⚡ Added for WhatsApp button
+  ShoppingBag,
 } from "lucide-react";
 
-// ⚡ Lazy-load the lightbox
 const ImageLightbox = dynamic(
   () => import("@/components/shared/ImageLightbox").then((mod) => mod.ImageLightbox),
   { ssr: false }
@@ -54,6 +53,7 @@ export default function ProductDetailPage() {
   const [related, setRelated] = useState<Product[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const tracked = useRef(false);
 
   useEffect(() => {
@@ -145,13 +145,6 @@ export default function ProductDetailPage() {
 
   const displayPrice = isRevealed && product.lastPrice ? product.lastPrice : product.price;
   
-  const prefillMessage = `Hi, I found your "${product.name}" listed on Peza for K${displayPrice.toLocaleString()}. Is it still available?`;
-
-  const viewMorePhotosHref = buildWhatsAppLink(
-    product.whatsapp,
-    `Hi, I saw your "${product.name}" on Peza. Can you share more photos?`
-  );
-
   const handleViewMorePhotos = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!user) {
       e.preventDefault();
@@ -174,14 +167,6 @@ export default function ProductDetailPage() {
       description: "The final price is now shown below.",
     });
   };
-
-  const relatedTitle = product.category
-    ? `More ${product.category}`
-    : "More products";
-  const relatedSubtitle = product.universityId
-    ? `near ${getUniversityShortLabel(product.universityId)}`
-    : undefined;
-  const relatedSeeAllHref = `/marketplace?cat=${product.category}`;
 
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
@@ -240,9 +225,9 @@ export default function ProductDetailPage() {
                   </div>
                 )}
 
-                {viewMorePhotosHref && !isSold && (
+                {buildWhatsAppLink(product.whatsapp, "Hi") && !isSold && (
                   <a
-                    href={viewMorePhotosHref}
+                    href={buildWhatsAppLink(product.whatsapp, `Hi, I saw your "${product.name}" on Peza. Can you share more photos?`) || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={handleViewMorePhotos}
@@ -255,64 +240,78 @@ export default function ProductDetailPage() {
               </>
             )}
 
-            <div className="card-premium p-5">
+            <div className="card-premium p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-xl font-bold text-[var(--nexora-navy)] sm:text-2xl">
+                  <h1 className="text-2xl font-bold text-[var(--nexora-navy)] sm:text-3xl">
                     {product.name}
                   </h1>
 
-                  <div className="mt-3 flex flex-col gap-3">
+                  <div className="mt-4 flex flex-col gap-4">
                     {isRevealed && product.isNegotiable ? (
-                      <div className="flex flex-col rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+                      <div className="flex flex-col rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
                         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
                           <Sparkles size={14} /> Final Price Unlocked
                         </p>
-                        <p className="mt-1 text-3xl font-extrabold text-emerald-700">
+                        <p className="mt-1 text-4xl font-extrabold text-emerald-700">
                           K{product.lastPrice?.toLocaleString()}
                         </p>
-                        <p className="text-sm text-emerald-600/80 line-through mt-0.5">
+                        <p className="text-sm text-emerald-600/80 line-through mt-1">
                           Original: K{product.price.toLocaleString()}
                         </p>
                       </div>
                     ) : (
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-3xl font-bold text-[var(--nexora-primary)]">
+                      <div className="flex items-baseline gap-3">
+                        <p className="text-4xl font-extrabold text-[var(--nexora-navy)]">
                           K{product.price.toLocaleString()}
                         </p>
                         {product.isNegotiable && (
-                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-600 border border-blue-200">
+                          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 border border-blue-200">
                             Negotiable
                           </span>
                         )}
                       </div>
                     )}
 
-                    {!isSold && !isRevealed && (
-                      <button
-                        type="button"
-                        onClick={handleNegotiate}
-                        className={`mt-1 inline-flex w-fit items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-md transition-all active:scale-95 ${
-                          product.isNegotiable
-                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:opacity-95"
-                            : "border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                        }`}
-                      >
-                        <Handshake size={18} />
-                        {product.isNegotiable ? "🤝 Negotiate Price" : "Ask for Last Price"}
-                      </button>
-                    )}
+                    {/* Actions Row */}
+                    <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                      {!isSold && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!user) return setShowLoginModal(true);
+                            setIsBuyModalOpen(true);
+                          }}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--nexora-navy)] to-indigo-900 py-3.5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-95"
+                        >
+                          <ShoppingBag size={18} />
+                          Buy Product
+                        </button>
+                      )}
+                      
+                      {!isSold && !isRevealed && (
+                        <button
+                          type="button"
+                          onClick={handleNegotiate}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white py-3.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50"
+                        >
+                          <Handshake size={18} />
+                          {product.isNegotiable ? "Negotiate Price" : "Ask for Last Price"}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <span className="inline-flex items-center gap-1">
-                      <Tag size={11} />
+                  <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1">
+                      <Tag size={14} />
                       {product.category}
                     </span>
-                    <span>·</span>
-                    <span>{conditionLabel}</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1">
+                      {conditionLabel}
+                    </span>
                   </div>
-                  <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
+                  <p className="mt-3 flex items-center gap-1.5 text-sm text-gray-500">
                     <MapPin size={14} className="shrink-0" />
                     {product.location}
                   </p>
@@ -322,13 +321,13 @@ export default function ProductDetailPage() {
                 </div>
 
                 {isSold && (
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                  <span className="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-semibold text-gray-600">
                     Sold
                   </span>
                 )}
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
+              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-5">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
                   <Eye size={12} />
                   {product.views || 0} views
@@ -339,13 +338,13 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
+              <div className="mt-5 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
                 <Link
                   href={`/provider/${product.ownerId}`}
                   className="group flex min-w-0 flex-1 items-center gap-3"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
-                    <Store size={14} />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
+                    <Store size={16} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500">Sold by</p>
@@ -356,62 +355,27 @@ export default function ProductDetailPage() {
                   <ChevronRight size={16} className="shrink-0 text-gray-400" />
                 </Link>
               </div>
-
-              {!isSold && (
-                <div className="mt-4">
-                  <WhatsAppContactButton
-                    whatsapp={product.whatsapp}
-                    message={prefillMessage}
-                    onTrack={() =>
-                      trackListing(
-                        "product",
-                        product.id,
-                        "whatsappClicks"
-                      )
-                    }
-                    size="lg"
-                    fullWidth
-                    label={
-                      isRevealed
-                        ? `Buy at K${product.lastPrice?.toLocaleString()} on WhatsApp`
-                        : "Contact Seller on WhatsApp"
-                    }
-                  />
-                </div>
-              )}
             </div>
 
-            {/* ⚡ Share & Report Actions */}
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    const url = window.location.href;
-                    const text = `Check out this ${product.name} I found on Peza! 👇\n${url}`;
-                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 active:scale-95"
-              >
-                <MessageCircle size={14} fill="currentColor" />
-                Share on WhatsApp
-              </button>
-              <ShareButton targetType="product" targetTitle={product.name} />
-              <span className="hidden text-gray-300 sm:inline">·</span>
-              <ReportButton
-                targetType="product"
-                targetId={product.id}
-                targetTitle={product.name}
-                targetOwnerId={product.ownerId}
-              />
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-white px-5 py-4 shadow-sm border border-gray-100">
+              <span className="text-sm font-semibold text-gray-700">Share this item</span>
+              <div className="flex items-center gap-3">
+                 <ShareButton targetType="product" targetTitle={product.name} />
+                 <div className="h-4 w-px bg-gray-200"></div>
+                 <ReportButton
+                  targetType="product"
+                  targetId={product.id}
+                  targetTitle={product.name}
+                  targetOwnerId={product.ownerId}
+                />
+              </div>
             </div>
 
-            <div className="card-premium mt-4 p-5">
-              <h2 className="mb-2 text-sm font-semibold text-[var(--nexora-navy)]">
+            <div className="card-premium mt-4 p-6">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-gray-400">
                 Description
               </h2>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-700">
                 {product.description}
               </p>
             </div>
@@ -423,10 +387,10 @@ export default function ProductDetailPage() {
 
           {related.length > 0 && (
             <RelatedListings
-              title={relatedTitle}
-              subtitle={relatedSubtitle}
+              title={`More ${product.category}`}
+              subtitle={`near ${getUniversityShortLabel(product.universityId)}`}
               count={related.length}
-              seeAllHref={relatedSeeAllHref}
+              seeAllHref={`/marketplace?cat=${product.category}`}
               seeAllLabel="See all"
               icon={<Sparkles size={16} />}
             >
@@ -447,6 +411,12 @@ export default function ProductDetailPage() {
           alt={product.name}
         />
       )}
+
+      <BuyProductModal
+        isOpen={isBuyModalOpen}
+        onClose={() => setIsBuyModalOpen(false)}
+        product={product}
+      />
 
       <LoginRequiredModal
         isOpen={showLoginModal}

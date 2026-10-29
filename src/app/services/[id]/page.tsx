@@ -21,7 +21,6 @@ import { trackListing } from "@/lib/trackListing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { optimizeCardImage } from "@/lib/imageUrl";
 import { useAuth } from "@/lib/AuthContext";
-import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
 import { ReportButton } from "@/components/shared/ReportButton";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { RelatedListings } from "@/components/shared/RelatedListings";
@@ -41,6 +40,7 @@ import {
   ChevronRight,
   Gift,
   Sparkles,
+  Handshake,
 } from "lucide-react";
 
 const ImageLightbox = dynamic(
@@ -174,13 +174,6 @@ export default function ServiceDetailPage() {
     ? `Hi, I found your "${service.title}" service listed as FREE on Peza. I'm interested — is it still available?`
     : `Hi, I found your "${service.title}" service listed on Peza. I'm interested — is it available?`;
 
-  const viewMorePhotosHref = buildWhatsAppLink(
-    service.whatsapp,
-    `Hi, I saw your "${service.title}" on Peza. Can you share more photos?`
-  );
-
-  const showPaymentMethods = !isFree && (service.paymentMethods?.length ?? 0) > 0;
-
   const handleViewMorePhotos = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!user) {
       e.preventDefault();
@@ -190,11 +183,15 @@ export default function ServiceDetailPage() {
     trackListing("service", service.id, "whatsappClicks");
   };
 
-  const relatedTitle = cat?.label ? `More ${cat.label}` : "More services";
-  const relatedSubtitle = service.universityId
-    ? `near ${getUniversityShortLabel(service.universityId)}`
-    : undefined;
-  const relatedSeeAllHref = `/services?cat=${service.category}`;
+  const handleBookService = () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    trackListing("service", service.id, "whatsappClicks");
+    const url = buildWhatsAppLink(service.whatsapp, prefillMessage);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
@@ -253,9 +250,9 @@ export default function ServiceDetailPage() {
                   </div>
                 )}
 
-                {viewMorePhotosHref && !isInactive && (
+                {buildWhatsAppLink(service.whatsapp, "Hi") && !isInactive && (
                   <a
-                    href={viewMorePhotosHref}
+                    href={buildWhatsAppLink(service.whatsapp, `Hi, I saw your "${service.title}" on Peza. Can you share more photos?`) || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={handleViewMorePhotos}
@@ -268,44 +265,56 @@ export default function ServiceDetailPage() {
               </>
             )}
 
-            <div className="card-premium p-5">
+            <div className="card-premium p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  {cat && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-[var(--nexora-primary)]">
-                      {cat.icon} {cat.label}
-                    </span>
-                  )}
-                  {service.isOnline && (
-                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
-                      <Globe size={11} /> Online
-                    </span>
-                  )}
-                  {isFree && !isInactive && (
-                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
-                      <Gift size={11} /> FREE
-                    </span>
-                  )}
-                  <h1 className="mt-2 text-xl font-bold text-[var(--nexora-navy)] sm:text-2xl">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {cat && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-[var(--nexora-primary)]">
+                        {cat.icon} {cat.label}
+                      </span>
+                    )}
+                    {service.isOnline && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">
+                        <Globe size={12} /> Online
+                      </span>
+                    )}
+                    {isFree && !isInactive && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                        <Gift size={12} /> FREE
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="mt-3 text-2xl font-bold text-[var(--nexora-navy)] sm:text-3xl">
                     {service.title}
                   </h1>
 
                   {isFree ? (
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="text-2xl font-bold text-emerald-600">
+                    <div className="mt-4 flex items-center gap-3">
+                      <span className="text-4xl font-extrabold text-emerald-600">
                         🎁 FREE
-                      </span>
-                      <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-                        No payment required
                       </span>
                     </div>
                   ) : priceLabel ? (
-                    <p className="mt-2 text-lg font-bold text-[var(--nexora-primary)]">
+                    <p className="mt-4 text-3xl font-extrabold text-[var(--nexora-navy)]">
                       {priceLabel}
                     </p>
                   ) : null}
 
-                  <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                    {!isInactive && (
+                      <button
+                        type="button"
+                        onClick={handleBookService}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--nexora-navy)] to-indigo-900 py-3.5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-95"
+                      >
+                        <Handshake size={18} />
+                        {isFree ? "Claim Free Service" : "Book Service"}
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="mt-5 flex items-center gap-1.5 text-sm text-gray-500">
                     <MapPin size={14} className="shrink-0" />
                     {service.location}
                   </p>
@@ -320,14 +329,14 @@ export default function ServiceDetailPage() {
                 </div>
 
                 {isInactive && (
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                  <span className="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-semibold text-gray-600">
                     Currently unavailable
                   </span>
                 )}
               </div>
 
-              {(availDaysLabel || availHoursLabel || availModeLabel || showPaymentMethods) && (
-                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+              {(availDaysLabel || availHoursLabel || availModeLabel || (!isFree && (service.paymentMethods?.length ?? 0) > 0)) && (
+                <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-5">
                   {(availDaysLabel || availHoursLabel) && (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700">
                       <Clock size={12} />
@@ -339,24 +348,23 @@ export default function ServiceDetailPage() {
                       {availModeLabel}
                     </span>
                   )}
-                  {showPaymentMethods &&
-                    service.paymentMethods?.map((m) => (
-                      <span
-                        key={m}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700"
-                      >
-                        <CreditCard size={12} />
-                        {PAYMENT_METHOD_LABELS[m]}
-                      </span>
-                    ))}
+                  {!isFree && service.paymentMethods?.map((m) => (
+                    <span
+                      key={m}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-700"
+                    >
+                      <CreditCard size={12} />
+                      {PAYMENT_METHOD_LABELS[m]}
+                    </span>
+                  ))}
                 </div>
               )}
 
               {avail?.note && (
-                <p className="mt-2 text-xs text-gray-500 italic">📌 {avail.note}</p>
+                <p className="mt-3 text-xs text-gray-500 italic">📌 {avail.note}</p>
               )}
 
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
+              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-5">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
                   <Eye size={12} />
                   {service.views || 0} views
@@ -367,13 +375,13 @@ export default function ServiceDetailPage() {
                 </span>
               </div>
 
-              <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
+              <div className="mt-5 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
                 <Link
                   href={`/provider/${service.ownerId}`}
                   className="group flex min-w-0 flex-1 items-center gap-3"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
-                    <Store size={14} />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
+                    <Store size={16} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500">Sold by</p>
@@ -384,52 +392,27 @@ export default function ServiceDetailPage() {
                   <ChevronRight size={16} className="shrink-0 text-gray-400" />
                 </Link>
               </div>
-
-              {!isInactive && (
-                <div className="mt-4">
-                  <WhatsAppContactButton
-                    whatsapp={service.whatsapp}
-                    message={prefillMessage}
-                    onTrack={() => trackListing("service", service.id, "whatsappClicks")}
-                    size="lg"
-                    fullWidth
-                    label={isFree ? "Claim this free service" : "Chat on WhatsApp"}
-                  />
-                </div>
-              )}
             </div>
 
-            {/* ⚡ Share & Report Actions */}
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    const url = window.location.href;
-                    const text = `Check out this ${service.title} service I found on Peza! 👇\n${url}`;
-                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 active:scale-95"
-              >
-                <MessageCircle size={14} fill="currentColor" />
-                Share on WhatsApp
-              </button>
-              <ShareButton targetType="service" targetTitle={service.title} />
-              <span className="hidden text-gray-300 sm:inline">·</span>
-              <ReportButton
-                targetType="service"
-                targetId={service.id}
-                targetTitle={service.title}
-                targetOwnerId={service.ownerId}
-              />
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-white px-5 py-4 shadow-sm border border-gray-100">
+              <span className="text-sm font-semibold text-gray-700">Share this service</span>
+              <div className="flex items-center gap-3">
+                 <ShareButton targetType="service" targetTitle={service.title} />
+                 <div className="h-4 w-px bg-gray-200"></div>
+                 <ReportButton
+                  targetType="service"
+                  targetId={service.id}
+                  targetTitle={service.title}
+                  targetOwnerId={service.ownerId}
+                />
+              </div>
             </div>
 
-            <div className="card-premium mt-4 p-5">
-              <h2 className="mb-2 text-sm font-semibold text-[var(--nexora-navy)]">
+            <div className="card-premium mt-4 p-6">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-gray-400">
                 About this service
               </h2>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-700">
                 {service.description}
               </p>
             </div>
@@ -442,10 +425,10 @@ export default function ServiceDetailPage() {
 
           {related.length > 0 && (
             <RelatedListings
-              title={relatedTitle}
-              subtitle={relatedSubtitle}
+              title={`More ${cat?.label || "services"}`}
+              subtitle={`near ${getUniversityShortLabel(service.universityId)}`}
               count={related.length}
-              seeAllHref={relatedSeeAllHref}
+              seeAllHref={`/services?cat=${service.category}`}
               seeAllLabel="See all"
               icon={<Sparkles size={16} />}
             >
