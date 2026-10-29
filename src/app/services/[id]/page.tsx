@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image"; // ⚡ Added
+import dynamic from "next/dynamic"; // ⚡ Added
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { getServiceById, getServicesByCategory } from "@/services/serviceService";
@@ -22,7 +24,6 @@ import { useAuth } from "@/lib/AuthContext";
 import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
 import { ReportButton } from "@/components/shared/ReportButton";
 import { ShareButton } from "@/components/shared/ShareButton";
-import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { RelatedListings } from "@/components/shared/RelatedListings";
 import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ServiceCard } from "@/components/services/ServiceCard";
@@ -41,6 +42,12 @@ import {
   Gift,
   Sparkles,
 } from "lucide-react";
+
+// ⚡ Lazy-load the lightbox
+const ImageLightbox = dynamic(
+  () => import("@/components/shared/ImageLightbox").then((mod) => mod.ImageLightbox),
+  { ssr: false }
+);
 
 export default function ServiceDetailPage() {
   const params = useParams<{ id: string }>();
@@ -217,14 +224,14 @@ export default function ServiceDetailPage() {
                 <button
                   type="button"
                   onClick={() => setLightboxIndex(0)}
-                  className="mb-3 block w-full overflow-hidden rounded-2xl"
+                  className="relative mb-3 block h-56 w-full overflow-hidden rounded-2xl sm:h-72"
                 >
-                  <img
+                  <Image
                     src={images[0]}
                     alt={service.title}
-                    loading="eager"
-                    decoding="async"
-                    className="h-56 w-full object-cover transition-transform duration-300 hover:scale-[1.02] sm:h-72"
+                    fill
+                    priority
+                    className="object-cover transition-transform duration-300 hover:scale-[1.02]"
                   />
                 </button>
 
@@ -235,14 +242,13 @@ export default function ServiceDetailPage() {
                         key={i}
                         type="button"
                         onClick={() => setLightboxIndex(i + 1)}
-                        className="aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
+                        className="relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
                       >
-                        <img
+                        <Image
                           src={url}
                           alt={`${service.title} ${i + 2}`}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
+                          fill
+                          className="object-cover transition-transform duration-300 hover:scale-[1.03]"
                         />
                       </button>
                     ))}
@@ -363,23 +369,24 @@ export default function ServiceDetailPage() {
                 </span>
               </div>
 
-              <Link
-                href={`/provider/${service.ownerId}`}
-                className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40"
-              >
-                <div className="flex items-center gap-3 min-w-0">
+              {/* ─── Sold by ─── */}
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
+                <Link
+                  href={`/provider/${service.ownerId}`}
+                  className="group flex min-w-0 flex-1 items-center gap-3"
+                >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nexora-navy)] text-white">
                     <Store size={14} />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500">Sold by</p>
-                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)]">
+                    <p className="truncate text-sm font-semibold text-[var(--nexora-navy)] group-hover:underline">
                       View provider profile
                     </p>
                   </div>
-                </div>
-                <ChevronRight size={16} className="shrink-0 text-gray-400" />
-              </Link>
+                  <ChevronRight size={16} className="shrink-0 text-gray-400" />
+                </Link>
+              </div>
 
               {!isInactive && (
                 <div className="mt-4">
@@ -438,13 +445,16 @@ export default function ServiceDetailPage() {
         </div>
       </div>
 
-      <ImageLightbox
-        images={images}
-        initialIndex={lightboxIndex ?? 0}
-        isOpen={lightboxIndex !== null}
-        onClose={() => setLightboxIndex(null)}
-        alt={service.title}
-      />
+      {/* ⚡ Loaded only when needed */}
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images}
+          initialIndex={lightboxIndex}
+          isOpen={lightboxIndex !== null}
+          onClose={() => setLightboxIndex(null)}
+          alt={service.title}
+        />
+      )}
 
       <LoginRequiredModal
         isOpen={showLoginModal}

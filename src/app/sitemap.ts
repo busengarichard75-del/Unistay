@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { getFirestoreDb } from "@/lib/firebase-admin";
 import { getAllProperties } from "@/services/propertyService";
+import { universities } from "@/data/universities"; // ⚡ Imported universities
 
 export const revalidate = 3600;
 
@@ -22,7 +23,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   // ─── Static public pages only ───
-  // ⚠️ Do NOT add auth/private pages here (login, signup, dashboard, etc.).
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${baseUrl}`,                  priority: 1.0, changeFrequency: "daily" },
     { url: `${baseUrl}/services`,         priority: 0.9, changeFrequency: "daily" },
@@ -37,11 +37,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: now,
   })) as MetadataRoute.Sitemap;
 
+  // ─── Campus Housing Landing Pages ───
+  const housingPages: MetadataRoute.Sitemap = universities
+    .filter((u) => u.isAvailable)
+    .map((u) => ({
+      url: `${baseUrl}/housing/${u.id}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    }));
+
   let db;
   try {
     db = getFirestoreDb();
   } catch {
-    return staticPages;
+    return [...staticPages, ...housingPages];
   }
 
   // ─── Properties (excluding admin-hidden) ───
@@ -160,10 +170,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Sitemap: failed to fetch providers:", error);
   }
 
-  // Note: Booking confirmation pages are intentionally NOT included.
-
   return [
     ...staticPages,
+    ...housingPages,
     ...propertyPages,
     ...servicePages,
     ...productPages,

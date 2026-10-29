@@ -39,15 +39,7 @@ export function Footer() {
             <div className="space-y-2 text-sm text-gray-600">
               <p className="flex items-center gap-2">
                 <Phone size={16} className="text-gray-400" />
-                <span>+260 0771319817 (General)</span>
-              </p>
-              <p className="flex items-center gap-2">
-                <Phone size={16} className="text-gray-400" />
-                <span>+260 971652675 (Student Support)</span>
-              </p>
-              <p className="flex items-center gap-2">
-                <Phone size={16} className="text-gray-400" />
-                <span>+260 971652675 (Landlord Support)</span>
+                <span>+260 0771319817</span>
               </p>
               <p className="flex items-center gap-2">
                 <Mail size={16} className="text-gray-400" />
@@ -140,6 +132,33 @@ export function Footer() {
                 </span>
               </li>
             </ul>
+          </div>
+        </div>
+
+        {/* ⚡ SEO Campus Links */}
+        <div className="mt-10 border-t border-gray-100 pt-6">
+          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Popular Campuses
+          </h4>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-500">
+            <Link href="/housing/unza" className="hover:text-[var(--nexora-primary)] hover:underline">
+              UNZA Accommodation
+            </Link>
+            <Link href="/housing/cbu" className="hover:text-[var(--nexora-primary)] hover:underline">
+              CBU Accommodation
+            </Link>
+            <Link href="/housing/mukuba" className="hover:text-[var(--nexora-primary)] hover:underline">
+              Mukuba Accommodation
+            </Link>
+            <Link href="/housing/mulungushi" className="hover:text-[var(--nexora-primary)] hover:underline">
+              Mulungushi Accommodation
+            </Link>
+            <Link href="/housing/unilus" className="hover:text-[var(--nexora-primary)] hover:underline">
+              UNILUS Accommodation
+            </Link>
+            <Link href="/housing/cavendish" className="hover:text-[var(--nexora-primary)] hover:underline">
+              Cavendish Accommodation
+            </Link>
           </div>
         </div>
 

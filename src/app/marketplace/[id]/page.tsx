@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image"; // ⚡ Added
+import dynamic from "next/dynamic"; // ⚡ Added
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { getProductById, getProductsByCategory } from "@/services/productService";
@@ -15,7 +17,6 @@ import { useAuth } from "@/lib/AuthContext";
 import { WhatsAppContactButton } from "@/components/whatsapp/WhatsAppContactButton";
 import { ReportButton } from "@/components/shared/ReportButton";
 import { ShareButton } from "@/components/shared/ShareButton";
-import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { RelatedListings } from "@/components/shared/RelatedListings";
 import { LoginRequiredModal } from "@/components/shared/LoginRequiredModal";
 import { ProductCard } from "@/components/products/ProductCard";
@@ -32,6 +33,12 @@ import {
   Sparkles,
   Handshake,
 } from "lucide-react";
+
+// ⚡ Lazy-load the lightbox
+const ImageLightbox = dynamic(
+  () => import("@/components/shared/ImageLightbox").then((mod) => mod.ImageLightbox),
+  { ssr: false }
+);
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
@@ -135,7 +142,6 @@ export default function ProductDetailPage() {
     PRODUCT_CONDITIONS.find((c) => c.id === product.condition)?.label ||
     product.condition;
 
-  // ─── Price Logic for Negotiation ───
   const displayPrice = isRevealed && product.lastPrice ? product.lastPrice : product.price;
   
   const prefillMessage = `Hi, I found your "${product.name}" listed on Peza for K${displayPrice.toLocaleString()}. Is it still available?`;
@@ -145,7 +151,6 @@ export default function ProductDetailPage() {
     `Hi, I saw your "${product.name}" on Peza. Can you share more photos?`
   );
 
-  // ─── Auth-gated "View more photos" click ───
   const handleViewMorePhotos = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!user) {
       e.preventDefault();
@@ -203,14 +208,14 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={() => setLightboxIndex(0)}
-                  className="mb-3 block w-full overflow-hidden rounded-2xl"
+                  className="relative mb-3 block aspect-[4/3] w-full overflow-hidden rounded-2xl"
                 >
-                  <img
+                  <Image
                     src={images[0]}
                     alt={product.name}
-                    loading="eager"
-                    decoding="async"
-                    className="h-56 w-full object-cover transition-transform duration-300 hover:scale-[1.02] sm:h-72"
+                    fill
+                    priority
+                    className="object-cover transition-transform duration-300 hover:scale-[1.02]"
                   />
                 </button>
 
@@ -221,14 +226,13 @@ export default function ProductDetailPage() {
                         key={i}
                         type="button"
                         onClick={() => setLightboxIndex(i + 1)}
-                        className="aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
+                        className="relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
                       >
-                        <img
+                        <Image
                           src={url}
                           alt={`${product.name} ${i + 2}`}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
+                          fill
+                          className="object-cover transition-transform duration-300 hover:scale-[1.03]"
                         />
                       </button>
                     ))}
@@ -257,7 +261,6 @@ export default function ProductDetailPage() {
                     {product.name}
                   </h1>
 
-                  {/* ─── PRICE & NEGOTIATION SECTION ─── */}
                   <div className="mt-3 flex flex-col gap-3">
                     {isRevealed && product.isNegotiable ? (
                       <div className="flex flex-col rounded-xl bg-emerald-50 border border-emerald-200 p-4">
@@ -284,7 +287,6 @@ export default function ProductDetailPage() {
                       </div>
                     )}
 
-                    {/* 🔥 SUPER VISIBLE NEGOTIATE BUTTON 🔥 */}
                     {!isSold && !isRevealed && (
                       <button
                         type="button"
@@ -296,7 +298,7 @@ export default function ProductDetailPage() {
                         }`}
                       >
                         <Handshake size={18} />
-                        {product.isNegotiable ? " Negotiate Price" : "Ask for Last Price"}
+                        {product.isNegotiable ? "🤝 Negotiate Price" : "Ask for Last Price"}
                       </button>
                     )}
                   </div>
@@ -336,7 +338,6 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              {/* ─── Sold by ─── */}
               <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition-colors hover:border-[var(--nexora-primary)]/40 hover:bg-blue-50/40">
                 <Link
                   href={`/provider/${product.ownerId}`}
@@ -421,13 +422,16 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      <ImageLightbox
-        images={images}
-        initialIndex={lightboxIndex ?? 0}
-        isOpen={lightboxIndex !== null}
-        onClose={() => setLightboxIndex(null)}
-        alt={product.name}
-      />
+      {/* ⚡ Loaded only when needed */}
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images}
+          initialIndex={lightboxIndex}
+          isOpen={lightboxIndex !== null}
+          onClose={() => setLightboxIndex(null)}
+          alt={product.name}
+        />
+      )}
 
       <LoginRequiredModal
         isOpen={showLoginModal}
