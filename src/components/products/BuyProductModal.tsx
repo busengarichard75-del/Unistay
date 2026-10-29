@@ -118,7 +118,8 @@ export function BuyProductModal({ isOpen, onClose, product }: BuyProductModalPro
           <div className="my-5 flex items-center justify-between rounded-xl bg-gray-50 p-4">
             <p className="text-sm font-medium text-gray-600">Total Price</p>
             <div className="text-right">
-              <p className="text-2xl font-extrabold text-[var(--nexora-primary)]">
+              {/* ⚡ Changed to bright red */}
+              <p className="text-2xl font-extrabold text-red-600">
                 K{totalPrice.toLocaleString()}
               </p>
               <p className="text-[10px] text-gray-400">

@@ -253,16 +253,18 @@ export default function ProductDetailPage() {
                         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
                           <Sparkles size={14} /> Final Price Unlocked
                         </p>
-                        <p className="mt-1 text-4xl font-extrabold text-emerald-700">
+                        {/* ⚡ Changed to bright red */}
+                        <p className="mt-1 text-4xl font-extrabold text-red-600 tracking-tight">
                           K{product.lastPrice?.toLocaleString()}
                         </p>
-                        <p className="text-sm text-emerald-600/80 line-through mt-1">
+                        <p className="text-sm text-gray-400 line-through mt-1">
                           Original: K{product.price.toLocaleString()}
                         </p>
                       </div>
                     ) : (
                       <div className="flex items-baseline gap-3">
-                        <p className="text-4xl font-extrabold text-[var(--nexora-navy)]">
+                        {/* ⚡ Changed to bright red */}
+                        <p className="text-4xl font-extrabold text-red-600 tracking-tight">
                           K{product.price.toLocaleString()}
                         </p>
                         {product.isNegotiable && (

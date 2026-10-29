@@ -296,7 +296,8 @@ export default function ServiceDetailPage() {
                       </span>
                     </div>
                   ) : priceLabel ? (
-                    <p className="mt-4 text-3xl font-extrabold text-[var(--nexora-navy)]">
+                    /* ⚡ Changed to bright red */
+                    <p className="mt-4 text-4xl font-extrabold text-red-600 tracking-tight">
                       {priceLabel}
                     </p>
                   ) : null}
