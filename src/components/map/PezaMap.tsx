@@ -123,10 +123,11 @@ function LocateButton({ onLocate }: { onLocate: (lat: number, lng: number) => vo
     <button
       onClick={handleClick}
       disabled={busy}
-      className="absolute right-3 top-3 z-[1000] flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+      className="absolute right-3 top-3 z-[1000] flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-gray-800 shadow-lg border border-gray-200 transition-colors hover:bg-gray-50 disabled:opacity-70"
       title="Find my location"
     >
-      <LocateFixed size={18} className={`text-[var(--nexora-primary)] ${busy ? "animate-pulse" : ""}`} />
+      <LocateFixed size={16} className={`text-[var(--nexora-primary)] ${busy ? "animate-pulse" : ""}`} />
+      <span>{busy ? "Locating..." : "Find My Location"}</span>
     </button>
   );
 }
