@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { auth } from "@/lib/firebase"; // ⚡ Added for secure token
 import { BackButton } from "@/components/ui/BackButton";
 import { getUniversityFullName } from "@/lib/universityLabels";
 import {
@@ -230,16 +231,22 @@ export default function ProviderDashboardPage() {
         );
       }
 
+      // ⚡ Send secure notification ONLY to the admin
       try {
-        await fetch("/api/admin/announce", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "⚡ New boost request",
-            body: `${boostTarget.title} — K${amount.toFixed(2)} ${duration} payment pending`,
-            targetRole: undefined,
-          }),
-        });
+        const token = await auth.currentUser?.getIdToken();
+        if (token) {
+          await fetch("/api/boost-request", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              title: "⚡ New boost request",
+              body: `${boostTarget.title} — K${amount.toFixed(2)} ${duration} payment pending`,
+            }),
+          });
+        }
       } catch {
         // silent
       }

@@ -1,8 +1,9 @@
 // src/lib/firebase-admin.ts
-import { getApps, getApp, initializeApp, cert } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getApps, getApp, initializeApp, cert, App } from "firebase-admin/app";
+import { getFirestore, Firestore } from "firebase-admin/firestore";
+import { getAuth, Auth } from "firebase-admin/auth";
 
-export function getFirestoreDb() {
+function getAdminApp(): App {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -17,22 +18,22 @@ export function getFirestoreDb() {
     );
   }
 
-  let app;
   if (getApps().length === 0) {
-    app = initializeApp({
-      credential: cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
+    return initializeApp({
+      credential: cert({ projectId, clientEmail, privateKey }),
       projectId,
     });
-  } else {
-    app = getApp();
   }
-
-  return getFirestore(app);
+  return getApp();
 }
 
-// Export db as a function that lazily loads Firestore
+export function getFirestoreDb(): Firestore {
+  return getFirestore(getAdminApp());
+}
+
+export function getAuthAdmin(): Auth {
+  return getAuth(getAdminApp());
+}
+
+// Keep the existing lazy `db` export for backward compatibility
 export const db = getFirestoreDb();
