@@ -1,6 +1,6 @@
 export enum Intent {
   GREETING = "GREETING",
-  WHAT_IS_UNISTAY = "WHAT_IS_UNISTAY",
+  WHAT_IS_PEZA = "WHAT_IS_PEZA",
   FIND_ACCOMMODATION = "FIND_ACCOMMODATION",
   BOOKING_HELP = "BOOKING_HELP",
   PAYMENT_HELP = "PAYMENT_HELP",
@@ -34,8 +34,15 @@ const intentPatterns: IntentPattern[] = [
     ],
   },
   {
-    intent: Intent.WHAT_IS_UNISTAY,
+    intent: Intent.WHAT_IS_PEZA,
     patterns: [
+      // Current name
+      "what is peza",
+      "what is peza accommodation",
+      "about peza",
+      "what does peza do",
+      "peza meaning",
+      // Legacy aliases — old name still in some users' memory
       "what is unistay",
       "what is unistayzm",
       "about unistay",
@@ -127,12 +134,21 @@ const intentPatterns: IntentPattern[] = [
       "secure",
       "scams",
       "fraud",
-      "unistay safe",
+      "peza safe",
+      "unistay safe", // legacy alias
     ],
   },
   {
     intent: Intent.SAFETY_HELP,
-    patterns: ["safety", "secure", "scams", "fraud", "unistay safe", "is it safe"],
+    patterns: [
+      "safety",
+      "secure",
+      "scams",
+      "fraud",
+      "peza safe",
+      "unistay safe", // legacy alias
+      "is it safe",
+    ],
   },
   {
     intent: Intent.ACCOUNT_HELP,

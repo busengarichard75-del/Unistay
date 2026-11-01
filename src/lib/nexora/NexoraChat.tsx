@@ -25,7 +25,7 @@ export function NexoraChat() {
     {
       id: "welcome",
       sender: "nexora",
-      text: "👋 Muli bwanji! I'm Nexora, your UniStay assistant. How can I help you find a place today?",
+      text: "👋 Muli bwanji! I'm Peza Assistant, your accommodation helper. How can I help you find a place today?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -85,14 +85,14 @@ export function NexoraChat() {
 
     setTimeout(() => {
       const response: NexoraResponse = processMessage(trimmed);
-      
+
       // ✅ If no match was found (fallback), log the unanswered question
       // We detect the fallback by checking if the response text contains the support number phrase
       // or if it's the generic "I'm not sure about that" message.
       // A more precise way: we could modify the controller to return a flag, but this works.
-      const isFallback = response.text.includes("I'm not sure about that") || 
+      const isFallback = response.text.includes("I'm not sure about that") ||
                          response.text.includes("contact support on +260 0771319817");
-      
+
       if (isFallback && user) {
         // Fire and forget – don't await
         logUnansweredQuestion({
@@ -147,7 +147,7 @@ export function NexoraChat() {
       {isOpen && (
         <div className="mb-4 w-80 max-w-[90vw] rounded-2xl bg-white shadow-xl flex flex-col h-96 overflow-hidden border border-gray-200">
           <div className="flex items-center justify-between bg-[var(--nexora-navy)] px-4 py-3 text-white">
-            <span className="font-semibold">💬 Nexora</span>
+            <span className="font-semibold">💬 Peza Assistant</span>
             <button onClick={handleClose} className="text-gray-300 hover:text-white">
               <X size={20} />
             </button>

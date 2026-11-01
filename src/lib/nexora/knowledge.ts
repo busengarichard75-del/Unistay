@@ -69,6 +69,9 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "what is peza", "what does peza do", "tell me about peza",
       "explain peza", "what is this platform", "what is peza accommodation",
       "what is this app", "what is this website",
+      // Legacy name aliases — old users may still type these
+      "what is unistay", "what is unistayzm", "about unistay",
+      "what does unistay do", "unistay meaning", "tell me about unistay",
     ],
     response:
       "Peza Accommodation is a student housing platform built to help university students in Zambia find, compare, and book boarding houses near their campus. 🏠 You can browse verified listings, filter by budget and distance, request a bed space, and pay a small agent fee to confirm your booking. Want to know how to get started? I can guide you. 😊",
@@ -363,7 +366,7 @@ export const knowledgeBase: KnowledgeEntry[] = [
       "max number of listings",
     ],
     response:
-      "There's currently no strict limit on how many properties you can list as a landlord – feel free to add all your available boarding houses. 🏠 If you run into any issues, reach out to support. 😊",
+      "Each plan has a listing cap: Basic allows up to 15 listings total (products + services combined), Pro allows 50, and Full-Time is unlimited. If you hit your limit, you'll see an upgrade prompt in your provider dashboard. 🏠 If you run into any issues, reach out to support. 😊",
   },
 
   // ==========================================================

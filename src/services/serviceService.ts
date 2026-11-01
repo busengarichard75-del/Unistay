@@ -15,15 +15,18 @@ import {
 import { db } from "@/lib/firebase";
 import { Service } from "@/types/service";
 import { withRetry, shouldRetryRead } from "@/lib/firestoreRetry";
+import { assertUnderListingLimit } from "@/lib/listingLimit";
 
 const servicesRef = collection(db, "services");
 
 /**
  * Create a service.
  * ⚠️ Not retried — writes must not run twice.
+ * ⚠️ Enforces the owner's plan listing cap before writing.
  */
 export async function addService(data: Omit<Service, "id">): Promise<string> {
   try {
+    await assertUnderListingLimit(data.ownerId);
     const docRef = await addDoc(servicesRef, data);
     return docRef.id;
   } catch (error) {
@@ -123,7 +126,7 @@ export async function deleteService(id: string): Promise<void> {
  * Get services in the same category, for "related listings" sidebars.
  *
  * - Excludes a specific ID (the current listing being viewed).
- * - Optional universityId — when provided, prioritizes same-university items.
+ * - Optional universityId — when provided, prioritizes that campus.
  * - Same sort order as browse page (newest first).
  * - ⚡ Network-resilient: 3 attempts × 15s timeout.
  *

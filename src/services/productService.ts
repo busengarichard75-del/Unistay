@@ -15,15 +15,18 @@ import {
 import { db } from "@/lib/firebase";
 import { Product } from "@/types/product";
 import { withRetry, shouldRetryRead } from "@/lib/firestoreRetry";
+import { assertUnderListingLimit } from "@/lib/listingLimit";
 
 const productsRef = collection(db, "products");
 
 /**
  * Create a product.
  * ⚠️ Not retried — writes must not run twice.
+ * ⚠️ Enforces the owner's plan listing cap before writing.
  */
 export async function addProduct(data: Omit<Product, "id">): Promise<string> {
   try {
+    await assertUnderListingLimit(data.ownerId);
     const docRef = await addDoc(productsRef, data);
     return docRef.id;
   } catch (error) {

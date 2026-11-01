@@ -32,7 +32,7 @@ export function processMessage(input: string): NexoraResponse {
   // 4. Special fallback for unknown questions
   if (intent === Intent.UNKNOWN) {
     return {
-      text: "Hmm, I'm not sure about that. 🤔 I can help with UniStay-related questions like accommodation, bookings, payments, and verification. If you need immediate help, you can call us on +260 0771319817. 😊",
+      text: "Hmm, I'm not sure about that. 🤔 I can help with Peza-related questions like accommodation, bookings, payments, and verification. If you need immediate help, you can call us on +260 0771319817. 😊",
     };
   }
 
