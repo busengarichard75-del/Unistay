@@ -1,7 +1,10 @@
 // src/lib/firebase-admin.ts
-import { getApps, getApp, initializeApp, cert, App } from "firebase-admin/app";
-import { getFirestore, Firestore } from "firebase-admin/firestore";
-import { getAuth, Auth } from "firebase-admin/auth";
+import { getApps, getApp, initializeApp, cert } from "firebase-admin/app";
+import type { App } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import type { Firestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import type { Auth } from "firebase-admin/auth";
 
 function getAdminApp(): App {
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -35,5 +38,14 @@ export function getAuthAdmin(): Auth {
   return getAuth(getAdminApp());
 }
 
-// Keep the existing lazy `db` export for backward compatibility
-export const db = getFirestoreDb();
+export function getDb(): Firestore {
+  return getFirestoreDb();
+}
+
+export const db = new Proxy({} as Firestore, {
+  get(_target, prop) {
+    const instance = getFirestoreDb();
+    const value = Reflect.get(instance, prop, instance);
+    return typeof value === "function" ? value.bind(instance) : value;
+  },
+});

@@ -4,7 +4,6 @@ import { Resend } from "resend";
 
 export const runtime = "nodejs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_ADDRESS = "Peza Accommodation <onboarding@resend.dev>";
 const REPLY_TO = "pezaaccommodation@gmail.com";
 const ADMIN_EMAIL = "busengarichard75@gmail.com";
@@ -25,9 +24,13 @@ export async function POST(req: NextRequest) {
     if (!to || !subject || !message) {
       return NextResponse.json({ success: false, error: "Missing fields" }, { status: 400 });
     }
-    if (!process.env.RESEND_API_KEY) {
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
       return NextResponse.json({ success: false, error: "RESEND_API_KEY missing" }, { status: 500 });
     }
+
+    const resend = new Resend(apiKey);
 
     const html = `
 <!DOCTYPE html>

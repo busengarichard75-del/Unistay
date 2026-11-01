@@ -10,8 +10,6 @@ import {
   studentCheckedInTemplate,
 } from "./emailTemplates";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM_ADDRESS = "Peza Accommodation <onboarding@resend.dev>";
 const REPLY_TO = "pezaaccommodation@gmail.com";
 
@@ -73,7 +71,8 @@ function renderTemplate(type: BookingEmailType, params: SendParams) {
 }
 
 export async function sendBookingEmail(params: SendParams): Promise<SendResult> {
-  if (!process.env.RESEND_API_KEY) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
     return { success: false, error: "RESEND_API_KEY not configured" };
   }
   if (!params.to) {
@@ -95,6 +94,8 @@ export async function sendBookingEmail(params: SendParams): Promise<SendResult> 
   }
 
   try {
+    const resend = new Resend(apiKey);
+
     const result = await resend.emails.send({
       from: FROM_ADDRESS,
       to: params.to,
