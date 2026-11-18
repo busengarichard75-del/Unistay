@@ -16,24 +16,10 @@ import { getDailySeed, seededShuffleById } from "@/lib/seededShuffle";
 import { StudyVibesModal } from "@/components/library/StudyVibesModal";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
 import { getCoverArt } from "@/lib/coverArt";
+import { getSavedSnapshot, getEmptySnapshot, subscribe } from "@/lib/savedLibrary";
 import {
-  getSavedSnapshot,
-  getEmptySnapshot,
-  subscribe,
-} from "@/lib/savedLibrary";
-import {
-  Search,
-  BookOpen,
-  Plus,
-  X,
-  SlidersHorizontal,
-  ChevronDown,
-  Flame,
-  Shuffle,
-  Sparkles,
-  Phone,
-  Bookmark,
-  ArrowRight,
+  Search, BookOpen, Plus, X, SlidersHorizontal, ChevronDown,
+  Flame, Shuffle, Sparkles, Phone, Bookmark, ArrowRight,
 } from "lucide-react";
 
 type SortOption = "random" | "newest" | "popular" | "az";
@@ -48,7 +34,6 @@ function pickSpotlight(entries: LibraryEntry[]): LibraryEntry | null {
 
 export default function LibraryPage() {
   const { user } = useAuth();
-
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -59,23 +44,15 @@ export default function LibraryPage() {
   const [showVibes, setShowVibes] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
 
-  const savedSet = useSyncExternalStore(
-    subscribe,
-    getSavedSnapshot,
-    getEmptySnapshot
-  );
+  const savedSet = useSyncExternalStore(subscribe, getSavedSnapshot, getEmptySnapshot);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = new URLSearchParams(window.location.search);
-    const q = p.get("q");
-    if (q) setKeyword(q);
-    const uni = p.get("uni");
-    if (uni) setUniversityId(uni);
-    const cat = p.get("cat");
-    if (cat) setCategory(cat);
-    const s = p.get("sort");
-    if (s === "newest" || s === "popular" || s === "az" || s === "random") setSort(s);
+    if (p.get("q")) setKeyword(p.get("q")!);
+    if (p.get("uni")) setUniversityId(p.get("uni"));
+    if (p.get("cat")) setCategory(p.get("cat"));
+    if (p.get("sort")) setSort(p.get("sort") as SortOption);
     if (p.get("saved") === "1") setShowSavedOnly(true);
   }, []);
 
@@ -112,30 +89,15 @@ export default function LibraryPage() {
   }, [entries]);
 
   const tabCategories = useMemo(
-    () =>
-      LIBRARY_CATEGORIES.map((c) => ({
-        id: c.id,
-        label: c.label,
-        icon: c.icon,
-        count: categoryCounts.get(c.id) || 0,
-      })),
+    () => LIBRARY_CATEGORIES.map((c) => ({
+      id: c.id, label: c.label, icon: c.icon, count: categoryCounts.get(c.id) || 0,
+    })),
     [categoryCounts]
   );
 
-  const emptyCategoryIds = useMemo(() => {
-    if (isFetching) return new Set<string>();
-    const s = new Set<string>();
-    tabCategories.forEach((c) => {
-      if (c.count === 0) s.add(c.id);
-    });
-    return s;
-  }, [tabCategories, isFetching]);
-
   const tabCounts = useMemo(() => {
     const o: Record<string, number> = {};
-    tabCategories.forEach((c) => {
-      o[c.id] = c.count;
-    });
+    tabCategories.forEach((c) => { o[c.id] = c.count; });
     return o;
   }, [tabCategories]);
 
@@ -146,41 +108,27 @@ export default function LibraryPage() {
       if (universityId && e.universityId !== universityId) return false;
       if (category && e.category !== category) return false;
       if (q) {
-        const hay = `${e.title} ${e.description} ${e.courseCode || ""} ${
-          e.uploaderName || ""
-        }`.toLowerCase();
+        const hay = `${e.title} ${e.description} ${e.courseCode || ""} ${e.uploaderName || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
 
     const copy = [...list];
-    if (sort === "random") {
-      return seededShuffleById(copy, `library-${getDailySeed()}`);
-    }
-    if (sort === "newest") {
-      copy.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    } else if (sort === "popular") {
-      copy.sort((a, b) => (b.views || 0) - (a.views || 0));
-    } else if (sort === "az") {
-      copy.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
-    }
+    if (sort === "random") return seededShuffleById(copy, `library-${getDailySeed()}`);
+    if (sort === "newest") copy.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    else if (sort === "popular") copy.sort((a, b) => (b.views || 0) - (a.views || 0));
+    else if (sort === "az") copy.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
     return copy;
   }, [entries, keyword, universityId, category, sort, showSavedOnly, savedSet]);
 
-  const hasAnyFilter =
-    !!keyword || !!universityId || !!category || sort !== "random" || showSavedOnly;
+  const hasAnyFilter = !!keyword || !!universityId || !!category || sort !== "random" || showSavedOnly;
 
-  const trendingEntries = useMemo(
-    () =>
-      [...entries]
-        .filter((e) => (e.views || 0) > 0)
-        .sort((a, b) => (b.views || 0) - (a.views || 0))
-        .slice(0, 3),
-    [entries]
-  );
-  const showTrending =
-    trendingEntries.length >= 2 && !hasAnyFilter && !isFetching;
+  const trendingEntries = useMemo(() => 
+    [...entries].filter((e) => (e.views || 0) > 0).sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 3), 
+  [entries]);
+  
+  const showTrending = trendingEntries.length >= 2 && !hasAnyFilter && !isFetching;
 
   const spotlight = useMemo(
     () => (!hasAnyFilter && !isFetching ? pickSpotlight(entries) : null),
@@ -190,37 +138,17 @@ export default function LibraryPage() {
     () => (spotlight ? getCoverArt(spotlight.id, spotlight.category) : null),
     [spotlight]
   );
-  const gridEntries = spotlight
-    ? filtered.filter((e) => e.id !== spotlight.id)
-    : filtered;
-
-  const selectedCategoryMeta = category
-    ? LIBRARY_CATEGORIES.find((c) => c.id === category)
-    : null;
+  const gridEntries = spotlight ? filtered.filter((e) => e.id !== spotlight.id) : filtered;
 
   const handleClear = () => {
-    setKeyword("");
-    setUniversityId(null);
-    setCategory(null);
-    setSort("random");
-    setShowSavedOnly(false);
-  };
-
-  const sortLabels: Record<SortOption, string> = {
-    random: "Discover (Shuffle)",
-    newest: "Newest first",
-    popular: "Most viewed",
-    az: "A → Z",
+    setKeyword(""); setUniversityId(null); setCategory(null); setSort("random"); setShowSavedOnly(false);
   };
 
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)] w-full max-w-full overflow-x-hidden">
+    <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)] w-[100vw] max-w-[100vw] overflow-x-hidden">
       <Navbar />
 
-      {/* 
-        FIX: Wrapped CategoryTabs in a w-full overflow-x-auto container.
-        This prevents the tabs from stretching the entire page width.
-      */}
+      {/* Force CategoryTabs to scroll internally, NOT stretch the page */}
       {!isFetching && (
         <div className="w-full max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <CategoryTabs
@@ -230,330 +158,146 @@ export default function LibraryPage() {
             counts={tabCounts}
             showAll
             allLabel="All materials"
-            emptyCategoryIds={emptyCategoryIds}
+            emptyCategoryIds={new Set()}
           />
         </div>
       )}
 
-      <div className="container-wide py-4 w-full min-w-0 overflow-hidden">
-        {/* SEARCH + UNIVERSITY + SORT */}
-        <div className="mb-3 space-y-2 w-full">
-          <div className="flex w-full items-center gap-0 overflow-hidden rounded-full border-2 border-[var(--nexora-primary)] bg-white shadow-sm focus-within:ring-4 focus-within:ring-[var(--nexora-primary)]/20">
-            <div className="flex items-center gap-2 pl-3 pr-1 text-[var(--nexora-primary)]">
+      {/* 🔒 Strict full-width container with px-2 to prevent overflow */}
+      <div className="w-full max-w-full px-2 py-3 flex flex-col gap-4">
+        
+        {/* SEARCH & FILTERS */}
+        <div className="w-full flex flex-col gap-2">
+          <div className="flex w-full items-center rounded-full border-2 border-[var(--nexora-primary)] bg-white shadow-sm overflow-hidden">
+            <div className="pl-3 text-[var(--nexora-primary)]">
               <Search size={16} className="shrink-0" />
             </div>
             <input
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Search by title, course code, or uploader..."
-              className="flex-1 min-w-0 bg-transparent py-2.5 pr-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
+              placeholder="Search materials..."
+              className="flex-1 w-full min-w-0 bg-transparent py-2 px-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
             />
             {keyword && (
-              <button
-                onClick={() => setKeyword("")}
-                className="pr-3 text-gray-400 hover:text-gray-600"
-                aria-label="Clear search"
-              >
+              <button onClick={() => setKeyword("")} className="pr-3 text-gray-400">
                 <X size={14} />
               </button>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full">
-            <div className="min-w-0 flex-1">
-              <UniversityFilter
-                selected={universityId}
-                onChange={setUniversityId}
-              />
+          <div className="w-full flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <UniversityFilter selected={universityId} onChange={setUniversityId} />
             </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-2 w-full">
-            <span className="text-[11px] text-gray-500">
-              {filtered.length}{" "}
-              {filtered.length === 1 ? "material" : "materials"}
-              {selectedCategoryMeta && ` · ${selectedCategoryMeta.label}`}
-            </span>
-
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex shrink-0 items-center gap-1.5">
               <button
-                type="button"
                 onClick={() => setShowSavedOnly((v) => !v)}
                 className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                  showSavedOnly
-                    ? "bg-[var(--nexora-primary)] text-white"
-                    : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  showSavedOnly ? "bg-[var(--nexora-primary)] text-white" : "border border-gray-200 bg-white text-gray-700"
                 }`}
               >
                 <Bookmark size={11} className={showSavedOnly ? "fill-white" : ""} />
-                Saved{savedSet.size > 0 ? ` (${savedSet.size})` : ""}
+                Saved
               </button>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowSortMenu((v) => !v)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                >
-                  {sort === "random" ? (
-                    <Shuffle size={11} />
-                  ) : (
-                    <SlidersHorizontal size={11} />
-                  )}
-                  {sortLabels[sort]}
-                  <ChevronDown
-                    size={11}
-                    className={`transition-transform ${
-                      showSortMenu ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {showSortMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-20"
-                      onClick={() => setShowSortMenu(false)}
-                    />
-                    <div className="absolute right-0 top-full z-30 mt-1.5 min-w-[170px] overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-xl">
-                      {(["random", "newest", "popular", "az"] as SortOption[]).map(
-                        (s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => {
-                              setSort(s);
-                              setShowSortMenu(false);
-                            }}
-                            className={`flex w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-xs transition-colors ${
-                              sort === s
-                                ? "bg-[var(--nexora-primary)]/5 font-semibold text-[var(--nexora-primary)]"
-                                : "text-gray-700 hover:bg-gray-50"
-                            }`}
-                          >
-                            <span className="flex items-center gap-2">
-                              {s === "random" && <Shuffle size={12} />}
-                              {sortLabels[s]}
-                            </span>
-                            {sort === s && (
-                              <span className="text-[var(--nexora-primary)]">✓</span>
-                            )}
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+              <button
+                onClick={() => setShowSortMenu((v) => !v)}
+                className="relative inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-700"
+              >
+                {sort === "random" ? <Shuffle size={11} /> : <SlidersHorizontal size={11} />}
+                <ChevronDown size={11} />
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Header + manager phone */}
-        <div className="mb-3">
-          <h1 className="text-xl font-bold text-[var(--nexora-navy)]">
-            📚 Student Library
-          </h1>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Free study materials shared by students, for students
-          </p>
-          <a
-            href="tel:+260767924893"
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
-          >
-            <Phone size={11} />
-            Library Manager · 0767 924 893
+        {/* HEADER & PHONE */}
+        <div className="w-full">
+          <h1 className="text-lg font-bold text-[var(--nexora-navy)]">📚 Student Library</h1>
+          <p className="text-[11px] text-gray-500">Free study materials, shared by students.</p>
+          <a href="tel:+260767924893" className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+            <Phone size={10} /> Library Manager · 0767 924 893
           </a>
         </div>
 
-        {/* Study Vibes */}
-        <div className="mb-4">
-          <button
-            onClick={() => setShowVibes(true)}
-            className="group relative flex w-full items-center justify-between overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 p-0.5 shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
-          >
-            <div className="flex flex-1 items-center gap-3 rounded-lg bg-black/10 p-3 backdrop-blur-sm">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-white ring-2 ring-white/10 transition-all group-hover:ring-white/30">
-                <Sparkles size={18} className="animate-pulse" />
-              </div>
-              <div className="min-w-0 text-left text-white">
-                <p className="flex items-center gap-1.5 text-sm font-extrabold">
-                  Study Vibes
-                  <span className="rounded bg-white/20 px-1.5 py-0 text-[9px] uppercase tracking-wider">
-                    New
-                  </span>
-                </p>
-                <p className="text-[11px] text-white/90">
-                  Tell us your mood, and we'll pick the perfect materials for you.
-                </p>
-              </div>
+        {/* STUDY VIBES */}
+        <button onClick={() => setShowVibes(true)} className="group w-full flex items-center justify-between rounded-xl bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 p-0.5 shadow-sm active:scale-[0.99]">
+          <div className="flex flex-1 items-center gap-2 rounded-lg bg-black/10 p-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">
+              <Sparkles size={14} />
             </div>
-          </button>
-        </div>
+            <div className="text-left text-white min-w-0">
+              <p className="text-xs font-extrabold flex items-center gap-1">Study Vibes <span className="rounded bg-white/20 px-1 py-0 text-[8px] uppercase">New</span></p>
+              <p className="text-[10px] text-white/90 truncate">Tell us your mood, we'll pick for you.</p>
+            </div>
+          </div>
+        </button>
 
-        {/* Material of the Day spotlight */}
+        {/* SPOTLIGHT */}
         {spotlight && spotlightArt && (
-          <Link
-            href={`/library/${spotlight.id}`}
-            className="group relative mb-4 block w-full overflow-hidden rounded-2xl shadow-md transition-shadow hover:shadow-lg"
-            style={{ background: spotlightArt.background }}
-          >
-            <div className="relative p-4">
-              <div className="absolute inset-0 bg-black/25" />
+          <Link href={`/library/${spotlight.id}`} className="relative block w-full overflow-hidden rounded-xl shadow-sm" style={{ background: spotlightArt.background }}>
+            <div className="relative p-3">
+              <div className="absolute inset-0 bg-black/30" />
               <div className="relative text-white">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider opacity-95">
-                  <Sparkles size={11} /> Today's pick
-                </div>
-                <h2 className="mt-1 line-clamp-2 text-base font-extrabold leading-tight sm:text-lg">
-                  {spotlight.title}
-                </h2>
-                <p className="mt-1 flex items-center gap-1 text-[11px] opacity-90">
+                <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider"><Sparkles size={10} /> Today's pick</div>
+                <h2 className="mt-0.5 line-clamp-1 text-sm font-extrabold">{spotlight.title}</h2>
+                <p className="mt-0.5 flex items-center gap-1 text-[10px]">
                   {getUniversityShortLabel(spotlight.universityId)}
-                  {spotlight.courseCode && (
-                    <>
-                      <span>·</span>
-                      {spotlight.courseCode}
-                    </>
-                  )}
-                  <span className="ml-auto inline-flex items-center gap-0.5 font-semibold">
-                    Open <ArrowRight size={11} />
-                  </span>
+                  {spotlight.courseCode && <><span>·</span>{spotlight.courseCode}</>}
                 </p>
               </div>
             </div>
           </Link>
         )}
 
-        {/* Trending — compact horizontal scroll */}
+        {/* TRENDING */}
         {showTrending && (
-          <div className="mb-4 w-full max-w-full">
-            <div className="mb-2 flex items-center gap-1.5 px-0.5">
-              <Flame className="text-orange-500" size={16} />
-              <h2 className="text-sm font-bold text-gray-900">Trending Now</h2>
-              <span className="rounded-full bg-orange-100 px-1.5 py-0 text-[8px] font-bold uppercase tracking-wider text-orange-600">
-                Top 3
-              </span>
+          <div className="w-full max-w-full">
+            <div className="mb-1.5 flex items-center gap-1">
+              <Flame className="text-orange-500" size={14} />
+              <h2 className="text-xs font-bold text-gray-900">Trending Now</h2>
             </div>
-            <div className="flex w-full snap-x gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-full snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {trendingEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="min-w-[200px] max-w-[200px] flex-shrink-0 snap-start"
-                >
-                  <LibraryCard
-                    entry={entry}
-                    variant="horizontal"
-                    isSaved={savedSet.has(entry.id)}
-                  />
+                <div key={entry.id} className="w-[160px] shrink-0 snap-start">
+                  <LibraryCard entry={entry} variant="horizontal" isSaved={savedSet.has(entry.id)} />
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Add material CTA */}
+        {/* SHARE CTA */}
         {user && (
-          <div className="mt-3 w-full">
-            <Link
-              href="/library/new"
-              className="flex w-full items-center gap-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 p-3 text-left text-white shadow-md transition-all hover:scale-[1.01] hover:shadow-lg active:scale-[0.99]"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
-                <Plus size={16} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold">Share your materials</p>
-                <p className="text-[10px] text-white/80">
-                  Upload past papers, notes, or guides to help other students
-                </p>
-              </div>
-            </Link>
-          </div>
+          <Link href="/library/new" className="w-full flex items-center gap-2 rounded-xl bg-indigo-600 p-2.5 text-white shadow-sm active:scale-[0.99]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20"><Plus size={14} /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold">Share your materials</p>
+              <p className="text-[10px] text-white/80 truncate">Upload past papers or notes</p>
+            </div>
+          </Link>
         )}
 
-        {/* GRID (mobile-first: 4 cols) */}
-        <div className="mt-4 w-full">
+        {/* GRID (Mobile First: 3 Cols, scaling up) */}
+        <div className="w-full">
           {isFetching ? (
-            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 sm:gap-2 md:grid-cols-6 lg:grid-cols-8 w-full">
-              {Array.from({ length: 16 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="shimmer rounded-lg bg-white p-1 shadow-sm w-full"
-                >
-                  <div className="aspect-square w-full rounded bg-gray-200" />
-                  <div className="mt-1 h-1.5 w-3/4 rounded bg-gray-200" />
-                  <div className="mt-0.5 h-1.5 w-1/2 rounded bg-gray-200" />
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 w-full">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="shimmer rounded-lg bg-white p-1 shadow-sm w-full">
+                  <div className="aspect-[4/3] w-full rounded bg-gray-200" />
+                  <div className="mt-1 h-2 w-full rounded bg-gray-200" />
+                  <div className="mt-1 h-2 w-2/3 rounded bg-gray-200" />
                 </div>
               ))}
             </div>
-          ) : showSavedOnly && gridEntries.length === 0 ? (
-            <EmptyState
-              emoji="🔖"
-              title="No saved materials yet"
-              message="Tap the bookmark icon on any card to save it for later."
-              actions={[
-                {
-                  label: "Browse all materials",
-                  onClick: () => setShowSavedOnly(false),
-                  variant: "primary",
-                },
-              ]}
-            />
           ) : entries.length === 0 ? (
-            <EmptyState
-              icon={<BookOpen size={28} />}
-              title="The library is just getting started"
-              message="Be the first to share your notes, past papers, or study guides with fellow students."
-              subtitle="It only takes a minute — no file uploads, just a Google Drive link."
-              actions={[
-                {
-                  label: "Share material",
-                  href: "/library/new",
-                  variant: "primary",
-                },
-              ]}
-            />
+            <EmptyState icon={<BookOpen size={28} />} title="Library is empty" message="Be the first to share notes." actions={[{ label: "Share material", href: "/library/new", variant: "primary" }]} />
           ) : gridEntries.length === 0 ? (
-            <EmptyState
-              emoji="🔍"
-              title={keyword ? `No matches for "${keyword}"` : "No matches"}
-              message="We couldn't find this in the library right now. But our concierge team can source it for you!"
-              actions={[
-                {
-                  label: "Ask Peza to find it",
-                  onClick: () =>
-                    window.dispatchEvent(
-                      new CustomEvent("openAskPeza", {
-                        detail: {
-                          defaultQuery: keyword
-                            ? `I need study materials for "${keyword}"`
-                            : "",
-                        },
-                      })
-                    ),
-                  variant: "primary",
-                },
-                ...(hasAnyFilter
-                  ? [
-                      {
-                        label: "Clear all filters",
-                        onClick: handleClear,
-                        variant: "secondary" as const,
-                      },
-                    ]
-                  : []),
-              ]}
-            />
+            <EmptyState emoji="🔍" title="No matches" message="We couldn't find this right now." actions={[{ label: "Clear filters", onClick: handleClear, variant: "primary" }]} />
           ) : (
-            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 sm:gap-2 md:grid-cols-6 lg:grid-cols-8 w-full">
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 w-full">
               {gridEntries.map((entry) => (
-                <LibraryCard
-                  key={entry.id}
-                  entry={entry}
-                  variant="vertical" // ⭐ FORCED VERTICAL
-                  isSaved={savedSet.has(entry.id)}
-                />
+                <LibraryCard key={entry.id} entry={entry} variant="vertical" isSaved={savedSet.has(entry.id)} />
               ))}
             </div>
           )}
@@ -561,12 +305,7 @@ export default function LibraryPage() {
       </div>
 
       <Footer />
-
-      <StudyVibesModal
-        isOpen={showVibes}
-        onClose={() => setShowVibes(false)}
-        entries={entries}
-      />
+      <StudyVibesModal isOpen={showVibes} onClose={() => setShowVibes(false)} entries={entries} />
     </main>
   );
 }
