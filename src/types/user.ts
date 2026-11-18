@@ -7,6 +7,9 @@ export type ProviderType = "service" | "product";
 export type VerificationStatus = "pending" | "approved" | "rejected";
 export type ProviderPlan = "basic" | "pro" | "full_time";
 
+// ⭐ NEW: Service-only plan types
+export type ServicePlan = "free" | "standard" | "pro";
+
 export type ShopAccentColor =
   | "indigo"
   | "emerald"
@@ -50,10 +53,16 @@ export interface User {
   verificationReason?: string | null;
 
   // ─── Subscription / Plans (additive) ───
-  /** The provider's current plan tier. Defaults to basic if undefined. */
+  /** The provider's current plan tier for Products & Properties. Defaults to basic if undefined. */
   plan?: ProviderPlan;
-  /** Timestamp when their paid plan expires and drops to basic. */
+  /** Timestamp when their paid Product plan expires and drops to basic. */
   planExpiry?: number;
+
+  // ⭐ NEW: Service-only plan fields (separate from Product limits)
+  /** The provider's current Service Shop plan. Defaults to free (1 service) if undefined. */
+  servicePlan?: ServicePlan;
+  /** Timestamp when their paid Service plan expires and drops to free. */
+  servicePlanExpiry?: number | null;
 
   // ─── Follows (additive) ───
   followerCount?: number;

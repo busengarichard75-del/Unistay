@@ -341,14 +341,20 @@ function CompactProductCard({ product }: { product: Product }) {
   );
 }
 
-// ─── Ranking (boosted pinned, rest rotate daily) ───
+// ─── Ranking (featured pinned > boosted pinned > rest rotate daily) ───
 function rankServices(services: Service[]): Service[] {
   const available = services.filter(
     (s) => !s.adminHidden && s.status === "available"
   );
 
+  // Tier 1: manually featured by admin — always first
+  const featured = available
+    .filter((s) => s.featuredOnHomepage === true)
+    .sort((a, b) => (b.featuredAt || 0) - (a.featuredAt || 0));
+
+  // Tier 2: paid boosts (excluding already-featured ones to avoid duplicates)
   const boosted = available
-    .filter((s) => isServiceBoosted(s))
+    .filter((s) => s.featuredOnHomepage !== true && isServiceBoosted(s))
     .sort((a, b) => {
       const aV = a.views || 0;
       const bV = b.views || 0;
@@ -356,10 +362,13 @@ function rankServices(services: Service[]): Service[] {
       return (b.boostedAt || 0) - (a.boostedAt || 0);
     });
 
-  const rest = available.filter((s) => !isServiceBoosted(s));
+  // Tier 3: everything else — daily shuffle
+  const rest = available.filter(
+    (s) => s.featuredOnHomepage !== true && !isServiceBoosted(s)
+  );
   const shuffled = seededShuffleById(rest, `services-${getDailySeed()}`);
 
-  return [...boosted, ...shuffled];
+  return [...featured, ...boosted, ...shuffled];
 }
 
 function rankProducts(products: Product[]): Product[] {
@@ -367,8 +376,12 @@ function rankProducts(products: Product[]): Product[] {
     (p) => !p.adminHidden && p.status === "available"
   );
 
+  const featured = available
+    .filter((p) => p.featuredOnHomepage === true)
+    .sort((a, b) => (b.featuredAt || 0) - (a.featuredAt || 0));
+
   const boosted = available
-    .filter((p) => isProductBoosted(p))
+    .filter((p) => p.featuredOnHomepage !== true && isProductBoosted(p))
     .sort((a, b) => {
       const aV = a.views || 0;
       const bV = b.views || 0;
@@ -376,10 +389,12 @@ function rankProducts(products: Product[]): Product[] {
       return (b.boostedAt || 0) - (a.boostedAt || 0);
     });
 
-  const rest = available.filter((p) => !isProductBoosted(p));
+  const rest = available.filter(
+    (p) => p.featuredOnHomepage !== true && !isProductBoosted(p)
+  );
   const shuffled = seededShuffleById(rest, `products-${getDailySeed()}`);
 
-  return [...boosted, ...shuffled];
+  return [...featured, ...boosted, ...shuffled];
 }
 
 function StripSkeleton() {

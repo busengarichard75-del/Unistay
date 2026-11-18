@@ -1,3 +1,4 @@
+// src/app/services/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -10,7 +11,7 @@ import { UniversityFilter } from "@/components/shared/UniversityFilter";
 import { ListingSearchBar } from "@/components/shared/ListingSearchBar";
 import { ListingFilters } from "@/components/shared/ListingFilters";
 import { CategoryTabs } from "@/components/shared/CategoryTabs";
-import { ComingSoonState, NoMatchState } from "@/components/shared/EmptyState";
+import { ComingSoonState } from "@/components/shared/EmptyState";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
 import {
   applyServiceFilters,
@@ -19,7 +20,7 @@ import {
   ListingFilterState,
   SortOption,
 } from "@/lib/filterListings";
-import { Wrench } from "lucide-react";
+import { Wrench, Sparkles } from "lucide-react"; // ⭐ Added Sparkles
 
 const SORT_VALUES: SortOption[] = [
   "featured",
@@ -39,7 +40,6 @@ export default function ServicesPage() {
     DEFAULT_SERVICE_FILTERS
   );
 
-  // ── Read URL params on mount ──
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -65,7 +65,6 @@ export default function ServicesPage() {
     setFilters(next);
   }, []);
 
-  // ── Fetch ──
   useEffect(() => {
     const load = async () => {
       try {
@@ -80,7 +79,6 @@ export default function ServicesPage() {
     load();
   }, []);
 
-  // ── URL sync ──
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams();
@@ -98,7 +96,6 @@ export default function ServicesPage() {
     window.history.replaceState({}, "", next);
   }, [keyword, universityId, filters]);
 
-  // ── Counts per category (used for tab counts + empty detection) ──
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
     services.forEach((s) => {
@@ -107,7 +104,6 @@ export default function ServicesPage() {
     return counts;
   }, [services]);
 
-  // ── Tabs: ALL canonical categories (ordered by SERVICE_CATEGORIES) ──
   const tabCategories = useMemo(() => {
     return SERVICE_CATEGORIES.map((c) => ({
       id: c.id,
@@ -117,7 +113,6 @@ export default function ServicesPage() {
     }));
   }, [categoryCounts]);
 
-  // ── Empty categories (only if we've finished loading; before that we show all as non-empty) ──
   const emptyCategoryIds = useMemo(() => {
     if (isFetching) return new Set<string>();
     const set = new Set<string>();
@@ -135,23 +130,19 @@ export default function ServicesPage() {
     return obj;
   }, [tabCategories]);
 
-  // ── Apply filters + sort ──
   const filtered = useMemo(
     () => applyServiceFilters(services, keyword, universityId, filters),
     [services, keyword, universityId, filters]
   );
 
   const activeCount = countActiveFilters(filters);
-  const hasAnyFilter =
-    activeCount > 0 || !!keyword || !!universityId;
+  const hasAnyFilter = activeCount > 0 || !!keyword || !!universityId;
 
-  // ── Is the selected category empty (no listings at all)? ──
   const selectedCategoryEmpty =
     !!filters.category &&
     !isFetching &&
     (categoryCounts.get(filters.category) || 0) === 0;
 
-  // ── Copy for the "no results" case ──
   const selectedCategoryMeta = filters.category
     ? SERVICE_CATEGORIES.find((c) => c.id === filters.category)
     : null;
@@ -164,11 +155,18 @@ export default function ServicesPage() {
     setFilters({ ...DEFAULT_SERVICE_FILTERS });
   };
 
+  const triggerAskPeza = () => {
+    window.dispatchEvent(
+      new CustomEvent("openAskPeza", {
+        detail: { defaultQuery: keyword ? `I'm looking for "${keyword}" service` : "" }
+      })
+    );
+  };
+
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
       <Navbar />
 
-      {/* ── Category tabs (sticky top) ── */}
       {!isFetching && (
         <CategoryTabs
           categories={tabCategories}
@@ -234,39 +232,41 @@ export default function ServicesPage() {
               ))}
             </div>
           ) : selectedCategoryEmpty && selectedCategoryMeta ? (
-            /* ── Empty category → "coming soon" recruitment state ── */
             <ComingSoonState
               label={selectedCategoryMeta.label}
               emoji={selectedCategoryMeta.icon}
               universityLabel={uniLabel}
             />
           ) : filtered.length === 0 ? (
-            /* ── Filters returned nothing, but category has listings ── */
-            hasAnyFilter ? (
-              <NoMatchState
-                keyword={keyword.trim() || undefined}
-                hasFilters
-                onClear={handleClear}
-              />
-            ) : (
-              <div className="card-premium p-10 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[var(--nexora-primary)]">
-                  <Wrench size={28} />
-                </div>
-                <p className="text-sm font-medium text-[var(--nexora-text-primary)]">
-                  No services yet
-                </p>
-                <p className="mt-1 text-xs text-[var(--nexora-text-secondary)]">
-                  Service providers haven&apos;t added anything yet — check back soon.
-                </p>
-                <a
-                  href="/signup/provider"
-                  className="mt-4 inline-flex items-center rounded-full bg-[var(--nexora-primary)] px-5 py-2 text-xs font-semibold text-white hover:bg-[var(--nexora-primary-hover)]"
-                >
-                  Become a provider
-                </a>
+            /* ⭐ CUSTOM EMPTY STATE WITH ASK PEZA */
+            <div className="py-16 text-center rounded-2xl bg-white shadow-sm border border-gray-100">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-cyan-50 text-cyan-600">
+                <Wrench size={28} />
               </div>
-            )
+              <h3 className="text-xl font-bold text-gray-900">
+                {keyword ? `No matches for "${keyword}"` : "No services found"}
+              </h3>
+              <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">
+                We couldn't find this service right now. But tell us what you need and our team will find a provider for you!
+              </p>
+              
+              <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <button
+                  onClick={triggerAskPeza}
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-2.5 text-sm font-bold text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+                >
+                  <Sparkles size={16} /> Ask Peza to find it
+                </button>
+                {hasAnyFilter && (
+                  <button
+                    onClick={handleClear}
+                    className="rounded-full bg-gray-100 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {filtered.map((s) => (

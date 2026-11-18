@@ -1,5 +1,3 @@
-// src/types/service.ts
-
 export type ServiceCategory =
   | "barber"
   | "printing"
@@ -85,6 +83,11 @@ export interface Service {
   // ─── Flash deals ───
   discountPercent?: number;
   discountExpiresAt?: number;
+
+  // ─── Homepage featuring (admin-controlled) ───
+  featuredOnHomepage?: boolean;
+  featuredAt?: number;
+  featuredBy?: string;
 }
 
 // ─────────────────────────────────────────────────────────

@@ -1,8 +1,9 @@
+// src/app/page.tsx
 "use client";
 
 import { Suspense } from "react";
 import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic"; // ⚡ Import dynamic
+import dynamic from "next/dynamic";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Hero } from "@/components/hero/Hero";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
@@ -13,7 +14,7 @@ import { Footer } from "@/components/footer/Footer";
 import { getAllProperties } from "@/services/propertyService";
 import { Property } from "@/types/property";
 import { useAuth } from "@/lib/AuthContext";
-import { Sparkles, WifiOff, RefreshCw } from "lucide-react";
+import { Sparkles, WifiOff, RefreshCw, Home as HomeIcon } from "lucide-react"; // ⭐ Renamed Home to HomeIcon
 import { WhyPezaSection } from "@/components/home/WhyPezaSection";
 import { ExplorePezaSection } from "@/components/home/ExplorePezaSection";
 import { FeaturedStrip } from "@/components/home/FeaturedStrip";
@@ -25,7 +26,6 @@ import {
   ListingFilterState,
 } from "@/lib/filterListings";
 
-// ⚡ Lazy load heavy components that aren't needed immediately
 const PreferenceModal = dynamic(
   () => import("@/components/find-my-best-house/PreferenceModal").then((mod) => mod.PreferenceModal),
   { ssr: false }
@@ -105,10 +105,8 @@ function HomeContent() {
 
     const prefiltered = properties.filter((property) => {
       if (property.isActive === false) return false;
-
       const price = property.price ?? 0;
       if (price < min || price > max) return false;
-
       return true;
     });
 
@@ -117,6 +115,18 @@ function HomeContent() {
 
   const handleRetry = () => {
     setRetryKey((k) => k + 1);
+  };
+
+  const triggerAskPeza = () => {
+    window.dispatchEvent(
+      new CustomEvent("openAskPeza", {
+        detail: { 
+          defaultQuery: keyword 
+            ? `I'm looking for a room matching "${keyword}"` 
+            : "I need a room near campus" 
+        }
+      })
+    );
   };
 
   if (error) {
@@ -159,11 +169,8 @@ function HomeContent() {
       <Navbar />
 
       <AnnouncementBanner />
-
       <Hero />
-
       <ExplorePezaSection onAccommodationSearch={setKeyword} />
-
       <FeaturedStrip />
 
       {isStudent && (
@@ -173,12 +180,10 @@ function HomeContent() {
               <h3 className="text-lg font-semibold text-[var(--nexora-navy)]">
                 🧭 Find My Best House
               </h3>
-
               <p className="text-sm text-gray-600">
                 Tell us what matters to you. We&apos;ll find your best matches.
               </p>
             </div>
-
             <button
               onClick={() => setShowFindModal(true)}
               className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--nexora-primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
@@ -192,14 +197,12 @@ function HomeContent() {
 
       <div className="container-wide space-y-4 pt-6">
         <SearchBar value={keyword} onChange={setKeyword} />
-
         <PriceFilter
           minPrice={minPrice}
           maxPrice={maxPrice}
           onMinChange={setMinPrice}
           onMaxChange={setMaxPrice}
         />
-
         <ListingFilters
           mode="properties"
           filters={filters}
@@ -213,10 +216,7 @@ function HomeContent() {
         <div className="container-wide pb-8 pt-4">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="animate-pulse rounded-2xl bg-white p-5 shadow-sm"
-              >
+              <div key={i} className="animate-pulse rounded-2xl bg-white p-5 shadow-sm">
                 <div className="mb-3 h-40 w-full rounded-xl bg-gray-200" />
                 <div className="mb-2 h-5 w-3/4 rounded bg-gray-200" />
                 <div className="mb-3 h-4 w-1/3 rounded bg-gray-200" />
@@ -230,9 +230,38 @@ function HomeContent() {
           </div>
         </div>
       ) : filteredProperties.length === 0 ? (
-        <p className="container-wide p-8 text-center text-sm text-[var(--nexora-text-secondary)]">
-          No properties match your filters. Try adjusting your search or price range.
-        </p>
+        /* ⭐ CUSTOM EMPTY STATE WITH ASK PEZA */
+        <div className="container-wide py-16 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[var(--nexora-primary)]">
+            <HomeIcon size={28} /> {/* ⭐ Using the renamed icon */}
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">
+            {keyword ? `No rooms found for "${keyword}"` : "No matches found"}
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">
+            We don't have this specific room right now, but our concierge team can source it for you. Just tell us your budget and preferred area!
+          </p>
+          
+          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <button
+              onClick={triggerAskPeza}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-2.5 text-sm font-bold text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+            >
+              <Sparkles size={16} /> Ask Peza to find it
+            </button>
+            <button
+              onClick={() => {
+                setKeyword("");
+                setMinPrice("");
+                setMaxPrice("");
+                setFilters({ ...DEFAULT_PROPERTY_FILTERS });
+              }}
+              className="rounded-full bg-gray-100 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            >
+              Clear all filters
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="container-wide pb-8 pt-4">
           <PropertyGrid
@@ -243,10 +272,8 @@ function HomeContent() {
       )}
 
       <WhyPezaSection />
-
       <Footer />
 
-      {/* ⚡ These only download if the user interacts with them */}
       <NexoraChat />
 
       {showFindModal && (

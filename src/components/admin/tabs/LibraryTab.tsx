@@ -1,7 +1,7 @@
 // src/components/admin/tabs/LibraryTab.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -11,9 +11,14 @@ import {
   updateLibraryEntry,
   deleteLibraryEntry,
 } from "@/services/libraryService";
-import { LibraryEntry, getLibraryCategoryMeta } from "@/types/library";
+import {
+  LibraryEntry,
+  getLibraryCategoryMeta,
+  LIBRARY_CATEGORIES,
+} from "@/types/library";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
 import { timeAgo } from "@/lib/timeUtils";
+import { universities } from "@/data/universities";
 import {
   CheckCircle2,
   XCircle,
@@ -23,16 +28,25 @@ import {
   EyeOff,
   ExternalLink,
   BookOpen,
+  Search,
+  Filter,
+  GraduationCap,
 } from "lucide-react";
 
-type Tab = "pending" | "approved";
+type Tab = "pending" | "approved" | "hidden";
 
 export function LibraryTab() {
   const [tab, setTab] = useState<Tab>("pending");
   const [pending, setPending] = useState<LibraryEntry[]>([]);
   const [approved, setApproved] = useState<LibraryEntry[]>([]);
+  const [hidden, setHidden] = useState<LibraryEntry[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [universityFilter, setUniversityFilter] = useState<string>("all");
 
   const loadAll = async () => {
     try {
@@ -82,6 +96,10 @@ export function LibraryTab() {
         updatedAt: Date.now(),
       });
       setPending((prev) => prev.filter((e) => e.id !== entry.id));
+      setHidden((prev) => [
+        { ...entry, status: "rejected", adminHiddenReason: reason.trim() },
+        ...prev,
+      ]);
       toast.success("Rejected.");
     } catch {
       toast.error("Failed to reject.");
@@ -100,6 +118,7 @@ export function LibraryTab() {
         updatedAt: Date.now(),
       });
       setApproved((prev) => prev.filter((e) => e.id !== entry.id));
+      setHidden((prev) => [{ ...entry, adminHidden: true }, ...prev]);
       toast.success("Hidden from public view.");
     } catch {
       toast.error("Failed to hide.");
@@ -120,6 +139,7 @@ export function LibraryTab() {
       await deleteLibraryEntry(entry.id);
       setPending((prev) => prev.filter((e) => e.id !== entry.id));
       setApproved((prev) => prev.filter((e) => e.id !== entry.id));
+      setHidden((prev) => prev.filter((e) => e.id !== entry.id));
       toast.success("Deleted permanently.");
     } catch {
       toast.error("Failed to delete.");
@@ -128,12 +148,27 @@ export function LibraryTab() {
     }
   }
 
-  const currentList = tab === "pending" ? pending : approved;
+  const currentSource =
+    tab === "pending" ? pending : tab === "approved" ? approved : hidden;
+
+  const currentList = useMemo(() => {
+    return currentSource.filter((e) => {
+      const q = search.toLowerCase().trim();
+      if (q) {
+        const hay = `${e.title} ${e.description || ""} ${e.courseCode || ""} ${e.uploaderName || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (categoryFilter !== "all" && e.category !== categoryFilter) return false;
+      if (universityFilter !== "all" && e.universityId !== universityFilter)
+        return false;
+      return true;
+    });
+  }, [currentSource, search, categoryFilter, universityFilter]);
 
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-amber-800/50 bg-amber-900/10 p-4">
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">Pending</span>
@@ -149,6 +184,13 @@ export function LibraryTab() {
           <p className="mt-1 text-2xl font-bold text-white">
             {approved.length}
           </p>
+        </div>
+        <div className="rounded-xl border border-gray-800/50 bg-gray-900/20 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">Hidden / Rejected</span>
+            <EyeOff size={14} className="text-gray-400" />
+          </div>
+          <p className="mt-1 text-2xl font-bold text-white">{hidden.length}</p>
         </div>
       </div>
 
@@ -170,6 +212,65 @@ export function LibraryTab() {
           count={approved.length}
           accent="green"
         />
+        <TabBtn
+          active={tab === "hidden"}
+          onClick={() => setTab("hidden")}
+          icon={<EyeOff size={14} />}
+          label="Hidden"
+          count={hidden.length}
+          accent="gray"
+        />
+      </div>
+
+      {/* Filters */}
+      <div className="space-y-2">
+        <div className="relative">
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by title, course code, or uploader..."
+            className="w-full rounded-lg bg-gray-800 border border-gray-700 pl-10 pr-4 py-2 text-sm text-white placeholder-gray-400 outline-none focus:border-blue-500"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 flex-1 min-w-[180px]">
+            <Filter size={16} className="text-gray-400 shrink-0" />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="bg-transparent text-sm text-white outline-none w-full cursor-pointer"
+            >
+              <option value="all" className="bg-gray-800">All Categories</option>
+              {LIBRARY_CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id} className="bg-gray-800">
+                  {c.icon} {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 flex-1 min-w-[180px]">
+            <GraduationCap size={16} className="text-gray-400 shrink-0" />
+            <select
+              value={universityFilter}
+              onChange={(e) => setUniversityFilter(e.target.value)}
+              className="bg-transparent text-sm text-white outline-none w-full cursor-pointer"
+            >
+              <option value="all" className="bg-gray-800">All Universities</option>
+              {universities.map((u: any) => (
+                <option key={u.id} value={u.id} className="bg-gray-800">
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Content */}
@@ -187,9 +288,13 @@ export function LibraryTab() {
           <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-10 text-center">
             <BookOpen size={28} className="mx-auto text-gray-700" />
             <p className="mt-2 text-sm text-gray-500">
-              {tab === "pending"
+              {search || categoryFilter !== "all" || universityFilter !== "all"
+                ? "No materials match your filters."
+                : tab === "pending"
                 ? "No pending library materials."
-                : "No approved materials yet."}
+                : tab === "approved"
+                ? "No approved materials yet."
+                : "No hidden or rejected materials."}
             </p>
           </div>
         ) : (
@@ -226,12 +331,14 @@ function TabBtn({
   icon: React.ReactNode;
   label: string;
   count: number;
-  accent: "amber" | "green";
+  accent: "amber" | "green" | "gray";
 }) {
   const activeClass =
     accent === "amber"
       ? "bg-amber-600 text-white"
-      : "bg-green-600 text-white";
+      : accent === "green"
+      ? "bg-green-600 text-white"
+      : "bg-gray-700 text-white";
 
   return (
     <button
@@ -288,6 +395,11 @@ function AdminEntryRow({
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold text-white">
             {entry.title}
+            {tab === "hidden" && (entry as any).adminHiddenReason && (
+              <span className="ml-2 text-[10px] text-red-400 font-normal">
+                ({ (entry as any).adminHiddenReason })
+              </span>
+            )}
           </h3>
 
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-400">
@@ -363,6 +475,13 @@ function AdminEntryRow({
               Hide
             </button>
           </>
+        )}
+
+        {tab === "hidden" && (
+          <span className="inline-flex items-center gap-1 rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2 text-xs text-gray-500">
+            <EyeOff size={12} />
+            Hidden from public
+          </span>
         )}
 
         <button

@@ -15,6 +15,7 @@ import {
   EyeOff,
   Trash2,
   CreditCard,
+  Key,
 } from "lucide-react";
 
 // ─── Shared shell ──────────────────────────────────────────────
@@ -661,6 +662,7 @@ export function ViewUserProfileModal({
   onDirectMessage,
   onSendEmail,
   onToggleSuspend,
+  onForcePasswordReset,
 }: {
   profile: UserProfileData;
   loading: boolean;
@@ -668,6 +670,7 @@ export function ViewUserProfileModal({
   onDirectMessage: () => void;
   onSendEmail: () => void;
   onToggleSuspend: () => void;
+  onForcePasswordReset?: () => void;
 }) {
   const isLandlord = profile.role === "landlord";
   const isProvider = profile.role === "service_provider";
@@ -723,7 +726,11 @@ export function ViewUserProfileModal({
         </div>
 
         {/* Action buttons */}
-        <div className="grid grid-cols-3 gap-2">
+        <div
+          className={`grid gap-2 ${
+            onForcePasswordReset ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
+          }`}
+        >
           <button
             onClick={onDirectMessage}
             className="flex flex-col items-center gap-1.5 rounded-lg bg-blue-900/30 border border-blue-800/50 p-3 hover:bg-blue-900/50 transition-colors"
@@ -751,6 +758,16 @@ export function ViewUserProfileModal({
               {profile.suspended ? "Unsuspend" : "Suspend"}
             </span>
           </button>
+
+          {onForcePasswordReset && (
+            <button
+              onClick={onForcePasswordReset}
+              className="flex flex-col items-center gap-1.5 rounded-lg bg-amber-900/30 border border-amber-800/50 p-3 hover:bg-amber-900/50 transition-colors"
+            >
+              <Key size={16} className="text-amber-400" />
+              <span className="text-[11px] font-medium text-amber-200">Reset Password</span>
+            </button>
+          )}
         </div>
 
         {/* Listings (landlord or provider) */}

@@ -23,14 +23,28 @@ export type AuditAction =
   | "publish_announcement"
   | "hide_announcement"
   | "schedule_announcement"
-  | "toggle_boost";
+  | "toggle_boost"
+  // ─── New in v4.0 ───
+  | "delete_listing"
+  | "hide_listing"
+  | "unhide_listing"
+  | "update_plan"
+  | "force_password_reset";
 
 export interface AuditEntry {
   id: string;
   adminId: string;
   adminEmail: string;
   action: AuditAction;
-  targetType: "property" | "user" | "booking" | "settings" | "announcement" | "system";
+  targetType:
+    | "property"
+    | "service"
+    | "product"
+    | "user"
+    | "booking"
+    | "settings"
+    | "announcement"
+    | "system";
   targetId: string;
   targetLabel: string;
   details?: string;

@@ -1,3 +1,4 @@
+// src/app/map/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -12,6 +13,11 @@ import type { Property } from "@/types/property";
 import type { Service } from "@/types/service";
 import type { Product } from "@/types/product";
 import { Home, Wrench, ShoppingBag, Layers, Navigation } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import { isAdminEmail } from "@/lib/admin";
+import { hideProperty } from "@/services/adminActionsService";
+import { hideListingAdmin } from "@/services/adminPowerService";
+import { toast } from "sonner";
 
 const PezaMap = dynamic(
   () => import("@/components/map/PezaMap").then((mod) => mod.PezaMap),
@@ -34,6 +40,9 @@ const FILTERS: { id: MapFilter; label: string; icon: typeof Layers }[] = [
 ];
 
 export default function MapPage() {
+  const { user } = useAuth();
+  const isAdmin = isAdminEmail(user?.email);
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -48,7 +57,8 @@ export default function MapPage() {
           getAllServices(),
           getAllProducts(),
         ]);
-        setProperties(p.filter((x) => x.isActive !== false));
+        // Filter out hidden items immediately on load
+        setProperties(p.filter((x) => x.isActive !== false && !x.adminHidden));
         setServices(s.filter((x) => !x.adminHidden));
         setProducts(pr.filter((x) => !x.adminHidden));
       } catch {
@@ -84,18 +94,51 @@ export default function MapPage() {
     return { room, svc, prod, total: markers.length };
   }, [markers]);
 
+  const handleAdminHide = async (marker: MapMarker) => {
+    if (!user) return;
+    
+    const reason = window.prompt("Reason for hiding this listing from the map (shown to the owner):");
+    if (!reason) return;
+
+    const ctx = { adminId: user.uid, adminEmail: user.email };
+    
+    try {
+      if (marker.kind === "property") {
+        await hideProperty(ctx, marker.data.id, marker.data.title, marker.data.ownerId, reason);
+        setProperties((prev) => prev.filter((p) => p.id !== marker.data.id));
+      } else if (marker.kind === "service") {
+        await hideListingAdmin(ctx, "service", marker.data.id, marker.data.title, reason);
+        setServices((prev) => prev.filter((s) => s.id !== marker.data.id));
+      } else if (marker.kind === "product") {
+        await hideListingAdmin(ctx, "product", marker.data.id, marker.data.name, reason);
+        setProducts((prev) => prev.filter((p) => p.id !== marker.data.id));
+      }
+      toast.success("Listing removed from the map.");
+    } catch (err) {
+      toast.error("Failed to hide listing.");
+      console.error(err);
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
       <Navbar />
 
       <div className="container-wide py-6">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-[var(--nexora-navy)]">
-            🗺️ Peza Map
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Everything near you — rooms, services, and products on one map.
-          </p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--nexora-navy)]">
+              🗺️ Peza Map
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Everything near you — rooms, services, and products on one map.
+            </p>
+          </div>
+          {isAdmin && (
+            <div className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700 border border-red-200">
+              Admin Mode Active
+            </div>
+          )}
         </div>
 
         {/* Filters */}
@@ -155,10 +198,12 @@ export default function MapPage() {
           </div>
         ) : (
           <PezaMap
+            key={markers.length} // ⭐ FORCES MAP TO RE-DRAW WHEN ITEMS ARE REMOVED
             markers={markers}
             filter={filter}
             height="min(70vh, 700px)"
             showUserLocation={true}
+            onAdminHide={isAdmin ? handleAdminHide : undefined}
           />
         )}
 

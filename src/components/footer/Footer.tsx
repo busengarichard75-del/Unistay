@@ -1,15 +1,7 @@
+// src/components/footer/Footer.tsx
 import Link from "next/link";
 import {
-  Phone,
-  Mail,
-  MapPin,
-  Home,
-  HelpCircle,
-  Shield,
-  Heart,
-  Info,
-  MessageCircle,
-  BookOpen, // ⚡ Imported BookOpen for the Guides icon
+  Phone, Mail, MapPin, Home, HelpCircle, Shield, Heart, Info, MessageCircle, BookOpen, Building2, Newspaper
 } from "lucide-react";
 
 export function Footer() {
@@ -20,7 +12,7 @@ export function Footer() {
           {/* About */}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-900">
-              About Peza
+              About Peza ZM
             </h3>
             <p className="text-sm leading-relaxed text-gray-600">
               Accommodation, services, marketplace, and a free study library —
@@ -47,7 +39,9 @@ export function Footer() {
                 <span>pezaaccommodation@gmail.com</span>
               </p>
             </div>
-            <p className="mt-3 text-xs text-gray-400">A Nexora Tech product</p>
+            <Link href="/about/busenga-technologies" className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline">
+              <Building2 size={14} /> Operated by Busenga Technologies
+            </Link>
           </div>
 
           {/* Quick Links */}
@@ -57,49 +51,28 @@ export function Footer() {
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link
-                  href="/"
-                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
-                  <Home size={16} />
-                  Home
-                </Link>
-              </li>
-              {/* ⚡ Added Guides Link */}
-              <li>
-                <Link
-                  href="/guides"
-                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
-                  <BookOpen size={16} />
-                  Student Guides
+                <Link href="/" className="flex items-center gap-2 text-gray-600 transition-colors hover:text-blue-600">
+                  <Home size={16} /> Home
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/why-peza"
-                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
-                  <Info size={16} />
-                  About Peza
+                <Link href="/articles" className="flex items-center gap-2 text-gray-600 transition-colors hover:text-blue-600">
+                  <Newspaper size={16} /> Peza Insights
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/help"
-                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
-                  <MessageCircle size={16} />
-                  Contact Us
+                <Link href="/guides" className="flex items-center gap-2 text-gray-600 transition-colors hover:text-blue-600">
+                  <BookOpen size={16} /> Student Guides
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/help"
-                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
-                  <HelpCircle size={16} />
-                  Help & How It Works
+                <Link href="/why-peza" className="flex items-center gap-2 text-gray-600 transition-colors hover:text-blue-600">
+                  <Info size={16} /> Why Peza
+                </Link>
+              </li>
+              <li>
+                <Link href="/help" className="flex items-center gap-2 text-gray-600 transition-colors hover:text-blue-600">
+                  <MessageCircle size={16} /> Contact Us
                 </Link>
               </li>
             </ul>
@@ -112,71 +85,56 @@ export function Footer() {
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link
-                  href="/legal#privacy"
-                  className="text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
+                <Link href="/legal#privacy" className="text-gray-600 transition-colors hover:text-blue-600">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/legal#terms"
-                  className="text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
+                <Link href="/legal#terms" className="text-gray-600 transition-colors hover:text-blue-600">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/legal"
-                  className="flex items-center gap-2 text-gray-600 transition-colors hover:text-[var(--nexora-primary)]"
-                >
-                  <Shield size={16} />
-                  All Policies
+                <Link href="/refund-policy" className="text-gray-600 transition-colors hover:text-blue-600">
+                  Refund Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/legal" className="flex items-center gap-2 text-gray-600 transition-colors hover:text-blue-600">
+                  <Shield size={16} /> All Policies
                 </Link>
               </li>
               <li className="text-gray-500">
                 <span className="flex items-center gap-1">
-                  <MapPin size={14} />
-                  Lusaka, Zambia
+                  <MapPin size={14} /> Lusaka, Zambia
                 </span>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* ⚡ SEO Campus Links */}
+        {/* SEO Campus Links */}
         <div className="mt-10 border-t border-gray-100 pt-6">
           <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
             Popular Campuses
           </h4>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-500">
-            <Link href="/housing/unza" className="hover:text-[var(--nexora-primary)] hover:underline">
-              UNZA Accommodation
-            </Link>
-            <Link href="/housing/cbu" className="hover:text-[var(--nexora-primary)] hover:underline">
-              CBU Accommodation
-            </Link>
-            <Link href="/housing/mukuba" className="hover:text-[var(--nexora-primary)] hover:underline">
-              Mukuba Accommodation
-            </Link>
-            <Link href="/housing/mulungushi" className="hover:text-[var(--nexora-primary)] hover:underline">
-              Mulungushi Accommodation
-            </Link>
-            <Link href="/housing/unilus" className="hover:text-[var(--nexora-primary)] hover:underline">
-              UNILUS Accommodation
-            </Link>
-            <Link href="/housing/cavendish" className="hover:text-[var(--nexora-primary)] hover:underline">
-              Cavendish Accommodation
-            </Link>
+            <Link href="/housing/unza" className="hover:text-blue-600 hover:underline">UNZA Accommodation</Link>
+            <Link href="/housing/cbu" className="hover:text-blue-600 hover:underline">CBU Accommodation</Link>
+            <Link href="/housing/mukuba" className="hover:text-blue-600 hover:underline">Mukuba Accommodation</Link>
+            <Link href="/housing/mulungushi" className="hover:text-blue-600 hover:underline">Mulungushi Accommodation</Link>
+            <Link href="/housing/unilus" className="hover:text-blue-600 hover:underline">UNILUS Accommodation</Link>
+            <Link href="/housing/cavendish" className="hover:text-blue-600 hover:underline">Cavendish Accommodation</Link>
           </div>
         </div>
 
         {/* Bottom bar */}
         <div className="mt-8 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
+          <p className="mb-1">
+            Peza ZM is a digital platform operated by <strong>Busenga Technologies</strong>, a registered business name in Zambia.
+          </p>
           <p>
-            &copy; {new Date().getFullYear()} Peza. All rights reserved.
+            &copy; {new Date().getFullYear()} Busenga Technologies. All rights reserved. | Reg No: 320261082152
           </p>
         </div>
       </div>

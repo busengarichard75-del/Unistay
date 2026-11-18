@@ -1,9 +1,10 @@
+// src/app/legal/page.tsx
 import Link from "next/link";
 import { ArrowLeft, Shield, FileText, Mail, Phone } from "lucide-react";
 
 export const metadata = {
-  title: "Trust & Legal – Peza",
-  description: "Privacy Policy, Terms of Service, and contact information for Peza.",
+  title: "Trust & Legal – Peza ZM",
+  description: "Privacy Policy, Terms of Service, and contact information for Peza ZM, operated by Busenga Technologies.",
 };
 
 export default function LegalPage() {
@@ -36,7 +37,7 @@ export default function LegalPage() {
 
             <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
               <p>
-                <strong>Peza</strong> (operated in Zambia) respects your privacy. This policy explains how we collect, use, and protect your personal data.
+                <strong>Peza ZM</strong> is a digital platform operated by <strong>Busenga Technologies</strong>, a registered business in Zambia. We respect your privacy. This policy explains how we collect, use, and protect your personal data.
               </p>
 
               <div>
@@ -123,7 +124,7 @@ export default function LegalPage() {
 
             <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
               <p>
-                By using Peza, you agree to the following terms. Please read them carefully.
+                By using Peza ZM (operated by Busenga Technologies), you agree to the following terms. Please read them carefully.
               </p>
 
               <div>
@@ -201,7 +202,7 @@ export default function LegalPage() {
               <div>
                 <h3 className="font-semibold text-gray-800">10. Governing Law</h3>
                 <p className="text-gray-600">
-                  These terms are governed by the laws of the Republic of Zambia.
+                  These terms are governed by the laws of the Republic of Zambia. Peza ZM is operated by Busenga Technologies, a registered business name in Zambia.
                 </p>
               </div>
 

@@ -1,8 +1,7 @@
 // src/app/robots.ts
 import type { MetadataRoute } from "next";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -11,7 +10,6 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         disallow: [
-          // Private / auth pages
           "/api/",
           "/admin/",
           "/admin",
@@ -30,6 +28,20 @@ export default function robots(): MetadataRoute.Robots {
           "/find-my-best-house/",
         ],
       },
+      {
+        // Explicitly allow AI and Search Bots to index the main site and the business page
+        userAgent: [
+          "GPTBot", 
+          "OAI-SearchBot", 
+          "ChatGPT-User", 
+          "Claude-Web", 
+          "PerplexityBot", 
+          "Googlebot", 
+          "Bingbot"
+        ],
+        allow: ["/", "/about/busenga-technologies", "/legal"],
+        disallow: ["/api/", "/admin/", "/dashboard/"],
+      }
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,

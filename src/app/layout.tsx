@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
@@ -12,38 +13,34 @@ import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 import { WebVitals } from "@/components/WebVitals";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
 
 const DEFAULT_TITLE = "Peza — Find what you need on campus";
 const DEFAULT_DESCRIPTION =
-  "Accommodation, services, and marketplace for Zambian students. Find rooms near your campus, book a barber, buy a phone — all in one place.";
+  "Accommodation, services, and marketplace for Zambian students. Find rooms near your campus, book a barber, buy a phone — all in one place. Operated by Busenga Technologies.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: DEFAULT_TITLE,
-    template: "%s | Peza",
+    template: "%s | Peza ZM",
   },
   description: DEFAULT_DESCRIPTION,
   keywords: [
-    "Peza", "student accommodation Zambia", "student housing", "campus rooms",
-    "student marketplace", "student services", "MUKUBA", "UNZA", "CBU", "hostels near campus",
+    "Peza", "Peza ZM", "Busenga Technologies", "student accommodation Zambia", 
+    "student housing", "campus rooms", "student marketplace", "student services", 
+    "MUKUBA", "UNZA", "CBU", "hostels near campus",
   ],
-  authors: [{ name: "Peza" }],
-  creator: "Peza",
-  publisher: "Peza",
-
-  // Icons are NOT set here on purpose.
-  // Next.js automatically uses favicon.ico, icon.png and apple-icon.png
-  // from the src/app folder.
+  authors: [{ name: "Busenga Technologies" }],
+  creator: "Busenga Technologies",
+  publisher: "Busenga Technologies",
 
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
-    siteName: "Peza",
+    siteName: "Peza ZM",
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
     url: "/",
@@ -53,7 +50,7 @@ export const metadata: Metadata = {
         url: "/og-default.png",
         width: 1200,
         height: 630,
-        alt: "Peza — Find what you need on campus",
+        alt: "Peza ZM — Find what you need on campus",
       },
     ],
   },
@@ -75,7 +72,7 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  applicationName: "Peza",
+  applicationName: "Peza ZM",
   category: "marketplace",
   verification: {
     google: "nu7rNbVJIN6RBZ7XYMbEB68xGfvl4z5EIamOAhAeHU4",
@@ -89,27 +86,32 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-// Structured data: tells search engines and AI tools what Peza is
+// Structured data: tells search engines and AI tools about the business relationship
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "Organization",
-      "@id": `${SITE_URL}/#organization`,
-      name: "Peza",
+      "@id": `${SITE_URL}/#busenga`,
+      name: "Busenga Technologies",
       url: SITE_URL,
       logo: `${SITE_URL}/og-default.png`,
-      description: DEFAULT_DESCRIPTION,
+      description: "Busenga Technologies is a registered business in Zambia operating Peza ZM, a comprehensive digital platform for students.",
       areaServed: { "@type": "Country", name: "Zambia" },
+      identifier: {
+        "@type": "PropertyValue",
+        name: "PACRA Business Registration Number",
+        value: "320261082152"
+      }
     },
     {
       "@type": "WebSite",
       "@id": `${SITE_URL}/#website`,
       url: SITE_URL,
-      name: "Peza",
+      name: "Peza ZM",
       description: DEFAULT_DESCRIPTION,
       inLanguage: "en-ZM",
-      publisher: { "@id": `${SITE_URL}/#organization` },
+      publisher: { "@id": `${SITE_URL}/#busenga` },
     },
   ],
 };
@@ -120,16 +122,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={cn("h-full", "antialiased", "font-sans")}
-    >
+    <html lang="en" className={cn("h-full", "antialiased", "font-sans")}>
       <head>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {/* GA4 loads after the page is interactive so it doesn't slow first load */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=G-6VCP2PHEB8`}
           strategy="afterInteractive"

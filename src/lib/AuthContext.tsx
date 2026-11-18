@@ -7,7 +7,7 @@ import {
   signOut as firebaseSignOut,
   reload as reloadFirebaseUser,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { User } from "@/types/user";
 
@@ -54,12 +54,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           whatsapp: data.whatsapp,
           businessName: data.businessName,
           providerType: data.providerType,
-          photoURL: data.photoURL || undefined,          // ← FIX: was missing
-          shopSettings: data.shopSettings || undefined,  // ← NEW
+          photoURL: data.photoURL || undefined,
+          shopSettings: data.shopSettings || undefined,
           verificationStatus: data.verificationStatus,
           verificationReviewedAt: data.verificationReviewedAt,
           verificationReviewedBy: data.verificationReviewedBy,
           verificationReason: data.verificationReason,
+          // ⭐ THE MISSING FIELDS — these were never being read back
+          plan: data.plan,
+          planExpiry: data.planExpiry,
         };
       }
       return null;
@@ -79,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(profile);
   };
 
+  // ─── Initial auth state + profile fetch ───
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -92,6 +96,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => unsubscribe();
   }, []);
+
+  // ─── Live listener for plan / verification changes ───
+  // This is what makes admin upgrades show up instantly without refresh.
+  useEffect(() => {
+    const uid = user?.uid;
+    if (!uid) return;
+
+    const unsub = onSnapshot(
+      doc(db, "users", uid),
+      (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        setUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                plan: data.plan,
+                planExpiry: data.planExpiry,
+                verificationStatus: data.verificationStatus,
+                verificationReason: data.verificationReason,
+                businessName: data.businessName,
+                providerType: data.providerType,
+                phone: data.phone,
+                whatsapp: data.whatsapp,
+                photoURL: data.photoURL || undefined,
+                shopSettings: data.shopSettings || undefined,
+              }
+            : prev
+        );
+      },
+      (err) => {
+        console.warn("User live listener failed (non-critical):", err);
+      }
+    );
+
+    return () => unsub();
+  }, [user?.uid]);
 
   const signOut = async () => {
     await firebaseSignOut(auth);

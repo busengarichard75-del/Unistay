@@ -1,10 +1,11 @@
+// src/components/map/PezaMap.tsx
 "use client";
 
 import { useEffect, useRef, useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Home, Wrench, ShoppingBag, Navigation, LocateFixed } from "lucide-react";
+import { Home, Wrench, ShoppingBag, Navigation, LocateFixed, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { Property } from "@/types/property";
 import type { Service } from "@/types/service";
@@ -85,6 +86,7 @@ interface PezaMapProps {
   defaultCenter?: [number, number];
   defaultZoom?: number;
   showUserLocation?: boolean;
+  onAdminHide?: (marker: MapMarker) => void; // ⭐ Added admin prop
 }
 
 // Fit map to bounds when markers change
@@ -139,6 +141,7 @@ export function PezaMap({
   defaultCenter = [-15.3875, 28.3228],
   defaultZoom = 12,
   showUserLocation = true,
+  onAdminHide, // ⭐ Destructured
 }: PezaMapProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -288,6 +291,20 @@ export function PezaMap({
                   >
                     View listing →
                   </Link>
+
+                  {/* ⭐ ADMIN ACTION BUTTON */}
+                  {onAdminHide && (
+                    <div className="mt-2 border-t border-red-100 pt-2">
+                      <button
+                        onClick={() => onAdminHide(m)}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-full bg-red-50 py-1.5 text-xs font-bold text-red-600 transition-colors hover:bg-red-100"
+                      >
+                        <Trash2 size={12} />
+                        Hide Listing
+                      </button>
+                    </div>
+                  )}
+
                 </div>
               </Popup>
             </Marker>

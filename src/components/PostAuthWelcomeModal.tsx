@@ -12,8 +12,13 @@ import {
   ShoppingBag,
   Plus,
   Store,
+  Send,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+import { createAskPezaRequest } from "@/services/askPezaService";
 
 const SESSION_KEY = "peza_post_auth_welcome_shown";
 
@@ -25,30 +30,26 @@ export function PostAuthWelcomeModal() {
   const mountTimeRef = useRef<number>(Date.now());
   const firstAuthStateSeenRef = useRef<boolean>(false);
 
+  // ⭐ Ask Peza State
+  const [requestText, setRequestText] = useState("");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
   useEffect(() => {
     if (isLoading) return;
-
-    // First time we know the auth state — record whether we mounted logged-in
     if (!firstAuthStateSeenRef.current) {
       firstAuthStateSeenRef.current = true;
-      // If we mounted with a user already active → they had a session, don't nag
       if (user) return;
       return;
     }
-
-    // From here on, this is a *transition* event
     if (!user) return;
-
-    // Already shown this session? Don't nag
     if (typeof window !== "undefined" && sessionStorage.getItem(SESSION_KEY)) {
       return;
     }
-
-    // If they had a session already open (>30s since mount), skip — the login happened a while ago
     const elapsed = Date.now() - mountTimeRef.current;
     if (elapsed > 30000) return;
 
-    // Show with a slight delay so the page settles
     const t = setTimeout(() => {
       setIsOpen(true);
       sessionStorage.setItem(SESSION_KEY, "true");
@@ -59,7 +60,6 @@ export function PostAuthWelcomeModal() {
 
   if (!user || !isOpen) return null;
 
-  // ─── Personalization ───
   const firstName =
     (user.fullName || "").trim().split(" ")[0] ||
     (user.email || "").split("@")[0] ||
@@ -68,7 +68,6 @@ export function PostAuthWelcomeModal() {
   const isProvider = user.role === "service_provider";
   const providerType = user.providerType === "product" ? "Product Seller" : "Service Provider";
 
-  // ─── CTA 1: Add listing (providers) / Become provider (students) ───
   const primaryTile = isProvider
     ? {
         icon: <Plus size={18} />,
@@ -119,6 +118,30 @@ export function PostAuthWelcomeModal() {
     router.push(href);
   };
 
+  // ⭐ Handle Ask Peza Submission
+  const handleAskPeza = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestText.trim() || !phone.trim()) {
+      toast.error("Please tell us what you need and your WhatsApp number.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createAskPezaRequest({
+        userId: user.uid,
+        userName: user.fullName || user.email || "Student",
+        userPhone: phone.trim(),
+        requestText: requestText.trim(),
+      });
+      setIsSuccess(true);
+    } catch (err) {
+      toast.error("Failed to send request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm animate-in fade-in duration-200"
@@ -128,13 +151,13 @@ export function PostAuthWelcomeModal() {
       aria-label="Welcome"
     >
       <div
-        className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-300"
+        className="relative max-h-[95vh] w-full max-w-md overflow-y-auto overflow-x-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-300 no-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
         <button
           onClick={handleClose}
-          className="absolute right-3 top-3 z-10 rounded-full p-1.5 text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+          className="absolute right-3 top-3 z-10 rounded-full bg-black/20 p-1.5 text-white/80 transition-colors hover:bg-black/40 hover:text-white"
           aria-label="Close"
         >
           <X size={20} />
@@ -147,7 +170,7 @@ export function PostAuthWelcomeModal() {
               <Sparkles size={28} />
             </div>
             <h2 className="mt-3 text-2xl font-bold">
-              Welcome{isProvider ? " back" : ""}, {firstName}!
+              Welcome{isProvider ? " back" : ""}, {firstName}! 👋
             </h2>
             <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-white/90">
               {isProvider
@@ -157,8 +180,76 @@ export function PostAuthWelcomeModal() {
           </div>
         </div>
 
+        {/* ⭐ ASK PEZA CONCIERGE SECTION */}
+        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 px-5 py-5 border-b border-gray-100">
+          {isSuccess ? (
+            <div className="flex flex-col items-center justify-center py-4 text-center animate-in zoom-in-95">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-500 mb-3">
+                <CheckCircle2 size={28} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">We got it! 🕵️‍♂️</h3>
+              <p className="mt-1 text-sm text-gray-600 max-w-[250px]">
+                Our team is finding this for you right now. We'll contact you on WhatsApp as soon as we have it! 🚀
+              </p>
+              <button
+                onClick={() => setIsSuccess(false)}
+                className="mt-4 text-xs font-semibold text-purple-600 hover:underline"
+              >
+                Ask for something else
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleAskPeza} className="animate-in fade-in">
+              <div className="mb-3">
+                <h3 className="flex items-center gap-1.5 text-sm font-bold text-purple-900">
+                  <Sparkles size={16} className="text-purple-600 animate-pulse" />
+                  Need something? Tell us!
+                </h3>
+                <p className="text-[11px] font-medium text-purple-700/80 mt-0.5">
+                  🇿🇲 <em>Mulefwaya inshi? Tufwaye! (Bemba)</em> <br/>
+                  🇿🇲 <em>Muyanda nzi? Tumiyadwiide! (Tonga)</em>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={requestText}
+                  onChange={(e) => setRequestText(e.target.value)}
+                  placeholder="e.g. Scientific calculator under K200..."
+                  className="w-full rounded-xl border-2 border-purple-100 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-purple-500 transition-colors"
+                  disabled={isSubmitting}
+                />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Your WhatsApp number (e.g. 097...)"
+                  className="w-full rounded-xl border-2 border-purple-100 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-purple-500 transition-colors"
+                  disabled={isSubmitting}
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !requestText.trim() || !phone.trim()}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-purple-700 active:scale-95 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                  {isSubmitting ? "Sending..." : "Find It For Me 🚀"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
         {/* Tiles */}
-        <div className="space-y-2 px-5 py-5">
+        <div className="space-y-2 px-5 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+            Or explore Peza
+          </p>
           {tiles.map((t) => (
             <button
               key={t.href + t.title}

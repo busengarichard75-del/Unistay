@@ -34,9 +34,13 @@ export interface DirectoryUser {
   verificationReviewedBy?: string;
   verificationReason?: string | null;
   
-  // Additive for Plans
+  // ─── Product & Property Plans ───
   plan?: "basic" | "pro" | "full_time";
   planExpiry?: number;
+
+  // ⭐ NEW: Service Shop Plans (separate from products)
+  servicePlan?: "free" | "standard" | "pro";
+  servicePlanExpiry?: number | null;
 }
 
 export interface AdminStats {

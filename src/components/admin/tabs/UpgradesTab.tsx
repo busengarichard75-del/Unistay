@@ -2,10 +2,12 @@
 "use client";
 
 import { useState } from "react";
-import { Crown, Rocket, Home, Search, CheckCircle2 } from "lucide-react";
+import { Crown, Rocket, Home, Search, CheckCircle2, Wrench } from "lucide-react";
 import type { DirectoryUser } from "@/components/admin/types";
-import { PLANS } from "@/lib/plans";
+import { SERVICE_PLANS } from "@/lib/servicePlans";
 import { toast } from "sonner";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface UpgradesTabProps {
   users: DirectoryUser[];
@@ -28,18 +30,22 @@ export function UpgradesTab({ users, isFetching, onUpgrade }: UpgradesTabProps) 
     );
   });
 
-  async function handleUpgrade(uid: string, plan: "basic" | "pro" | "full_time") {
-    if (!window.confirm(`Upgrade this user to ${PLANS[plan].name}?`)) return;
+  const handleUpgradeService = async (uid: string, plan: "free" | "standard" | "pro") => {
+    if (!window.confirm(`Upgrade Service Shop to ${SERVICE_PLANS[plan].name}?`)) return;
     setBusyId(uid);
     try {
-      await onUpgrade(uid, plan);
-      toast.success("Plan updated successfully!");
+      const planExpiry = plan === "free" ? null : plan === "standard" ? Date.now() + 30 * 86400000 : Date.now() + 365 * 86400000;
+      await updateDoc(doc(db, "users", uid), {
+        servicePlan: plan,
+        servicePlanExpiry: planExpiry,
+      });
+      toast.success("Service Plan updated successfully!");
     } catch {
-      toast.error("Failed to update plan.");
+      toast.error("Failed to update service plan.");
     } finally {
       setBusyId(null);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -73,9 +79,10 @@ export function UpgradesTab({ users, isFetching, onUpgrade }: UpgradesTabProps) 
       ) : (
         <div className="space-y-3">
           {filtered.map((p) => {
-            const currentPlan = p.plan || "basic";
-            const isExpired = p.planExpiry && p.planExpiry < Date.now() && currentPlan !== "basic";
-            const effectivePlan = isExpired ? "basic" : currentPlan;
+            const currentServicePlan = p.servicePlan || "free";
+            const isExpired = p.servicePlanExpiry && p.servicePlanExpiry < Date.now() && currentServicePlan !== "free";
+            const effectiveServicePlan = isExpired ? "free" : currentServicePlan;
+            const serviceLimit = SERVICE_PLANS[effectiveServicePlan].limit;
 
             return (
               <div key={p.uid} className="flex flex-col gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -85,39 +92,39 @@ export function UpgradesTab({ users, isFetching, onUpgrade }: UpgradesTabProps) 
                       {p.businessName || p.fullName || "Unknown Shop"}
                     </p>
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                      effectivePlan === "full_time" ? "bg-amber-900/40 text-amber-400" :
-                      effectivePlan === "pro" ? "bg-blue-900/40 text-blue-400" :
+                      effectiveServicePlan === "pro" ? "bg-amber-900/40 text-amber-400" :
+                      effectiveServicePlan === "standard" ? "bg-blue-900/40 text-blue-400" :
                       "bg-gray-800 text-gray-400"
                     }`}>
-                      {PLANS[effectivePlan].name}
+                      {SERVICE_PLANS[effectiveServicePlan].name} ({serviceLimit === Infinity ? "Unlimited" : serviceLimit} Services)
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-gray-400">{p.email}</p>
-                  {isExpired && <p className="mt-1 text-[10px] text-red-400">Plan expired — reverted to Basic.</p>}
+                  {isExpired && <p className="mt-1 text-[10px] text-red-400">Service Plan expired — reverted to Free.</p>}
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
                   <button
-                    onClick={() => handleUpgrade(p.uid, "pro")}
-                    disabled={busyId === p.uid || effectivePlan === "pro"}
+                    onClick={() => handleUpgradeService(p.uid, "standard")}
+                    disabled={busyId === p.uid || effectiveServicePlan === "standard"}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-30"
                   >
-                    <Rocket size={12} /> Pro (K59.99)
+                    <Wrench size={12} /> Standard (K129.99/mo)
                   </button>
                   <button
-                    onClick={() => handleUpgrade(p.uid, "full_time")}
-                    disabled={busyId === p.uid || effectivePlan === "full_time"}
+                    onClick={() => handleUpgradeService(p.uid, "pro")}
+                    disabled={busyId === p.uid || effectiveServicePlan === "pro"}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-30"
                   >
-                    <Crown size={12} /> Full (K199.99)
+                    <Crown size={12} /> Pro (K299.99/yr)
                   </button>
-                  {effectivePlan !== "basic" && (
+                  {effectiveServicePlan !== "free" && (
                     <button
-                      onClick={() => handleUpgrade(p.uid, "basic")}
+                      onClick={() => handleUpgradeService(p.uid, "free")}
                       disabled={busyId === p.uid}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-gray-700 disabled:opacity-30"
                     >
-                      <Home size={12} /> Basic
+                      <Home size={12} /> Free
                     </button>
                   )}
                 </div>

@@ -5,10 +5,9 @@ import { useAuth } from "@/lib/AuthContext";
 type AllowedRole = "student" | "landlord" | "service_provider" | null;
 
 export function useRequireAuth(requiredRole?: AllowedRole) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const router = useRouter();
 
-  // ✅ Use user.role directly
   const effectiveRole = user?.role || null;
 
   useEffect(() => {
@@ -19,7 +18,6 @@ export function useRequireAuth(requiredRole?: AllowedRole) {
       }
 
       if (requiredRole && effectiveRole !== requiredRole) {
-        // Redirect to appropriate dashboard based on role
         if (effectiveRole === "landlord") {
           router.push("/dashboard/landlord");
         } else if (effectiveRole === "student") {
@@ -33,5 +31,5 @@ export function useRequireAuth(requiredRole?: AllowedRole) {
     }
   }, [user, effectiveRole, isLoading, router, requiredRole]);
 
-  return { user, role: effectiveRole, isLoading };
+  return { user, role: effectiveRole, isLoading, refreshUser };
 }

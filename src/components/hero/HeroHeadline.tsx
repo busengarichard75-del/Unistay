@@ -1,18 +1,17 @@
+// src/components/hero/HeroHeadline.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 
 const messages = [
-  "Find your next Boarding house.",
-  "Verified accommodation near your campus.",
-  "Book a barber. Print your notes. Fix your phone.",
-  "Buy and sell with students near you.",
-  "Rooms, services, and deals — all in one place.",
-  "Your campus, all in one place.",
-  "Stop searching. Start settling in.",
-  "The right place. The right price.",
-  "Let Peza find your best match.",
-  "Everything a student needs, close to campus."
+  "Find your next verified room near campus.",
+  "Meet your next roommate or study partner.",
+  "Book a barber. Print notes. Fix your phone.",
+  "Buy and sell with students around you.",
+  "Ace your exams with free study materials.",
+  "Everything a student needs, in one place.",
+  "Your entire campus life, simplified.",
+  "Stop searching. Start settling in."
 ];
 
 export function HeroHeadline() {
@@ -37,7 +36,7 @@ export function HeroHeadline() {
         setIndex((prev) => (prev + 1) % messages.length);
         setFade(false);
       }, 400);
-    }, 4500);
+    }, 4500); // Changes every 4.5 seconds
 
     return () => {
       clearInterval(interval);

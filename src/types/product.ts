@@ -72,6 +72,11 @@ export interface Product {
   isNegotiable?: boolean;
   /** The hidden floor price the seller is willing to accept. */
   lastPrice?: number;
+
+  // ─── Homepage featuring (admin-controlled) ───
+  featuredOnHomepage?: boolean;
+  featuredAt?: number;
+  featuredBy?: string;
 }
 
 // ─────────────────────────────────────────────────────────

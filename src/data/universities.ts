@@ -1,3 +1,4 @@
+// src/data/universities.ts
 export const universities = [
   { id: "unza", name: "University of Zambia (UNZA)", isAvailable: true },
   { id: "cbu", name: "Copperbelt University (CBU)", isAvailable: true },
@@ -18,4 +19,20 @@ export const universities = [
   { id: "levy", name: "Levy Mwanawasa Medical University", isAvailable: true },
   { id: "zica", name: "Zambia Institute of Chartered Accountants (ZICA)", isAvailable: true },
   { id: "evelynhone", name: "Evelyn Hone College", isAvailable: true },
+  
+  // ⭐ NEW ADDITIONS
+  { id: "kafuehealth", name: "Kafue College of Health Sciences and Research", isAvailable: true },
+  { id: "apex", name: "Lusaka Apex Medical University", isAvailable: true },
+  { id: "texila", name: "Texila American University", isAvailable: true },
+  { id: "icu", name: "Information and Communications University (ICU)", isAvailable: true },
+  { id: "zamcom", name: "Zambia Institute of Mass Communication (ZAMCOM)", isAvailable: true },
+  { id: "nortec", name: "Northern Technical College (NORTEC)", isAvailable: true },
+  { id: "nrdc", name: "Natural Resources Development College (NRDC)", isAvailable: true },
+  { id: "zca", name: "Zambia College of Agriculture", isAvailable: true },
+  { id: "catholic", name: "Zambia Catholic University", isAvailable: true },
+  { id: "justo", name: "Justo Mwale University", isAvailable: true },
+  { id: "royal", name: "Zambia Royal University", isAvailable: true },
+  { id: "sunningdale", name: "Sunningdale University", isAvailable: true },
+  { id: "lbtc", name: "Lusaka Business and Technical College (LBTC)", isAvailable: true },
+  { id: "central", name: "Lusaka Central University", isAvailable: true },
 ];

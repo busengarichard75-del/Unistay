@@ -1,3 +1,4 @@
+// src/app/library/[id]/page.tsx
 "use client";
 
 import { useEffect, useState, use } from "react";
@@ -48,7 +49,6 @@ interface PageProps {
 
 type Challenge = "share" | "follow";
 
-// ─── Peza's official Facebook page ───
 const PEZA_FACEBOOK_URL =
   "https://www.facebook.com/profile.php?id=61594233460420";
 
@@ -70,12 +70,9 @@ export default function LibraryDetailPage({ params }: PageProps) {
 
   // ── Preview State ──
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [rawDriveLink, setRawDriveLink] = useState<string | null>(null);
 
-  // ⚡ Deps on user?.uid (stable string) — NOT user (new object each render)
   const uid = user?.uid;
 
-  // ── Fetch entry + related ──
   useEffect(() => {
     if (!id) return;
     let active = true;
@@ -91,7 +88,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
         }
         setEntry(data);
 
-        // Fire-and-forget view increment
         fetch("/api/library/view", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -121,7 +117,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
     };
   }, [id]);
 
-  // ── Check unlock state — deps on uid (string), not user ──
   useEffect(() => {
     if (!uid || !id) {
       setIsUnlocked(false);
@@ -136,7 +131,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
     };
   }, [uid, id]);
 
-  // ── Share page (works for guests too) ──
   const handleSharePage = async () => {
     if (!entry) return;
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -158,7 +152,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
     }
   };
 
-  // ── Complete a challenge ──
   async function handleChallenge(challenge: Challenge) {
     if (!uid || !entry) {
       setShowLoginModal(true);
@@ -187,7 +180,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
         window.open(PEZA_FACEBOOK_URL, "_blank", "noopener,noreferrer");
       }
 
-      // Record the unlock
       await unlockMaterial(uid, entry.id, challenge);
       setIsUnlocked(true);
       toast.success("Material unlocked! 🎉");
@@ -201,7 +193,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
     }
   }
 
-  // ── Open the Drive link IN-APP ──
   async function handleUnlock() {
     if (!entry) return;
     setUnlocking(true);
@@ -211,13 +202,12 @@ export default function LibraryDetailPage({ params }: PageProps) {
         toast.error("Couldn't retrieve the link. Please try again.");
         return;
       }
-      setRawDriveLink(link);
+      
       const preview = buildDrivePreviewUrl(link);
       if (preview) {
         setPreviewUrl(preview);
       } else {
-        // Fallback if it's not a standard Drive link
-        window.open(link, "_blank", "noopener,noreferrer");
+        toast.error("Unable to format this document for reading.");
       }
     } catch (err) {
       console.error("Open failed:", err);
@@ -227,7 +217,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
     }
   }
 
-  // ── WhatsApp Viral Share ──
   const handleShareWhatsApp = () => {
     if (!entry) return;
     const pageUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -300,7 +289,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
           Back
         </button>
 
-        {/* ── Header ── */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 px-6 py-6 text-white">
             <div className="flex items-start gap-4">
@@ -359,7 +347,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
         {/* ── THE GATE ── */}
         <div className="mt-6">
           {!uid ? (
-            // ─── State 1: Not logged in ───
             <div className="overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-white shadow-sm">
               <div className="flex flex-col items-center px-6 py-10 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-500">
@@ -385,7 +372,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
               </div>
             </div>
           ) : canOpen ? (
-            // ─── State 3: Unlocked ───
             <div className="overflow-hidden rounded-2xl border-2 border-emerald-200 bg-white shadow-sm">
               <div className="flex flex-col items-center px-6 py-8 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
@@ -426,35 +412,25 @@ export default function LibraryDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
-              {/* ⚡ IN-APP PREVIEW ⚡ */}
+              {/* ⚡ IN-APP PREVIEW (Walled Garden) ⚡ */}
               {previewUrl && (
                 <div className="border-t border-gray-200">
                   <div className="flex items-center justify-between bg-gray-50 px-4 py-2">
-                    <p className="text-xs font-semibold text-gray-600">Previewing Document</p>
+                    <p className="text-xs font-semibold text-gray-600">Reading Mode</p>
                     <button onClick={() => setPreviewUrl(null)} className="rounded-full p-1 text-gray-400 hover:bg-gray-200">
                       <X size={16} />
                     </button>
                   </div>
                   <iframe
                     src={previewUrl}
-                    className="h-[75vh] w-full border-0"
+                    className="h-[75vh] w-full border-0 bg-white"
                     title={entry.title}
+                    allow="autoplay"
                   />
-                  <div className="bg-gray-50 px-4 py-3 text-center border-t border-gray-200">
-                    <a
-                      href={rawDriveLink || "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-medium text-gray-400 hover:text-[var(--nexora-primary)] hover:underline"
-                    >
-                      Not loading? Open directly in Google Drive
-                    </a>
-                  </div>
                 </div>
               )}
             </div>
           ) : (
-            // ─── State 2: Logged in, not unlocked ───
             <div className="overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-white shadow-sm">
               <div className="px-6 pt-8 pb-4 text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 text-indigo-500">
@@ -470,7 +446,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
               </div>
 
               <div className="space-y-2 px-6 pb-8">
-                {/* Challenge 1 — Share */}
                 <button
                   type="button"
                   onClick={() => handleChallenge("share")}
@@ -495,7 +470,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
                   )}
                 </button>
 
-                {/* Challenge 2 — Follow */}
                 <button
                   type="button"
                   onClick={() => handleChallenge("follow")}
@@ -524,7 +498,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* ── Description ── */}
         {entry.description && (
           <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
@@ -536,7 +509,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* ── Uploader ── */}
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
             Shared by
@@ -570,7 +542,6 @@ export default function LibraryDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* ── Related ── */}
         {related.length > 0 && (
           <div className="mt-8">
             <h2 className="mb-3 text-lg font-semibold text-[var(--nexora-text-primary)]">

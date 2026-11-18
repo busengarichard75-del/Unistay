@@ -63,6 +63,11 @@ export interface Property {
   boostRefundedAt?: number | null;
   boostRefundedBy?: string | null;     // admin email
 
+  // ─── Homepage featuring (admin-controlled) ───────────────────
+  featuredOnHomepage?: boolean;        // if true → shown in homepage Featured Strip
+  featuredAt?: number;                 // when admin featured it
+  featuredBy?: string;                 // admin email
+
   // Timestamps
   createdAt?: number;        // When property was first added
   updatedAt?: number;        // When property was last updated
