@@ -59,14 +59,12 @@ export default function LibraryPage() {
   const [showVibes, setShowVibes] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
 
-  // ONE shared subscription — reads localStorage exactly once (cached).
   const savedSet = useSyncExternalStore(
     subscribe,
     getSavedSnapshot,
     getEmptySnapshot
   );
 
-  // ── URL params on mount ──
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = new URLSearchParams(window.location.search);
@@ -81,14 +79,13 @@ export default function LibraryPage() {
     if (p.get("saved") === "1") setShowSavedOnly(true);
   }, []);
 
-  // ── Fetch ──
   useEffect(() => {
     const load = async () => {
       try {
         const data = await getApprovedLibraryEntries();
         setEntries(data);
       } catch {
-        // silent (fix later — see earlier note)
+        // silent
       } finally {
         setIsFetching(false);
       }
@@ -96,7 +93,6 @@ export default function LibraryPage() {
     load();
   }, []);
 
-  // ── URL sync ──
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = new URLSearchParams();
@@ -109,7 +105,6 @@ export default function LibraryPage() {
     window.history.replaceState({}, "", qs ? `?${qs}` : window.location.pathname);
   }, [keyword, universityId, category, sort, showSavedOnly]);
 
-  // ── Category counts ──
   const categoryCounts = useMemo(() => {
     const m = new Map<string, number>();
     entries.forEach((e) => m.set(e.category, (m.get(e.category) || 0) + 1));
@@ -144,7 +139,6 @@ export default function LibraryPage() {
     return o;
   }, [tabCategories]);
 
-  // ── Filter + sort ──
   const filtered = useMemo(() => {
     const q = keyword.toLowerCase().trim();
     const list = entries.filter((e) => {
@@ -177,7 +171,6 @@ export default function LibraryPage() {
   const hasAnyFilter =
     !!keyword || !!universityId || !!category || sort !== "random" || showSavedOnly;
 
-  // ── Trending ──
   const trendingEntries = useMemo(
     () =>
       [...entries]
@@ -189,7 +182,6 @@ export default function LibraryPage() {
   const showTrending =
     trendingEntries.length >= 2 && !hasAnyFilter && !isFetching;
 
-  // ── Material of the Day ──
   const spotlight = useMemo(
     () => (!hasAnyFilter && !isFetching ? pickSpotlight(entries) : null),
     [entries, hasAnyFilter, isFetching]
@@ -222,25 +214,31 @@ export default function LibraryPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
+    <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)] w-full max-w-full overflow-x-hidden">
       <Navbar />
 
+      {/* 
+        FIX: Wrapped CategoryTabs in a w-full overflow-x-auto container.
+        This prevents the tabs from stretching the entire page width.
+      */}
       {!isFetching && (
-        <CategoryTabs
-          categories={tabCategories}
-          selected={category}
-          onChange={setCategory}
-          counts={tabCounts}
-          showAll
-          allLabel="All materials"
-          emptyCategoryIds={emptyCategoryIds}
-        />
+        <div className="w-full max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <CategoryTabs
+            categories={tabCategories}
+            selected={category}
+            onChange={setCategory}
+            counts={tabCounts}
+            showAll
+            allLabel="All materials"
+            emptyCategoryIds={emptyCategoryIds}
+          />
+        </div>
       )}
 
-      <div className="container-wide py-4">
-        {/* ⭐ SEARCH + UNIVERSITY + SORT — first thing users see */}
-        <div className="mb-3 space-y-2">
-          <div className="flex items-center gap-0 overflow-hidden rounded-full border-2 border-[var(--nexora-primary)] bg-white shadow-sm focus-within:ring-4 focus-within:ring-[var(--nexora-primary)]/20">
+      <div className="container-wide py-4 w-full min-w-0 overflow-hidden">
+        {/* SEARCH + UNIVERSITY + SORT */}
+        <div className="mb-3 space-y-2 w-full">
+          <div className="flex w-full items-center gap-0 overflow-hidden rounded-full border-2 border-[var(--nexora-primary)] bg-white shadow-sm focus-within:ring-4 focus-within:ring-[var(--nexora-primary)]/20">
             <div className="flex items-center gap-2 pl-3 pr-1 text-[var(--nexora-primary)]">
               <Search size={16} className="shrink-0" />
             </div>
@@ -249,7 +247,7 @@ export default function LibraryPage() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="Search by title, course code, or uploader..."
-              className="flex-1 bg-transparent py-2.5 pr-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
+              className="flex-1 min-w-0 bg-transparent py-2.5 pr-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
             />
             {keyword && (
               <button
@@ -262,7 +260,7 @@ export default function LibraryPage() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full">
             <div className="min-w-0 flex-1">
               <UniversityFilter
                 selected={universityId}
@@ -271,15 +269,14 @@ export default function LibraryPage() {
             </div>
           </div>
 
-          {/* Count + Saved toggle + Sort */}
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 w-full">
             <span className="text-[11px] text-gray-500">
               {filtered.length}{" "}
               {filtered.length === 1 ? "material" : "materials"}
               {selectedCategoryMeta && ` · ${selectedCategoryMeta.label}`}
             </span>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowSavedOnly((v) => !v)}
@@ -399,7 +396,7 @@ export default function LibraryPage() {
         {spotlight && spotlightArt && (
           <Link
             href={`/library/${spotlight.id}`}
-            className="group relative mb-4 block overflow-hidden rounded-2xl shadow-md transition-shadow hover:shadow-lg"
+            className="group relative mb-4 block w-full overflow-hidden rounded-2xl shadow-md transition-shadow hover:shadow-lg"
             style={{ background: spotlightArt.background }}
           >
             <div className="relative p-4">
@@ -430,7 +427,7 @@ export default function LibraryPage() {
 
         {/* Trending — compact horizontal scroll */}
         {showTrending && (
-          <div className="mb-4">
+          <div className="mb-4 w-full max-w-full">
             <div className="mb-2 flex items-center gap-1.5 px-0.5">
               <Flame className="text-orange-500" size={16} />
               <h2 className="text-sm font-bold text-gray-900">Trending Now</h2>
@@ -438,7 +435,7 @@ export default function LibraryPage() {
                 Top 3
               </span>
             </div>
-            <div className="flex snap-x gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-full snap-x gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {trendingEntries.map((entry) => (
                 <div
                   key={entry.id}
@@ -457,7 +454,7 @@ export default function LibraryPage() {
 
         {/* Add material CTA */}
         {user && (
-          <div className="mt-3">
+          <div className="mt-3 w-full">
             <Link
               href="/library/new"
               className="flex w-full items-center gap-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 p-3 text-left text-white shadow-md transition-all hover:scale-[1.01] hover:shadow-lg active:scale-[0.99]"
@@ -475,14 +472,14 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {/* ── GRID (mobile-first: 4 cols, scales to 8 on desktop) ── */}
-        <div className="mt-4">
+        {/* GRID (mobile-first: 4 cols) */}
+        <div className="mt-4 w-full">
           {isFetching ? (
-            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 sm:gap-2 md:grid-cols-6 lg:grid-cols-8">
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 sm:gap-2 md:grid-cols-6 lg:grid-cols-8 w-full">
               {Array.from({ length: 16 }).map((_, i) => (
                 <div
                   key={i}
-                  className="shimmer rounded-lg bg-white p-1 shadow-sm"
+                  className="shimmer rounded-lg bg-white p-1 shadow-sm w-full"
                 >
                   <div className="aspect-square w-full rounded bg-gray-200" />
                   <div className="mt-1 h-1.5 w-3/4 rounded bg-gray-200" />
@@ -549,11 +546,12 @@ export default function LibraryPage() {
               ]}
             />
           ) : (
-            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 sm:gap-2 md:grid-cols-6 lg:grid-cols-8">
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 sm:gap-2 md:grid-cols-6 lg:grid-cols-8 w-full">
               {gridEntries.map((entry) => (
                 <LibraryCard
                   key={entry.id}
                   entry={entry}
+                  variant="vertical" // ⭐ FORCED VERTICAL
                   isSaved={savedSet.has(entry.id)}
                 />
               ))}
