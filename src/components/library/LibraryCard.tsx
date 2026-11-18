@@ -47,7 +47,7 @@ export const LibraryCard = memo(function LibraryCard({
   };
 
   // ────────────────────────────────────────────────────────
-  // HORIZONTAL
+  // HORIZONTAL (trending row — unchanged)
   // ────────────────────────────────────────────────────────
   if (variant === "horizontal") {
     return (
@@ -142,15 +142,16 @@ export const LibraryCard = memo(function LibraryCard({
   }
 
   // ────────────────────────────────────────────────────────
-  // VERTICAL (grid default)
+  // VERTICAL — COMPACT THUMBNAIL (mobile-first)
   // ────────────────────────────────────────────────────────
   return (
     <Link
       href={`/library/${entry.id}`}
-      className="group block overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-all hover:-translate-y-0.5 hover:shadow-md"
+      className="group block overflow-hidden rounded-lg bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md active:scale-[0.98]"
     >
+      {/* Square image — compact thumbnail */}
       <div
-        className="relative aspect-[4/3] w-full overflow-hidden"
+        className="relative aspect-square w-full overflow-hidden"
         style={{ background: art.background }}
       >
         {hasCover ? (
@@ -163,24 +164,22 @@ export const LibraryCard = memo(function LibraryCard({
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center text-white">
-            <FileText
-              size={28}
-              className="drop-shadow-md text-white/85"
-            />
-            <span className="mt-1 text-[7px] font-bold uppercase tracking-widest text-white/90">
+            <FileText size={20} className="drop-shadow-md text-white/85" />
+            <span className="mt-0.5 text-[6px] font-bold uppercase tracking-widest text-white/90 px-0.5 text-center leading-tight">
               {cat?.label || "Material"}
             </span>
           </div>
         )}
 
+        {/* Bookmark — tiny, corner */}
         <button
           type="button"
           onClick={onToggleSave}
           aria-label={isSaved ? "Remove from saved" : "Save for later"}
-          className="absolute top-1 right-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition-transform active:scale-90 hover:bg-white"
+          className="absolute top-0.5 right-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition-transform active:scale-90 hover:bg-white"
         >
           <Bookmark
-            size={11}
+            size={9}
             className={
               isSaved
                 ? "fill-[var(--nexora-primary)] text-[var(--nexora-primary)]"
@@ -189,56 +188,47 @@ export const LibraryCard = memo(function LibraryCard({
           />
         </button>
 
+        {/* Meta badge — only if year/semester exists */}
         {metaLine && (
-          <span className="absolute left-1 top-1 inline-flex items-center rounded bg-black/55 px-1 py-0.5 text-[7px] font-bold leading-tight text-white backdrop-blur-sm">
+          <span className="absolute left-0.5 top-0.5 inline-flex items-center rounded bg-black/55 px-1 py-0 text-[6px] font-bold leading-tight text-white backdrop-blur-sm">
             {metaLine}
           </span>
         )}
       </div>
 
-      <div className="p-2">
+      {/* Content — ultra tight */}
+      <div className="px-1.5 py-1">
         <h3
-          className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900 transition-colors group-hover:text-indigo-600"
+          className="line-clamp-2 text-[9px] font-semibold leading-[1.15] text-gray-900 transition-colors group-hover:text-indigo-600"
           title={entry.title}
         >
           {entry.title}
         </h3>
 
         {entry.courseCode && (
-          <div className="mt-1">
-            <span className="inline-flex rounded border border-indigo-100 bg-indigo-50 px-1 py-0 text-[8px] font-bold leading-tight text-indigo-700">
-              {entry.courseCode}
-            </span>
-          </div>
+          <p className="mt-0.5 truncate text-[8px] font-bold leading-tight text-indigo-600">
+            {entry.courseCode}
+          </p>
         )}
 
-        <p className="mt-1 flex items-center gap-0.5 truncate text-[9px] leading-tight text-gray-500">
-          <MapPin size={8} className="shrink-0" />
+        <p className="mt-0.5 flex items-center gap-0.5 truncate text-[7px] leading-tight text-gray-500">
+          <MapPin size={7} className="shrink-0" />
           <span className="truncate">
             {getUniversityShortLabel(entry.universityId)}
           </span>
-          {metaLine && (
-            <>
-              <span className="text-gray-300">•</span>
-              <span className="truncate text-gray-400">{metaLine}</span>
-            </>
-          )}
         </p>
 
-        <div className="mt-1.5 flex items-center justify-between gap-1 border-t border-gray-100 pt-1.5">
+        <div className="mt-1 flex items-center justify-between gap-0.5">
           <span
-            className={`inline-flex items-center gap-0.5 text-[8px] font-medium ${
+            className={`inline-flex items-center gap-0.5 text-[7px] font-medium ${
               isTrending ? "text-orange-500" : "text-gray-400"
             }`}
           >
-            {isTrending ? <Flame size={8} /> : <Eye size={8} />}
+            {isTrending ? <Flame size={7} /> : <Eye size={7} />}
             {entry.views || 0}
           </span>
-          <span className="inline-flex min-w-0 items-center gap-0.5 truncate text-[8px] text-gray-400">
-            <span className="truncate">{entry.uploaderName}</span>
-          </span>
           {entry.createdAt && (
-            <span className="shrink-0 text-[8px] text-gray-400">
+            <span className="shrink-0 text-[7px] text-gray-400">
               {timeAgo(entry.createdAt)}
             </span>
           )}

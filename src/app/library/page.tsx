@@ -238,7 +238,7 @@ export default function LibraryPage() {
       )}
 
       <div className="container-wide py-4">
-        {/* ⭐ SEARCH + UNIVERSITY + SORT — moved to the very top */}
+        {/* ⭐ SEARCH + UNIVERSITY + SORT — first thing users see */}
         <div className="mb-3 space-y-2">
           <div className="flex items-center gap-0 overflow-hidden rounded-full border-2 border-[var(--nexora-primary)] bg-white shadow-sm focus-within:ring-4 focus-within:ring-[var(--nexora-primary)]/20">
             <div className="flex items-center gap-2 pl-3 pr-1 text-[var(--nexora-primary)]">
@@ -475,18 +475,18 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {/* Grid */}
+        {/* ── GRID (mobile-first: 4 cols, scales to 8 on desktop) ── */}
         <div className="mt-4">
           {isFetching ? (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-              {Array.from({ length: 12 }).map((_, i) => (
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 sm:gap-2 md:grid-cols-6 lg:grid-cols-8">
+              {Array.from({ length: 16 }).map((_, i) => (
                 <div
                   key={i}
-                  className="shimmer rounded-xl bg-white p-2 shadow-sm"
+                  className="shimmer rounded-lg bg-white p-1 shadow-sm"
                 >
-                  <div className="mb-2 aspect-[4/3] w-full rounded-lg bg-gray-200" />
-                  <div className="mb-1 h-2.5 w-3/4 rounded bg-gray-200" />
-                  <div className="h-2 w-1/2 rounded bg-gray-200" />
+                  <div className="aspect-square w-full rounded bg-gray-200" />
+                  <div className="mt-1 h-1.5 w-3/4 rounded bg-gray-200" />
+                  <div className="mt-0.5 h-1.5 w-1/2 rounded bg-gray-200" />
                 </div>
               ))}
             </div>
@@ -549,7 +549,7 @@ export default function LibraryPage() {
               ]}
             />
           ) : (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 sm:gap-2 md:grid-cols-6 lg:grid-cols-8">
               {gridEntries.map((entry) => (
                 <LibraryCard
                   key={entry.id}
