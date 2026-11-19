@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
         throw new Error("BOOKING_EXPIRED");
       }
 
-      // Reuse an existing pending attempt to avoid duplicate collections.
+      // Reuse an existing active attempt to avoid duplicate collections.
       const existingPaymentId = booking.agentFeePaymentId;
 
       if (
@@ -142,7 +142,8 @@ export async function POST(req: NextRequest) {
           const belongsToThisBooking =
             existingPayment.userId === decoded.uid &&
             existingPayment.linkedBookingId === bookingId &&
-            existingPayment.type === "agent_fee";
+            existingPayment.type === "agent_fee" &&
+            existingPayment.gatewayName === "ontech";
 
           if (belongsToThisBooking) {
             if (existingPayment.status === "successful") {
@@ -153,6 +154,13 @@ export async function POST(req: NextRequest) {
               existingPayment.status === "pending" ||
               existingPayment.status === "processing"
             ) {
+              // Ensure the webhook can locate older payment records too.
+              if (!existingPayment.gatewayReference) {
+                transaction.update(existingPaymentRef, {
+                  gatewayReference: existingPaymentRef.id,
+                });
+              }
+
               return {
                 alreadyPaid: false as const,
                 paymentRef: existingPaymentRef,
@@ -175,6 +183,7 @@ export async function POST(req: NextRequest) {
         amount: AGENT_FEE_AMOUNT,
         currency: "ZMW",
         gatewayName: "ontech",
+        gatewayReference: newPaymentRef.id,
         status: "pending",
         idempotencyKey,
         customerPhone: phoneNumber,
@@ -230,7 +239,8 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(
         {
-          error: "We could not read the payment gateway response. Check payment status before retrying.",
+          error:
+            "We could not read the payment gateway response. Check payment status before retrying.",
           paymentId: paymentRef.id,
         },
         { status: 502 }
@@ -247,7 +257,8 @@ export async function POST(req: NextRequest) {
       // necessarily prove that no collection request was created.
       return NextResponse.json(
         {
-          error: "The payment gateway could not confirm the request. Please check payment status.",
+          error:
+            "The payment gateway could not confirm the request. Please check payment status.",
           paymentId: paymentRef.id,
         },
         { status: 502 }
@@ -266,7 +277,8 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(
         {
-          error: "The gateway response was incomplete. Please check payment status.",
+          error:
+            "The gateway response was incomplete. Please check payment status.",
           paymentId: paymentRef.id,
         },
         { status: 502 }
@@ -278,14 +290,30 @@ export async function POST(req: NextRequest) {
         ? ontechData.status.toLowerCase()
         : "pending";
 
-    await paymentRef.update({
-      gatewayTransactionId: transactionId,
-      gatewayStatus,
-      gatewayResponseReceivedAt: Date.now(),
-      status: gatewayStatus === "failed" ? "failed" : "pending",
+    // 6. Save the gateway response without overwriting a webhook-confirmed
+    // successful payment if the webhook arrived first.
+    await db.runTransaction(async (transaction) => {
+      const latestPaymentSnap = await transaction.get(paymentRef);
+
+      if (!latestPaymentSnap.exists) {
+        throw new Error("PAYMENT_RECORD_NOT_FOUND");
+      }
+
+      const latestPayment = latestPaymentSnap.data()!;
+
+      if (latestPayment.status === "successful") {
+        return;
+      }
+
+      transaction.update(paymentRef, {
+        gatewayTransactionId: transactionId,
+        gatewayStatus,
+        gatewayResponseReceivedAt: Date.now(),
+        status: gatewayStatus === "failed" ? "failed" : "pending",
+      });
     });
 
-    // The webhook, not this response, confirms the booking.
+    // The signed webhook, not this response, confirms the booking.
     return NextResponse.json({
       success: true,
       paymentId: paymentRef.id,
@@ -312,6 +340,10 @@ export async function POST(req: NextRequest) {
       BOOKING_EXPIRED: {
         message: "This booking has expired",
         status: 400,
+      },
+      PAYMENT_RECORD_NOT_FOUND: {
+        message: "Payment record could not be found",
+        status: 404,
       },
     };
 

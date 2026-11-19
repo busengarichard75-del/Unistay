@@ -1,22 +1,16 @@
-// src/components/PaymentInstructionsModal.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Copy, Check, Phone, AlertCircle } from "lucide-react";
+import { X, Phone, AlertCircle, Smartphone, Loader2, CheckCircle2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Booking } from "@/types/booking";
 import { BookingCountdown } from "@/components/BookingCountdown";
+import { auth } from "@/lib/firebase";
 
-const PAYMENT_NUMBER_INTL = "+260 0771319817";
-const PAYMENT_NUMBER_INTL_RAW = "+2600771319817";
-const PAYMENT_NUMBER_LOCAL = "0771319817";
 const AGENT_FEE = "K100";
 const SUPPORT_PHONE_DISPLAY = "+260 0771319817";
 const SUPPORT_PHONE_TEL = "+2600771319817";
-
-function referenceFor(bookingId: string) {
-  return `PEZA-${bookingId.slice(-6).toUpperCase()}`;
-}
 
 interface PaymentInstructionsModalProps {
   isOpen: boolean;
@@ -24,72 +18,145 @@ interface PaymentInstructionsModalProps {
   booking: Booking;
 }
 
+type PaymentState = "idle" | "submitting" | "pending" | "failed";
+
 export function PaymentInstructionsModal({
   isOpen,
   onClose,
   booking,
 }: PaymentInstructionsModalProps) {
-  const [copied, setCopied] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [paymentState, setPaymentState] = useState<PaymentState>("idle");
+  const [message, setMessage] = useState("");
+  const [paymentId, setPaymentId] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && paymentState !== "submitting") {
+        onClose();
+      }
     };
+
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      document.body.style.overflow = previousOverflow;
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, paymentState]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPhoneNumber("");
+      setPaymentState("idle");
+      setMessage("");
+      setPaymentId("");
+    }
+  }, [isOpen, booking.id]);
 
   if (!isOpen) return null;
 
-  const reference = referenceFor(booking.id);
+  async function initiatePayment() {
+    const cleanedPhone = phoneNumber.trim();
 
-  async function copy(text: string, key: string) {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
-      setCopied(key);
-      toast.success("Copied!");
-      setTimeout(() => {
-        setCopied((c) => (c === key ? null : c));
-      }, 1500);
-    } catch {
-      toast.error("Couldn't copy. Please copy manually.");
+    if (!/^(\+?260)?0?9\d{8}$/.test(cleanedPhone.replace(/[\s\-()]/g, ""))) {
+      toast.error("Enter a valid Zambian mobile-money number.");
+      return;
     }
+
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      toast.error("Your session has expired. Please log in again.");
+      return;
+    }
+
+    setPaymentState("submitting");
+    setMessage("");
+    setPaymentId("");
+
+    try {
+      const token = await currentUser.getIdToken();
+
+      const response = await fetch("/api/payments/ontech/initialize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          phoneNumber: cleanedPhone,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Unable to start your payment. Please try again."
+        );
+      }
+
+      if (!data?.paymentId) {
+        throw new Error("The payment service returned an incomplete response.");
+      }
+
+      setPaymentId(data.paymentId);
+      setPaymentState(data.status === "failed" ? "failed" : "pending");
+      setMessage(
+        data.message ||
+          "Payment request sent. Check your phone and approve the payment."
+      );
+
+      if (data.status === "failed") {
+        toast.error("Payment request failed.");
+      } else {
+        toast.success("Payment request sent. Check your phone.");
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while starting your payment.";
+
+      setPaymentState("failed");
+      setMessage(errorMessage);
+      toast.error(errorMessage);
+    }
+  }
+
+  function resetPayment() {
+    setPaymentState("idle");
+    setMessage("");
+    setPaymentId("");
   }
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-3 py-3 sm:px-4"
-      onClick={onClose}
+      onClick={() => {
+        if (paymentState !== "submitting") onClose();
+      }}
     >
       <div
         className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl max-h-[92vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-5 py-4">
           <h3 className="text-base font-bold text-[var(--nexora-navy)]">
             Pay Agent Fee
           </h3>
+
           <button
             onClick={onClose}
-            className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            disabled={paymentState === "submitting"}
+            className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40"
             aria-label="Close"
           >
             <X size={18} />
@@ -107,77 +174,153 @@ export function PaymentInstructionsModal({
             </p>
           </div>
 
-          {/* Send to */}
-          <div>
-            <p className="mb-1.5 text-xs font-medium text-gray-500">Send to</p>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-mono text-sm font-semibold text-gray-900">
-                    {PAYMENT_NUMBER_INTL}
+          {/* Payment instructions */}
+          {paymentState === "idle" || paymentState === "submitting" ? (
+            <>
+              <div>
+                <label
+                  htmlFor="ontech-phone"
+                  className="mb-1.5 block text-xs font-semibold text-gray-700"
+                >
+                  Mobile money number
+                </label>
+
+                <div className="relative">
+                  <Smartphone
+                    size={17}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                  <input
+                    id="ontech-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="09XXXXXXXX or 2609XXXXXXXX"
+                    value={phoneNumber}
+                    onChange={(event) => setPhoneNumber(event.target.value)}
+                    disabled={paymentState === "submitting"}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-3 text-sm text-gray-900 outline-none transition focus:border-[var(--nexora-primary)] focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                  />
+                </div>
+
+                <p className="mt-1.5 text-[11px] text-gray-500">
+                  Use the number registered with MTN, Airtel or Zamtel Mobile Money.
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-blue-50 p-3.5">
+                <p className="mb-2 text-xs font-semibold text-blue-900">
+                  How it works
+                </p>
+                <ol className="space-y-1.5 text-xs text-blue-800">
+                  <li>1. Enter your mobile-money number.</li>
+                  <li>2. Tap the payment button below.</li>
+                  <li>3. Check your phone for the payment prompt.</li>
+                  <li>4. Approve the K100 payment on your phone.</li>
+                  <li>5. Peza verifies the payment and confirms your booking.</li>
+                </ol>
+              </div>
+
+              <button
+                onClick={initiatePayment}
+                disabled={paymentState === "submitting" || !phoneNumber.trim()}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--nexora-navy)] px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {paymentState === "submitting" ? (
+                  <>
+                    <Loader2 size={17} className="animate-spin" />
+                    Starting payment...
+                  </>
+                ) : (
+                  "Pay K100"
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Payment result */}
+              <div
+                className={`rounded-xl border p-4 ${
+                  paymentState === "pending"
+                    ? "border-blue-200 bg-blue-50"
+                    : "border-red-200 bg-red-50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {paymentState === "pending" ? (
+                    <CheckCircle2
+                      size={22}
+                      className="mt-0.5 shrink-0 text-blue-600"
+                    />
+                  ) : (
+                    <AlertCircle
+                      size={22}
+                      className="mt-0.5 shrink-0 text-red-600"
+                    />
+                  )}
+
+                  <div>
+                    <p
+                      className={`text-sm font-bold ${
+                        paymentState === "pending"
+                          ? "text-blue-900"
+                          : "text-red-900"
+                      }`}
+                    >
+                      {paymentState === "pending"
+                        ? "Payment request sent"
+                        : "Payment request unsuccessful"}
+                    </p>
+
+                    <p
+                      className={`mt-1 text-xs leading-relaxed ${
+                        paymentState === "pending"
+                          ? "text-blue-800"
+                          : "text-red-800"
+                      }`}
+                    >
+                      {message}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {paymentState === "pending" && (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3.5">
+                  <p className="text-xs font-semibold text-gray-800">
+                    What happens next?
                   </p>
-                  <p className="mt-0.5 text-[11px] text-gray-500">
-                    or <span className="font-mono">{PAYMENT_NUMBER_LOCAL}</span> if
-                    your app doesn&apos;t accept +260
+                  <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                    Approve the payment prompt on your phone. Peza will confirm
+                    your booking after receiving verified payment confirmation.
+                    Do not submit another payment while this request is pending.
                   </p>
                 </div>
-                <button
-                  onClick={() => copy(PAYMENT_NUMBER_INTL_RAW, "number")}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[var(--nexora-primary)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
-                  aria-label="Copy payment number"
-                >
-                  {copied === "number" ? <Check size={12} /> : <Copy size={12} />}
-                  {copied === "number" ? "Copied" : "Copy"}
-                </button>
-              </div>
-            </div>
-          </div>
+              )}
 
-          {/* Reference */}
-          <div>
-            <p className="mb-1.5 text-xs font-medium text-gray-500">
-              Reference{" "}
-              <span className="text-gray-400">
-                (use this so we can match your payment)
-              </span>
-            </p>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-mono text-sm font-semibold text-gray-900">
-                  {reference}
+              {paymentState === "failed" && (
+                <button
+                  onClick={resetPayment}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--nexora-navy)] px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  <RefreshCw size={15} />
+                  Try again
+                </button>
+              )}
+
+              {paymentId && (
+                <p className="break-all text-center text-[10px] text-gray-400">
+                  Payment reference: {paymentId}
                 </p>
-                <button
-                  onClick={() => copy(reference, "ref")}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[var(--nexora-primary)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--nexora-primary-hover)]"
-                  aria-label="Copy reference code"
-                >
-                  {copied === "ref" ? <Check size={12} /> : <Copy size={12} />}
-                  {copied === "ref" ? "Copied" : "Copy"}
-                </button>
-              </div>
-            </div>
-          </div>
+              )}
+            </>
+          )}
 
-          {/* How to pay */}
-          <div className="rounded-xl bg-blue-50 p-3.5">
-            <p className="mb-2 text-xs font-semibold text-blue-900">
-              How to pay
-            </p>
-            <ol className="space-y-1.5 text-xs text-blue-800">
-              <li>1. Open your mobile money app (Airtel Money · MTN · Zamtel)</li>
-              <li>
-                2. Send <strong>{AGENT_FEE}</strong> to the number above
-              </li>
-              <li>3. Use the reference above as the payment reference</li>
-              <li>4. Admin verifies and confirms your booking shortly</li>
-            </ol>
-          </div>
-
-          {/* Urgency */}
+          {/* Expiry */}
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-900">
               <AlertCircle size={12} />
-              Pay before this expires
+              Booking payment deadline
             </p>
             <BookingCountdown booking={booking} />
           </div>
@@ -194,12 +337,12 @@ export function PaymentInstructionsModal({
             </a>
           </div>
 
-          {/* Hide button */}
           <button
             onClick={onClose}
-            className="w-full rounded-full bg-[var(--nexora-navy)] px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            disabled={paymentState === "submitting"}
+            className="w-full rounded-full border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
           >
-            Hide
+            {paymentState === "pending" ? "Close" : "Hide"}
           </button>
         </div>
       </div>

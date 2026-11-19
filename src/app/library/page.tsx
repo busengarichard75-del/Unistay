@@ -19,7 +19,7 @@ import { getCoverArt } from "@/lib/coverArt";
 import { getSavedSnapshot, getEmptySnapshot, subscribe } from "@/lib/savedLibrary";
 import {
   Search, BookOpen, Plus, X, SlidersHorizontal, ChevronDown,
-  Flame, Shuffle, Sparkles, Phone, Bookmark, ArrowRight,
+  Flame, Shuffle, Sparkles, Phone, Bookmark, ArrowRight, GraduationCap
 } from "lucide-react";
 
 type SortOption = "random" | "newest" | "popular" | "az";
@@ -145,12 +145,11 @@ export default function LibraryPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)] w-[100vw] max-w-[100vw] overflow-x-hidden">
+    <main className="flex min-h-screen flex-col bg-slate-50 w-[100vw] max-w-[100vw] overflow-x-hidden">
       <Navbar />
 
-      {/* Force CategoryTabs to scroll internally, NOT stretch the page */}
       {!isFetching && (
-        <div className="w-full max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="w-full max-w-full overflow-x-auto bg-white border-b border-gray-200 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <CategoryTabs
             categories={tabCategories}
             selected={category}
@@ -163,24 +162,23 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* 🔒 Strict full-width container with px-2 to prevent overflow */}
-      <div className="w-full max-w-full px-2 py-3 flex flex-col gap-4">
+      <div className="w-full max-w-full px-3 py-4 flex flex-col gap-4">
         
         {/* SEARCH & FILTERS */}
         <div className="w-full flex flex-col gap-2">
-          <div className="flex w-full items-center rounded-full border-2 border-[var(--nexora-primary)] bg-white shadow-sm overflow-hidden">
-            <div className="pl-3 text-[var(--nexora-primary)]">
+          <div className="flex w-full items-center rounded-xl border border-gray-300 bg-white shadow-sm overflow-hidden focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+            <div className="pl-3 text-indigo-500">
               <Search size={16} className="shrink-0" />
             </div>
             <input
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Search materials..."
-              className="flex-1 w-full min-w-0 bg-transparent py-2 px-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
+              placeholder="Search by title, course code, or keyword..."
+              className="flex-1 w-full min-w-0 bg-transparent py-2.5 px-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
             />
             {keyword && (
-              <button onClick={() => setKeyword("")} className="pr-3 text-gray-400">
+              <button onClick={() => setKeyword("")} className="pr-3 text-gray-400 hover:text-gray-600">
                 <X size={14} />
               </button>
             )}
@@ -193,8 +191,8 @@ export default function LibraryPage() {
             <div className="flex shrink-0 items-center gap-1.5">
               <button
                 onClick={() => setShowSavedOnly((v) => !v)}
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                  showSavedOnly ? "bg-[var(--nexora-primary)] text-white" : "border border-gray-200 bg-white text-gray-700"
+                className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-colors border shadow-sm ${
+                  showSavedOnly ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <Bookmark size={11} className={showSavedOnly ? "fill-white" : ""} />
@@ -202,9 +200,9 @@ export default function LibraryPage() {
               </button>
               <button
                 onClick={() => setShowSortMenu((v) => !v)}
-                className="relative inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-700"
+                className="relative inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 shadow-sm hover:bg-gray-50"
               >
-                {sort === "random" ? <Shuffle size={11} /> : <SlidersHorizontal size={11} />}
+                <SlidersHorizontal size={11} />
                 <ChevronDown size={11} />
               </button>
             </div>
@@ -212,39 +210,49 @@ export default function LibraryPage() {
         </div>
 
         {/* HEADER & PHONE */}
-        <div className="w-full">
-          <h1 className="text-lg font-bold text-[var(--nexora-navy)]">📚 Student Library</h1>
-          <p className="text-[11px] text-gray-500">Free study materials, shared by students.</p>
-          <a href="tel:+260767924893" className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+        <div className="w-full mt-2">
+          <h1 className="text-xl font-extrabold text-[var(--nexora-navy)] tracking-tight flex items-center gap-2">
+            <GraduationCap size={22} className="text-blue-600" /> Student Library
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">Free academic resources shared by students, for students.</p>
+          <a href="tel:+260767924893" className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors">
             <Phone size={10} /> Library Manager · 0767 924 893
           </a>
         </div>
 
-        {/* STUDY VIBES */}
-        <button onClick={() => setShowVibes(true)} className="group w-full flex items-center justify-between rounded-xl bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 p-0.5 shadow-sm active:scale-[0.99]">
-          <div className="flex flex-1 items-center gap-2 rounded-lg bg-black/10 p-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">
-              <Sparkles size={14} />
+        {/* STUDY VIBES - Eye-catching but fits the blue theme */}
+        <button onClick={() => setShowVibes(true)} className="group w-full flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-3 text-left shadow-md transition-all hover:scale-[1.01] hover:shadow-lg active:scale-[0.99]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-white shadow-sm ring-2 ring-white/10 group-hover:ring-white/30 transition-all">
+              <Sparkles size={14} className="animate-pulse" />
             </div>
-            <div className="text-left text-white min-w-0">
-              <p className="text-xs font-extrabold flex items-center gap-1">Study Vibes <span className="rounded bg-white/20 px-1 py-0 text-[8px] uppercase">New</span></p>
-              <p className="text-[10px] text-white/90 truncate">Tell us your mood, we'll pick for you.</p>
+            <div className="min-w-0 text-white">
+              <p className="text-xs font-extrabold flex items-center gap-1.5">Study Vibes AI <span className="rounded bg-white/20 px-1 py-0 text-[8px] uppercase tracking-wider">New</span></p>
+              <p className="text-[10px] text-white/90 truncate">Tell us your mood, we'll pick the perfect materials.</p>
             </div>
           </div>
+          <ArrowRight size={14} className="text-white/80 group-hover:translate-x-0.5 transition-transform" />
         </button>
 
-        {/* SPOTLIGHT */}
+        {/* SPOTLIGHT - Gradient Text & Border */}
         {spotlight && spotlightArt && (
-          <Link href={`/library/${spotlight.id}`} className="relative block w-full overflow-hidden rounded-xl shadow-sm" style={{ background: spotlightArt.background }}>
-            <div className="relative p-3">
-              <div className="absolute inset-0 bg-black/30" />
-              <div className="relative text-white">
-                <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider"><Sparkles size={10} /> Today's pick</div>
-                <h2 className="mt-0.5 line-clamp-1 text-sm font-extrabold">{spotlight.title}</h2>
-                <p className="mt-0.5 flex items-center gap-1 text-[10px]">
+          <Link href={`/library/${spotlight.id}`} className="group relative block w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-indigo-300">
+            <div className="flex items-stretch">
+              <div className={`w-1.5 shrink-0 bg-gradient-to-b ${spotlightArt.gradient}`} />
+              <div className="flex flex-1 flex-col justify-center p-3.5">
+                <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-indigo-600 mb-1">
+                  <Sparkles size={10} /> Document of the Day
+                </div>
+                <h2 className="line-clamp-1 text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{spotlight.title}</h2>
+                <p className="mt-0.5 flex items-center gap-1.5 text-[10px] text-gray-500 font-medium">
                   {getUniversityShortLabel(spotlight.universityId)}
-                  {spotlight.courseCode && <><span>·</span>{spotlight.courseCode}</>}
+                  {spotlight.courseCode && <><span>•</span>{spotlight.courseCode}</>}
                 </p>
+              </div>
+              <div className="flex items-center justify-center pr-3">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-50 group-hover:bg-indigo-100 transition-colors">
+                  <ArrowRight size={12} className="text-indigo-600" />
+                </div>
               </div>
             </div>
           </Link>
@@ -252,14 +260,14 @@ export default function LibraryPage() {
 
         {/* TRENDING */}
         {showTrending && (
-          <div className="w-full max-w-full">
-            <div className="mb-1.5 flex items-center gap-1">
+          <div className="w-full max-w-full mt-1">
+            <div className="mb-2 flex items-center gap-1.5 px-0.5">
               <Flame className="text-orange-500" size={14} />
-              <h2 className="text-xs font-bold text-gray-900">Trending Now</h2>
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Trending Resources</h2>
             </div>
-            <div className="flex w-full snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-full snap-x gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {trendingEntries.map((entry) => (
-                <div key={entry.id} className="w-[160px] shrink-0 snap-start">
+                <div key={entry.id} className="w-[170px] shrink-0 snap-start">
                   <LibraryCard entry={entry} variant="horizontal" isSaved={savedSet.has(entry.id)} />
                 </div>
               ))}
@@ -269,23 +277,23 @@ export default function LibraryPage() {
 
         {/* SHARE CTA */}
         {user && (
-          <Link href="/library/new" className="w-full flex items-center gap-2 rounded-xl bg-indigo-600 p-2.5 text-white shadow-sm active:scale-[0.99]">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20"><Plus size={14} /></div>
+          <Link href="/library/new" className="w-full flex items-center gap-2.5 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.99]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm"><Plus size={16} /></div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold">Share your materials</p>
-              <p className="text-[10px] text-white/80 truncate">Upload past papers or notes</p>
+              <p className="text-xs font-bold text-indigo-900">Share a resource</p>
+              <p className="text-[10px] text-indigo-700/80 truncate">Upload past papers, notes, or guides.</p>
             </div>
           </Link>
         )}
 
         {/* GRID (Mobile First: 3 Cols, scaling up) */}
-        <div className="w-full">
+        <div className="w-full mt-1">
           {isFetching ? (
-            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 w-full">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 w-full">
               {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="shimmer rounded-lg bg-white p-1 shadow-sm w-full">
+                <div key={i} className="shimmer rounded-xl border border-gray-200 bg-white p-1 shadow-sm w-full">
                   <div className="aspect-[4/3] w-full rounded bg-gray-200" />
-                  <div className="mt-1 h-2 w-full rounded bg-gray-200" />
+                  <div className="mt-1.5 h-2 w-full rounded bg-gray-200" />
                   <div className="mt-1 h-2 w-2/3 rounded bg-gray-200" />
                 </div>
               ))}
@@ -295,7 +303,7 @@ export default function LibraryPage() {
           ) : gridEntries.length === 0 ? (
             <EmptyState emoji="🔍" title="No matches" message="We couldn't find this right now." actions={[{ label: "Clear filters", onClick: handleClear, variant: "primary" }]} />
           ) : (
-            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 w-full">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 w-full">
               {gridEntries.map((entry) => (
                 <LibraryCard key={entry.id} entry={entry} variant="vertical" isSaved={savedSet.has(entry.id)} />
               ))}

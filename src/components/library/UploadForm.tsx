@@ -190,6 +190,7 @@ export function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* We keep this manual warning box because it's light and helps UX */}
       <div className="flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4">
         <Info size={16} className="mt-0.5 shrink-0 text-indigo-600" />
         <div className="text-xs leading-relaxed text-indigo-900">
