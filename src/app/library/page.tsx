@@ -15,7 +15,6 @@ import { useAuth } from "@/lib/AuthContext";
 import { getDailySeed, seededShuffleById } from "@/lib/seededShuffle";
 import { StudyVibesModal } from "@/components/library/StudyVibesModal";
 import { getUniversityShortLabel } from "@/lib/universityLabels";
-import { getCoverArt } from "@/lib/coverArt";
 import { getSavedSnapshot, getEmptySnapshot, subscribe } from "@/lib/savedLibrary";
 import {
   Search, BookOpen, Plus, X, SlidersHorizontal, ChevronDown,
@@ -134,10 +133,6 @@ export default function LibraryPage() {
     () => (!hasAnyFilter && !isFetching ? pickSpotlight(entries) : null),
     [entries, hasAnyFilter, isFetching]
   );
-  const spotlightArt = useMemo(
-    () => (spotlight ? getCoverArt(spotlight.id, spotlight.category) : null),
-    [spotlight]
-  );
   const gridEntries = spotlight ? filtered.filter((e) => e.id !== spotlight.id) : filtered;
 
   const handleClear = () => {
@@ -145,11 +140,11 @@ export default function LibraryPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col bg-[#EAF2FA] w-[100vw] max-w-[100vw] overflow-x-hidden">
+    <main className="flex min-h-screen flex-col bg-[#F1F5F9] w-[100vw] max-w-[100vw] overflow-x-hidden">
       <Navbar />
 
       {!isFetching && (
-        <div className="w-full max-w-full overflow-x-auto bg-white border-b border-[#D6E4F0] shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="w-full max-w-full overflow-x-auto bg-white border-b border-gray-200 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <CategoryTabs
             categories={tabCategories}
             selected={category}
@@ -166,8 +161,8 @@ export default function LibraryPage() {
         
         {/* SEARCH & FILTERS */}
         <div className="w-full flex flex-col gap-2">
-          <div className="flex w-full items-center rounded-xl border border-[#D6E4F0] bg-white shadow-sm overflow-hidden focus-within:border-[#4A90D9] focus-within:ring-2 focus-within:ring-[#4A90D9]/20 transition-all">
-            <div className="pl-3 text-[#4A90D9]">
+          <div className="flex w-full items-center rounded-xl border border-gray-300 bg-white shadow-sm overflow-hidden focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+            <div className="pl-3 text-indigo-500">
               <Search size={16} className="shrink-0" />
             </div>
             <input
@@ -192,7 +187,7 @@ export default function LibraryPage() {
               <button
                 onClick={() => setShowSavedOnly((v) => !v)}
                 className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-colors border shadow-sm ${
-                  showSavedOnly ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-[#D6E4F0] bg-white text-gray-700 hover:bg-[#F4F9FD]"
+                  showSavedOnly ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <Bookmark size={11} className={showSavedOnly ? "fill-white" : ""} />
@@ -200,7 +195,7 @@ export default function LibraryPage() {
               </button>
               <button
                 onClick={() => setShowSortMenu((v) => !v)}
-                className="relative inline-flex items-center gap-1 rounded-xl border border-[#D6E4F0] bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 shadow-sm hover:bg-[#F4F9FD]"
+                className="relative inline-flex items-center gap-1 rounded-xl border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 shadow-sm hover:bg-gray-50"
               >
                 <SlidersHorizontal size={11} />
                 <ChevronDown size={11} />
@@ -212,19 +207,19 @@ export default function LibraryPage() {
         {/* HEADER & PHONE */}
         <div className="w-full mt-2">
           <h1 className="text-xl font-extrabold text-[var(--nexora-navy)] tracking-tight flex items-center gap-2">
-            <GraduationCap size={22} className="text-[#2563EB]" /> Student Library
+            <GraduationCap size={22} className="text-indigo-600" /> Student Library
           </h1>
-          <p className="text-xs text-gray-600 mt-1">Free academic resources shared by students, for students.</p>
-          <a href="tel:+260767924893" className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#D6E4F0] bg-white px-2.5 py-1 text-[10px] font-bold text-[#4A90D9] shadow-sm hover:bg-[#F4F9FD] transition-colors">
+          <p className="text-xs text-gray-500 mt-1">Free academic resources shared by students, for students.</p>
+          <a href="tel:+260767924893" className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-2.5 py-1 text-[10px] font-bold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors">
             <Phone size={10} /> Library Manager · 0767 924 893
           </a>
         </div>
 
-        {/* STUDY VIBES - Solid Peza Blue (No Sharp Colors) */}
-        <button onClick={() => setShowVibes(true)} className="group w-full flex items-center justify-between rounded-xl bg-[#4A90D9] p-3 text-left shadow-md transition-all hover:bg-[#3A7BC8] active:scale-[0.99]">
+        {/* STUDY VIBES - Premium Indigo Gradient */}
+        <button onClick={() => setShowVibes(true)} className="group w-full flex items-center justify-between rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 p-3 text-left shadow-md transition-all hover:from-indigo-500 hover:to-blue-500 hover:shadow-lg active:scale-[0.99]">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-white shadow-sm ring-2 ring-white/10 group-hover:ring-white/30 transition-all">
-              <Sparkles size={14} />
+              <Sparkles size={14} className="animate-pulse" />
             </div>
             <div className="min-w-0 text-white">
               <p className="text-xs font-extrabold flex items-center gap-1.5">Study Vibes AI <span className="rounded bg-white/20 px-1 py-0 text-[8px] uppercase tracking-wider">New</span></p>
@@ -234,24 +229,24 @@ export default function LibraryPage() {
           <ArrowRight size={14} className="text-white/80 group-hover:translate-x-0.5 transition-transform" />
         </button>
 
-        {/* SPOTLIGHT - Clean White with Soft Blue Accent */}
-        {spotlight && spotlightArt && (
-          <Link href={`/library/${spotlight.id}`} className="group relative block w-full overflow-hidden rounded-xl border border-[#D6E4F0] bg-white shadow-sm transition-all hover:shadow-md hover:border-[#4A90D9]/50">
+        {/* SPOTLIGHT - Featured Document */}
+        {spotlight && (
+          <Link href={`/library/${spotlight.id}`} className="group relative block w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-indigo-300">
             <div className="flex items-stretch">
-              <div className="w-1.5 shrink-0 bg-[#4A90D9]" />
+              <div className="w-1.5 shrink-0 bg-indigo-600" />
               <div className="flex flex-1 flex-col justify-center p-3.5">
-                <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-[#4A90D9] mb-1">
+                <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-indigo-600 mb-1">
                   <Sparkles size={10} /> Document of the Day
                 </div>
-                <h2 className="line-clamp-1 text-sm font-bold text-gray-900 group-hover:text-[#2563EB] transition-colors">{spotlight.title}</h2>
+                <h2 className="line-clamp-1 text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{spotlight.title}</h2>
                 <p className="mt-0.5 flex items-center gap-1.5 text-[10px] text-gray-500 font-medium">
                   {getUniversityShortLabel(spotlight.universityId)}
                   {spotlight.courseCode && <><span>•</span>{spotlight.courseCode}</>}
                 </p>
               </div>
               <div className="flex items-center justify-center pr-3">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F4F9FD] group-hover:bg-[#EAF2FA] transition-colors">
-                  <ArrowRight size={12} className="text-[#4A90D9]" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50 group-hover:bg-indigo-50 transition-colors">
+                  <ArrowRight size={12} className="text-gray-400 group-hover:text-indigo-600" />
                 </div>
               </div>
             </div>
@@ -262,7 +257,7 @@ export default function LibraryPage() {
         {showTrending && (
           <div className="w-full max-w-full mt-1">
             <div className="mb-2 flex items-center gap-1.5 px-0.5">
-              <Flame className="text-[#4A90D9]" size={14} />
+              <Flame className="text-orange-500" size={14} />
               <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Trending Resources</h2>
             </div>
             <div className="flex w-full snap-x gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -277,8 +272,8 @@ export default function LibraryPage() {
 
         {/* SHARE CTA */}
         {user && (
-          <Link href="/library/new" className="w-full flex items-center gap-2.5 rounded-xl border border-[#D6E4F0] bg-white p-3 shadow-sm transition-all hover:border-[#4A90D9]/50 active:scale-[0.99]">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F9FD] text-[#4A90D9]"><Plus size={16} /></div>
+          <Link href="/library/new" className="w-full flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-all hover:border-indigo-300 active:scale-[0.99]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-600"><Plus size={16} /></div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-gray-900">Share a resource</p>
               <p className="text-[10px] text-gray-500 truncate">Upload past papers, notes, or guides.</p>
@@ -291,10 +286,10 @@ export default function LibraryPage() {
           {isFetching ? (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 w-full">
               {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="shimmer rounded-xl border border-[#D6E4F0] bg-white p-1 shadow-sm w-full">
-                  <div className="aspect-[4/3] w-full rounded bg-[#F4F9FD]" />
-                  <div className="mt-1.5 h-2 w-full rounded bg-[#EAF2FA]" />
-                  <div className="mt-1 h-2 w-2/3 rounded bg-[#EAF2FA]" />
+                <div key={i} className="shimmer rounded-xl border border-gray-200 bg-white p-1 shadow-sm w-full">
+                  <div className="aspect-[4/3] w-full rounded bg-gray-200" />
+                  <div className="mt-1.5 h-2 w-full rounded bg-gray-200" />
+                  <div className="mt-1 h-2 w-2/3 rounded bg-gray-200" />
                 </div>
               ))}
             </div>
