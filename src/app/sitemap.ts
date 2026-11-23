@@ -1,11 +1,11 @@
+// src/app/sitemap.ts
 import { MetadataRoute } from "next";
 import { getFirestoreDb } from "@/lib/firebase-admin";
 import { getAllProperties } from "@/services/propertyService";
 import { universities } from "@/data/universities";
-import { GUIDES } from "@/data/guides"; // ⚡ Imported Guides
+import { GUIDES } from "@/data/guides";
 
 export const revalidate = 3600;
-
 const FIRESTORE_TIMEOUT_MS = 3000;
 
 function withTimeout<T>(
@@ -19,8 +19,7 @@ function withTimeout<T>(
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://pezazm.com";
   const now = new Date();
 
   // ─── Static public pages ───
@@ -29,15 +28,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/services`,         priority: 0.9, changeFrequency: "daily" },
     { url: `${baseUrl}/marketplace`,      priority: 0.9, changeFrequency: "daily" },
     { url: `${baseUrl}/library`,          priority: 0.9, changeFrequency: "daily" },
-    { url: `${baseUrl}/guides`,           priority: 0.9, changeFrequency: "weekly" }, // ⚡ Added
+    { url: `${baseUrl}/guides`,           priority: 0.9, changeFrequency: "weekly" },
+    { url: `${baseUrl}/articles`,         priority: 0.9, changeFrequency: "weekly" }, // ⭐ Added Articles index
     { url: `${baseUrl}/map`,              priority: 0.8, changeFrequency: "weekly" },
     { url: `${baseUrl}/why-peza`,         priority: 0.6, changeFrequency: "monthly" },
     { url: `${baseUrl}/help`,             priority: 0.5, changeFrequency: "monthly" },
     { url: `${baseUrl}/legal`,            priority: 0.3, changeFrequency: "yearly" },
-  ].map((p) => ({
-    ...p,
-    lastModified: now,
-  })) as MetadataRoute.Sitemap;
+  ].map((p) => ({ ...p, lastModified: now })) as MetadataRoute.Sitemap;
 
   // ─── Campus Housing Landing Pages ───
   const housingPages: MetadataRoute.Sitemap = universities
@@ -49,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-  // ─── Guides (Blog) ───
+  // ─── Static Guides ───
   const guidePages: MetadataRoute.Sitemap = GUIDES.map((guide) => ({
     url: `${baseUrl}/guides/${guide.slug}`,
     lastModified: now,
@@ -62,6 +59,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     db = getFirestoreDb();
   } catch {
     return [...staticPages, ...housingPages, ...guidePages];
+  }
+
+  // ─── Dynamic Articles (If stored in Firestore) ───
+  let articlePages: MetadataRoute.Sitemap = [];
+  try {
+    const snap = await withTimeout(db.collection("articles").get());
+    if (snap) {
+      articlePages = snap.docs
+        .filter((doc) => doc.data().published === true) // Only published articles
+        .map((doc) => {
+          const d = doc.data();
+          return {
+            url: `${baseUrl}/articles/${doc.id}`, // Adjust route if you use slugs
+            lastModified: d.updatedAt ? new Date(d.updatedAt) : new Date(),
+            changeFrequency: "weekly" as const,
+            priority: 0.8,
+          };
+        });
+    }
+  } catch (error) {
+    console.error("Sitemap: failed to fetch articles:", error);
   }
 
   // ─── Properties ───
@@ -184,6 +202,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticPages,
     ...housingPages,
     ...guidePages,
+    ...articlePages, // ⭐ Added dynamic articles
     ...propertyPages,
     ...servicePages,
     ...productPages,

@@ -29,7 +29,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
       {
-        // Explicitly allow AI and Search Bots to index the main site and the business page
+        // Explicitly allow AI and Search Bots to index your articles/guides
         userAgent: [
           "GPTBot", 
           "OAI-SearchBot", 
@@ -37,9 +37,16 @@ export default function robots(): MetadataRoute.Robots {
           "Claude-Web", 
           "PerplexityBot", 
           "Googlebot", 
-          "Bingbot"
+          "Bingbot",
+          "Google-Extended" // Added for Gemini AI
         ],
-        allow: ["/", "/about/busenga-technologies", "/legal"],
+        allow: [
+          "/", 
+          "/about/busenga-technologies", 
+          "/legal",
+          "/guides",      // ⭐ Added for Articles
+          "/articles"     // ⭐ Added for Articles
+        ],
         disallow: ["/api/", "/admin/", "/dashboard/"],
       }
     ],

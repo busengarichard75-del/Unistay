@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar/Navbar";
 import { Footer } from "@/components/footer/Footer";
 import { GUIDES, getGuideBySlug } from "@/data/guides";
+import { ArticleJsonLd } from "@/components/seo/ArticleJsonLd"; // ⭐ Imported
 import { ArrowLeft, Clock, Calendar } from "lucide-react";
 
 // This tells Next.js to pre-render all guide pages at build time for maximum speed!
@@ -23,13 +24,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return { title: "Guide not found" };
   }
 
+  const url = `https://pezazm.com/guides/${guide.slug}`;
+
   return {
     title: `${guide.title} | Peza`,
     description: guide.excerpt,
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
       title: guide.title,
       description: guide.excerpt,
       type: "article",
+      url,
     },
   };
 }
@@ -42,8 +49,26 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
     notFound();
   }
 
+  const url = `https://pezazm.com/guides/${guide.slug}`;
+  
+  // ⭐ Note: If your GUIDE data has a specific ISO date (like guide.createdAt), 
+  // use that instead of new Date().toISOString(). Google prefers the exact date.
+  const datePublished = new Date().toISOString(); 
+  const dateModified = new Date().toISOString();
+
   return (
     <main className="flex min-h-screen flex-col bg-[var(--nexora-surface)]">
+      
+      {/* ⭐ Inject JSON-LD Structured Data for Google & AI */}
+      <ArticleJsonLd
+        title={guide.title}
+        description={guide.excerpt}
+        url={url}
+        authorName="Peza ZM Editorial Team"
+        datePublished={datePublished}
+        dateModified={dateModified}
+      />
+
       <Navbar />
 
       <div className="container-medium flex-1 py-10">
