@@ -5,11 +5,12 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Home, Wrench, ShoppingBag, Navigation, LocateFixed, Trash2 } from "lucide-react";
+import { Home, Wrench, ShoppingBag, Navigation, LocateFixed, Trash2, MapPin } from "lucide-react";
 import Link from "next/link";
 import type { Property } from "@/types/property";
 import type { Service } from "@/types/service";
 import type { Product } from "@/types/product";
+import type { MapPoint } from "@/types/mapPoint"; // ⭐ Imported MapPoint
 import { isServiceBoosted } from "@/types/service";
 import { isProductBoosted } from "@/types/product";
 import { isBoosted as isPropertyBoosted } from "@/lib/boostService";
@@ -52,6 +53,8 @@ function makePin(color: string, iconHtml: string) {
 const propertyIcon = makePin("#4A90D9", "🏠");
 const serviceIcon = makePin("#0EA5E9", "🛠️");
 const productIcon = makePin("#F97316", "🛒");
+// ⭐ NEW: Purple pin for Admin Landmarks
+const landmarkIcon = makePin("#8B5CF6", "📍"); 
 
 // ─── User location marker (blue dot) ───
 const userIcon = L.divIcon({
@@ -72,12 +75,15 @@ const userIcon = L.divIcon({
   iconAnchor: [16, 16],
 });
 
+// ⭐ NEW: Updated to include landmarks (Admin Pins)
 export type MapMarker =
   | { kind: "property"; data: Property }
   | { kind: "service"; data: Service }
-  | { kind: "product"; data: Product };
+  | { kind: "product"; data: Product }
+  | { kind: "landmark"; data: MapPoint };
 
-export type MapFilter = "all" | "properties" | "services" | "products";
+// ⭐ NEW: Added landmarks filter
+export type MapFilter = "all" | "properties" | "services" | "products" | "landmarks";
 
 interface PezaMapProps {
   markers: MapMarker[];
@@ -86,7 +92,7 @@ interface PezaMapProps {
   defaultCenter?: [number, number];
   defaultZoom?: number;
   showUserLocation?: boolean;
-  onAdminHide?: (marker: MapMarker) => void; // ⭐ Added admin prop
+  onAdminHide?: (marker: MapMarker) => void;
 }
 
 // Fit map to bounds when markers change
@@ -141,7 +147,7 @@ export function PezaMap({
   defaultCenter = [-15.3875, 28.3228],
   defaultZoom = 12,
   showUserLocation = true,
-  onAdminHide, // ⭐ Destructured
+  onAdminHide,
 }: PezaMapProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -160,9 +166,11 @@ export function PezaMap({
   // Filter markers by type and availability + coords
   const visible = useMemo(() => {
     return markers.filter((m) => {
+      // ⭐ Updated filter logic
       if (filter === "properties" && m.kind !== "property") return false;
       if (filter === "services" && m.kind !== "service") return false;
       if (filter === "products" && m.kind !== "product") return false;
+      if (filter === "landmarks" && m.kind !== "landmark") return false;
 
       const d: any = m.data;
       if (d.adminHidden) return false;
@@ -223,40 +231,56 @@ export function PezaMap({
         {/* Content markers */}
         {visible.map((m) => {
           const d: any = m.data;
+          
+          // ⭐ Landmarks don't have boosts
           const boosted =
             m.kind === "property"
               ? isPropertyBoosted(d as Property)
               : m.kind === "service"
               ? isServiceBoosted(d as Service)
-              : isProductBoosted(d as Product);
+              : m.kind === "product"
+              ? isProductBoosted(d as Product)
+              : false;
 
+          // ⭐ Assign landmark icon
           const icon =
-            m.kind === "property" ? propertyIcon : m.kind === "service" ? serviceIcon : productIcon;
+            m.kind === "property" 
+              ? propertyIcon 
+              : m.kind === "service" 
+              ? serviceIcon 
+              : m.kind === "product"
+              ? productIcon
+              : landmarkIcon;
 
+          // ⭐ Landmarks use .name
           const title =
             m.kind === "property"
               ? (d as Property).title
               : m.kind === "service"
               ? (d as Service).title
-              : (d as Product).name;
+              : m.kind === "product"
+              ? (d as Product).name
+              : (d as MapPoint).name;
 
           const href =
             m.kind === "property"
               ? `/property/${d.id}`
               : m.kind === "service"
               ? `/services/${d.id}`
-              : `/marketplace/${d.id}`;
+              : m.kind === "product"
+              ? `/marketplace/${d.id}`
+              : null; // Landmarks don't link to a page
 
           const priceLabel =
             m.kind === "property"
-              ? `K${d.price.toLocaleString()}/${
-                  d.paymentPeriod === "termly" ? "term" : "mo"
-                }`
+              ? `K${d.price.toLocaleString()}/${d.paymentPeriod === "termly" ? "term" : "mo"}`
               : m.kind === "service"
               ? d.priceType === "from" && d.priceFrom
                 ? `From K${d.priceFrom.toLocaleString()}`
                 : "Contact for price"
-              : `K${d.price.toLocaleString()}`;
+              : m.kind === "product"
+              ? `K${d.price.toLocaleString()}`
+              : d.description || "Campus Landmark"; // Landmarks show description
 
           return (
             <Marker
@@ -268,7 +292,7 @@ export function PezaMap({
                 <div className="min-w-[180px]">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                      {m.kind === "property" ? "Room" : m.kind === "service" ? "Service" : "Product"}
+                      {m.kind === "property" ? "Room" : m.kind === "service" ? "Service" : m.kind === "product" ? "Product" : "Landmark"}
                     </span>
                     {boosted && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
@@ -285,14 +309,18 @@ export function PezaMap({
                   <p className="mt-1 text-[11px] text-gray-500 truncate">
                     📍 {d.location}
                   </p>
-                  <Link
-                    href={href}
-                    className="mt-2 inline-block w-full rounded-full bg-[var(--nexora-primary)] px-3 py-1.5 text-center text-xs font-semibold text-white hover:bg-[var(--nexora-primary-hover)]"
-                  >
-                    View listing →
-                  </Link>
+                  
+                  {/* ⭐ Only show "View listing" if it's not a landmark */}
+                  {href && (
+                    <Link
+                      href={href}
+                      className="mt-2 inline-block w-full rounded-full bg-[var(--nexora-primary)] px-3 py-1.5 text-center text-xs font-semibold text-white hover:bg-[var(--nexora-primary-hover)]"
+                    >
+                      View listing →
+                    </Link>
+                  )}
 
-                  {/* ⭐ ADMIN ACTION BUTTON */}
+                  {/* Admin action button */}
                   {onAdminHide && (
                     <div className="mt-2 border-t border-red-100 pt-2">
                       <button
